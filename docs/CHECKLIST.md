@@ -38,15 +38,31 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - 🧪 Riding moving platforms (lift test platform) and moving walkways; platforms refuse to crush characters
 
 ## Part 3 — Mall blockout & layout
-- ⬜ 3 shopping floors, central atrium (fountain, info desk, seating, escalators, clock, directory)
-- ⬜ 4 shopping wings, looping/branching corridors, dead ends
-- ⬜ Shops (enterable + realistic closed ones), restaurants, food court, cinema, toilets
-- ⬜ Staff corridors, maintenance, storage, electrical, plant rooms, loading/delivery, management offices, restricted areas
-- ⬜ Enormous single-level underground car park (no cars, pillars, ramps within level, lift lobbies, stairwells, service areas)
-- ⬜ Rooftop access, service tunnel, lifts, stairs, emergency stairwells
-- ⬜ Fixed physical mall directory matching the real layout (no minimap, no markers)
-- ⬜ Fogged/black windows, no outside visible
-- ⬜ Review Shots tool (fixed camera screenshots for Claude to inspect)
+- 🧪 Fixed master plan in code (`MallLayout`): no randomness, identical every run
+- 🧪 3 shopping floors (G, 1, 2) at 6 m floor-to-floor, 4.5 m ceilings with service voids above (for vents)
+- 🧪 Central atrium: 20 x 20 m void through all floors, fountain, information desk, seating, planters,
+  hanging clock (11:30), glass balustrades, escalators G-1 (east) and 1-2 (west), L2 bridge, public lifts, skylight
+- 🧪 4 wings x 3 floors: 12 m concourses, ~190 shops/units with fixed names and categories, signage,
+  benches/planters/bins, lights
+- 🧪 Shop fronts: closed shutters, jammed shutters (crawl under), locked glass, open shutters, broken-lock doors;
+  enterable shops have fittings, counters, stock rooms and back doors
+- 🧪 Staff passages (and public toilet passages) through to service corridors behind every shop row → loops
+- 🧪 Anchor stores: department store (G+1, internal staircase), supermarket, main entrance hall, fire-exit hall
+  with toilets + sports store, electronics, home store, toy store, bowling/arcade, cinema (3 screens), gym, food court
+- 🧪 Back-of-house blocks: loading bay (dock shutters), security, staff room, toilets, electrical, maintenance,
+  plant rooms, mall management (restricted), records, storage, staff canteen, water tanks
+- 🧪 4 switchback stairwells car park → L2 (north-east one continues to the roof)
+- 🧪 Lift shafts (2 public, 1 service) with closed landing doors on every level (cars in Part 12)
+- 🧪 Enormous single-level car park (200 x 200 m): pillar grid with bay labels, split-level raised section with
+  ramps and crash barriers, lift lobby, maintenance + plant rooms, fenced delivery bay, dead/dim light areas, no cars
+- 🧪 Car park exit ramp tunnel with barrier and shutter, service tunnel (80 m), rooftop area with fencing
+- 🧪 All 8 escape route exit points placed and marked (puzzles in Part 7)
+- 🧪 Every doorway marked with a DoorSlot (kind, lock state) for Part 5 to turn into real doors
+- 🧪 Physical directory board generated from the same data (4 floor plans, store lists, symbols, you-are-here)
+- 🧪 Windows to outside: none visible; entrance glass is black
+- 🧪 Review Shots tool (20 fixed views → PNG) and F12 in-game screenshots
+- 🧪 Dev teleport menu (Esc > Teleport) for testing the large building
+- ⬜ Vent network inside the ceiling voids → Part 5 (covers) / Part 11 (crawl network)
 
 ## Part 4 — Environment art & atmosphere
 - ⬜ Realistic materials (AI-generated textures + normal/roughness maps)

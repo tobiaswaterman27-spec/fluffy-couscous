@@ -48,6 +48,17 @@ namespace AfterHours.Player
             if (motor != null && look != null) motor.Landed -= look.OnLanded;
         }
 
+        /// <summary>
+        /// Places the player instantly. Only for spawning, respawning, loading saves and developer testing.
+        /// </summary>
+        public void Teleport(Vector3 position, float yaw)
+        {
+            if (grab != null) grab.Release();
+            motor.Warp(position, yaw);
+            look.Initialize(yaw);
+            if (input is LocalPlayerInput local) local.ResetState();
+        }
+
         void Update()
         {
             float dt = Time.deltaTime;

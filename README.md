@@ -62,6 +62,12 @@ This adds the `Assets/AfterHours` folder, `docs/` and this README into your proj
 ### 4. Play
 Press the **Play** button (▶, top centre). Click inside the **Game** view to capture the mouse.
 
+### 5. The mall (Part 3)
+1. **After Hours > 3 - Build Mall** (takes a minute or two; click **Don't Save** if asked about the current scene).
+2. Press **Play**. You start in the atrium. **Esc > Teleport (dev)** jumps anywhere in the building.
+3. **After Hours > 4 - Capture Review Shots** saves 20 pictures of the mall into the `ReviewShots` folder
+   (in Play mode, **F12** saves a single screenshot there). Send them to Claude to check.
+
 ---
 
 ## Getting new updates later

@@ -2,7 +2,9 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using AfterHours.Controls;
 using AfterHours.Core;
+using AfterHours.Player;
 using AfterHours.Settings;
+using AfterHours.World.Layout;
 
 namespace AfterHours.UI
 {
@@ -12,7 +14,7 @@ namespace AfterHours.UI
     /// </summary>
     public class DevPauseMenu : MonoBehaviour
     {
-        enum Page { Settings, Controls }
+        enum Page { Settings, Controls, Teleport }
 
         Page page = Page.Settings;
         bool cursorLockedOnce;
@@ -78,11 +80,13 @@ namespace AfterHours.UI
             GUILayout.BeginHorizontal();
             if (GUILayout.Toggle(page == Page.Settings, "Settings", GUI.skin.button, GUILayout.Height(30))) page = Page.Settings;
             if (GUILayout.Toggle(page == Page.Controls, "Controls", GUI.skin.button, GUILayout.Height(30))) page = Page.Controls;
+            if (GUILayout.Toggle(page == Page.Teleport, "Teleport (dev)", GUI.skin.button, GUILayout.Height(30))) page = Page.Teleport;
             GUILayout.EndHorizontal();
             GUILayout.Space(8);
 
             if (page == Page.Settings) DrawSettings(service);
-            else DrawControls(input);
+            else if (page == Page.Controls) DrawControls(input);
+            else DrawTeleport();
 
             GUILayout.FlexibleSpace();
             GUI.enabled = rebind == null;
@@ -117,6 +121,25 @@ namespace AfterHours.UI
             s.headBob = GUILayout.Toggle(s.headBob, " Head bob");
             s.vSync = GUILayout.Toggle(s.vSync, " V-Sync");
             if (GUI.changed) service.ApplyRuntime();
+        }
+
+        void DrawTeleport()
+        {
+            GUILayout.Label("Developer testing only: jump to a place in the mall.");
+            scroll = GUILayout.BeginScrollView(scroll, GUILayout.Height(400));
+            foreach (DevLocation loc in MallLayout.DevLocations)
+            {
+                if (GUILayout.Button(loc.name, GUILayout.Height(26)))
+                {
+                    PlayerController player = FindAnyObjectByType<PlayerController>();
+                    if (player != null)
+                    {
+                        player.Teleport(loc.position, loc.yaw);
+                        SetPaused(false);
+                    }
+                }
+            }
+            GUILayout.EndScrollView();
         }
 
         void DrawControls(InputService input)

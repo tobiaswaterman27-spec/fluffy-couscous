@@ -37,7 +37,22 @@ namespace AfterHours.DevTools
                 helpUntil = showStats ? Time.realtimeSinceStartup + helpSeconds : 0f;
             }
             if (input.ToggleDebugView.WasPressedThisFrame() && look != null) look.ToggleThirdPersonDebug();
+            if (input.Screenshot.WasPressedThisFrame()) TakeScreenshot();
         }
+
+        /// <summary>F12: saves a screenshot to the ReviewShots folder in the project (to share with Claude).</summary>
+        void TakeScreenshot()
+        {
+            string folder = System.IO.Path.Combine(System.IO.Directory.GetParent(Application.dataPath).FullName, "ReviewShots");
+            System.IO.Directory.CreateDirectory(folder);
+            string file = System.IO.Path.Combine(folder, "play_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".png");
+            ScreenCapture.CaptureScreenshot(file);
+            lastScreenshot = file;
+            lastScreenshotTime = Time.realtimeSinceStartup;
+        }
+
+        string lastScreenshot;
+        float lastScreenshotTime = -100f;
 
         void OnGUI()
         {
@@ -87,9 +102,14 @@ namespace AfterHours.DevTools
                     "Double-tap + hold a move key = sprint (also backwards)\n" +
                     "Hold Shift = crouch   Hold Ctrl = crawl\n" +
                     "Hold E on a heavy object = push / pull it\n" +
-                    "Esc pause, settings & key rebinding   F3 info   F5 see your body";
+                    "Esc pause, settings, keys, teleport   F3 info   F5 body   F12 screenshot";
                 GUI.Box(new Rect(10, 195, 470, 125), GUIContent.none);
                 GUI.Label(new Rect(20, 200, 460, 120), help, style);
+            }
+
+            if (Time.realtimeSinceStartup - lastScreenshotTime < 3f)
+            {
+                GUI.Label(new Rect(20, 1040, 1200, 30), "Screenshot saved: " + lastScreenshot, style);
             }
 
             GUI.matrix = Matrix4x4.identity;
