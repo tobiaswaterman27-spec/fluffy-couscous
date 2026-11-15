@@ -180,7 +180,6 @@ namespace AfterHours.Net
         {
             if (transport.IsHost)
             {
-                if (phase != Phase.Lobby) return; // no joining a game in progress
                 var np = new NetPlayer { id = peer.playerId, name = peer.name, colour = Colours[peer.playerId % Colours.Length], peer = peer };
                 Players.Add(np);
                 // Tell the newcomer who's here, and everyone else about the newcomer.
@@ -195,6 +194,14 @@ namespace AfterHours.Net
                 transport.BroadcastReliable(w.ToArray(), peer);
                 Discovery.HostPlayers = Players.Count;
                 Status = $"Hosting. {Players.Count} player(s).";
+                if (phase == Phase.Playing)
+                {
+                    // Joining a game in progress: start them off, show them to everyone, send the whole world.
+                    PlayerController local = FindLocalPlayer();
+                    if (local != null) { np.proxy = NetProxy.Create(local, np.id, np.name, np.colour); np.pc = np.proxy.controller; }
+                    transport.SendReliable(peer, StartMessage());
+                    world.ResendAll();
+                }
             }
             else Status = "Connected. Waiting for the host to start...";
         }
@@ -231,13 +238,22 @@ namespace AfterHours.Net
         // Starting
         // =====================================================================
 
+        int creatureCount;
+
+        byte[] StartMessage()
+        {
+            w.Begin(MsgType.StartGame);
+            w.Byte((byte)creatureCount);
+            w.Byte((byte)Players.Count);
+            foreach (NetPlayer p in Players) w.Byte(p.id);
+            return w.ToArray();
+        }
+
         public void HostStartGame()
         {
             if (!IsHost || phase != Phase.Lobby) return;
-            w.Begin(MsgType.StartGame);
-            w.Byte((byte)Players.Count);
-            foreach (NetPlayer p in Players) w.Byte(p.id);
-            SendAll(w, true);
+            creatureCount = NetCreatures.CountFor(Players.Count);
+            transport.BroadcastReliable(StartMessage());
             BeginGame();
         }
 
@@ -258,7 +274,7 @@ namespace AfterHours.Net
                 p.pc = p.proxy.controller;
             }
             world.Build();
-            creatures.Setup(Players.Count, transport.IsHost);
+            creatures.Setup(creatureCount, transport.IsHost);
             GamePause.CannotFreeze = Players.Count > 1;
 
             // Wire the game's hooks to the network.
@@ -523,7 +539,13 @@ namespace AfterHours.Net
                 {
                     byte id = r.Byte();
                     string name = r.Str();
-                    if (ById(id) == null) Players.Add(new NetPlayer { id = id, name = name, colour = Colours[id % Colours.Length] });
+                    if (ById(id) == null)
+                    {
+                        var np = new NetPlayer { id = id, name = name, colour = Colours[id % Colours.Length] };
+                        Players.Add(np);
+                        PlayerController local = FindLocalPlayer();
+                        if (phase == Phase.Playing && local != null) { np.proxy = NetProxy.Create(local, id, name, np.colour); np.pc = np.proxy.controller; }
+                    }
                     break;
                 }
                 case MsgType.PlayerLeft:
@@ -539,6 +561,7 @@ namespace AfterHours.Net
                 case MsgType.StartGame:
                     if (!host && phase == Phase.Lobby)
                     {
+                        creatureCount = r.Byte();
                         int n = r.Byte();
                         var order = new List<byte>();
                         for (int i = 0; i < n; i++) order.Add(r.Byte());

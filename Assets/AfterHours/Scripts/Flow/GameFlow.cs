@@ -83,6 +83,7 @@ namespace AfterHours.Flow
 
         void EnterMenu()
         {
+            SaveSystem.CoopSlot = false;
             State = FlowState.Menu;
             GameFlowFlags.InMainMenu = true;
             GameFlowFlags.QuitToMenu = null;
@@ -144,11 +145,23 @@ namespace AfterHours.Flow
             return net;
         }
 
+        bool continueCoop;
+
         void OnCoopStarted(int index)
         {
-            SaveSystem.DeleteSave();
             playTime = 0f;
             coopIndex = index;
+            if (NetSession.IsHost && continueCoop && SaveSystem.TryLoad(out SaveData data))
+            {
+                // The host carries on from the co-op save; everyone else gets the world as it was.
+                playTime = data.playTime;
+                LeaveMenu();
+                if (player != null) player.SetControlLock(false, false);
+                if (SaveSystem.Instance != null) SaveSystem.Instance.Apply(data, player);
+                BeginPlaying();
+                return;
+            }
+            if (NetSession.IsHost) SaveSystem.DeleteSave();
             BeginOpening();
         }
 
@@ -333,7 +346,7 @@ namespace AfterHours.Flow
 
         bool SafeToSave()
         {
-            if (player == null || NetSession.Active || CatchSequence.AnyActive || AfterHours.Puzzles.EscapeDirector.Escaping) return false;
+            if (player == null || NetSession.IsClient || CatchSequence.AnyActive || AfterHours.Puzzles.EscapeDirector.Escaping) return false;
             if (elliot != null && elliot.State == ElliotState.Hunt) return false;
             return !player.ControlLocked || player.IsHidden;
         }
@@ -345,6 +358,7 @@ namespace AfterHours.Flow
 
         void OnRunReset()
         {
+            if (NetSession.Active) return; // co-op never resets the whole run
             // Caught: the run starts over, so the save goes too.
             SaveSystem.DeleteSave();
             autosaveTimer = 60f;
@@ -758,8 +772,8 @@ namespace AfterHours.Flow
                         case 0: NewGame(); break;
                         case 1: ContinueGame(); break;
                         case 2: AfterHours.UI.DevPauseMenu.OpenFromMenu(); break;
-                        case 3: sessionMessage = ""; Net().Host(); screen = MenuScreen.Host; break;
-                        case 4: sessionMessage = ""; Net().Browse(); screen = MenuScreen.Join; break;
+                        case 3: sessionMessage = ""; SaveSystem.CoopSlot = true; continueCoop = false; Net().Host(); screen = MenuScreen.Host; break;
+                        case 4: sessionMessage = ""; SaveSystem.CoopSlot = false; Net().Browse(); screen = MenuScreen.Join; break;
                         case 5:
 #if UNITY_EDITOR
                             UnityEditor.EditorApplication.isPlaying = false;
@@ -824,7 +838,13 @@ namespace AfterHours.Flow
                 {
                     int creatures = NetCreatures.CountFor(n.Players.Count);
                     GUI.Label(new Rect(120f, y + 10f, 700f, 40f), $"{creatures} creature{(creatures > 1 ? "s" : "")} will be hunting you.", smallStyle);
+                    if (SaveSystem.HasSave)
+                    {
+                        if (LobbyButton(new Rect(120f, y + 60f, 700f, 48f), (continueCoop ? "[x] " : "[ ] ") + "Carry on the saved co-op game")) continueCoop = !continueCoop;
+                        y += 50f;
+                    }
                     if (LobbyButton(new Rect(120f, y + 70f, 500f, 52f), "Start", n.Players.Count >= 1)) n.HostStartGame();
+                    GUI.Label(new Rect(120f, y + 130f, 760f, 40f), "Friends can also join after you've started.", smallStyle);
                 }
                 else GUI.Label(new Rect(120f, y + 20f, 700f, 40f), "Waiting for the host to start...", smallStyle);
             }
@@ -847,6 +867,7 @@ namespace AfterHours.Flow
 
             if (LobbyButton(new Rect(120f, 1080f - 170f, 400f, 52f), "Back"))
             {
+                SaveSystem.CoopSlot = false;
                 n.Shutdown();
                 screen = MenuScreen.Main;
             }

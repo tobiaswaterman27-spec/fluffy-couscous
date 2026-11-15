@@ -21,6 +21,7 @@ namespace AfterHours.Net
         public PlayerMotor motor;
         public Transform head;
         public VoicePlayer voice;
+        public CapsuleCollider body;
 
         struct Snap
         {
@@ -74,6 +75,11 @@ namespace AfterHours.Net
             if (mat != null) headGo.GetComponent<Renderer>().sharedMaterial = mat;
             proxy.head = headGo.transform;
             proxy.voice = headGo.AddComponent<VoicePlayer>();
+            // Something solid to bump into (a little slimmer than a real body, so squeezing past is possible).
+            proxy.body = go.AddComponent<CapsuleCollider>();
+            proxy.body.radius = 0.24f;
+            proxy.body.height = 1.8f;
+            proxy.body.center = new Vector3(0f, 0.9f, 0f);
             return proxy;
         }
 
@@ -125,6 +131,13 @@ namespace AfterHours.Net
             controller.IsHidden = s.hidden;
             motor.ApplyRemoteState(pos, yaw, s.stance, height, Vector3.Lerp(a.vel, b.vel, t), s.mode, Mathf.Lerp(a.stride, b.stride, t),
                 s.backward, s.legs, Vector3.Lerp(a.knee, b.knee, t), Vector3.Lerp(a.feet, b.feet, t), s.surface);
+            if (body != null)
+            {
+                body.enabled = !s.hidden;
+                body.height = Mathf.Max(0.5f, height);
+                body.center = new Vector3(0f, body.height * 0.5f, 0f);
+                body.radius = Mathf.Min(0.24f, body.height * 0.5f);
+            }
             if (head != null)
             {
                 head.gameObject.SetActive(!s.hidden);

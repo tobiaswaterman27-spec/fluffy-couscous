@@ -46,7 +46,9 @@ namespace AfterHours.Flow
     public class SaveSystem : MonoBehaviour
     {
         public static SaveSystem Instance { get; private set; }
-        public static string SavePath => Path.Combine(Application.persistentDataPath, "save.json");
+        /// <summary>True while hosting co-op: the host's co-op game has its own save, separate from single player.</summary>
+        public static bool CoopSlot;
+        public static string SavePath => Path.Combine(Application.persistentDataPath, CoopSlot ? "coop_save.json" : "save.json");
 
         // Every saveable object gets a stable key from where it was when the scene loaded.
         readonly Dictionary<Component, string> keys = new Dictionary<Component, string>();

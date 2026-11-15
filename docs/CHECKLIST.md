@@ -161,8 +161,9 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - 🧪 Main menu (New, Continue, Settings, Quit; Host / Join shown, enabled with co-op)
 
 ## Parts 14–17 — LAN co-op
-- 🧪 Host, LAN discovery (or type an address), join/leave, disconnect handling, up to 4 players (own UDP netcode: reliable + unreliable channels)
-- 🧪 Muted solid-colour featureless player figures (no collision between players for now)
+- 🧪 Host, LAN discovery (or type an address), join/leave (also mid-game), disconnect handling, up to 4 players (own UDP netcode)
+- 🧪 Co-op save: the host can carry on a saved co-op game
+- 🧪 Muted solid-colour featureless player figures with partial collision (slim capsules you can squeeze past)
 - 🧪 Smooth remote movement (100 ms interpolation, short extrapolation), crouch/crawl bodies, remote footsteps
 - 🧪 Proximity voice chat (3D, occluded by walls/doors), V to mute; creatures hear whisper/talk/shout/scream
 - 🧪 Creature counts 1/2/2/3, independent AI and memory, player recognition (host runs them)

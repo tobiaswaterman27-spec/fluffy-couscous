@@ -22,13 +22,13 @@ namespace AfterHours.Net
             new Vector3(70f, MallLayout.CarParkY + 0.05f, 10f),
         };
 
-        public void Setup(int players, bool host)
+        public void Setup(int count, bool host)
         {
             All.Clear();
             ElliotBrain first = Object.FindAnyObjectByType<ElliotBrain>();
             if (first == null) return;
             All.Add(first);
-            int extra = CountFor(players) - 1;
+            int extra = Mathf.Clamp(count, 1, 3) - 1;
             for (int i = 0; i < extra; i++)
             {
                 GameObject copy = Object.Instantiate(first.gameObject, ExtraStarts[i], Quaternion.Euler(0f, 90f * i, 0f));

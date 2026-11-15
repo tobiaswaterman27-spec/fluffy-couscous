@@ -79,6 +79,9 @@ namespace AfterHours.Net
         static string V(Vector3 v) => F(v.x) + " " + F(v.y) + " " + F(v.z);
         static string Q(Quaternion q) => F(q.x) + " " + F(q.y) + " " + F(q.z) + " " + F(q.w);
 
+        /// <summary>Forget what was sent, so the next update carries the whole world (someone joined).</summary>
+        public void ResendAll() => lastSent.Clear();
+
         public void CollectChanges(List<(string key, string data)> into, Func<GameObject, int> playerIdOf)
         {
             string power = "";
