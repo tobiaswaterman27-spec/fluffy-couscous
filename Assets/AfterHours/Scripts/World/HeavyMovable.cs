@@ -16,6 +16,17 @@ namespace AfterHours.World
         Vector3 startPos;
         Quaternion startRot;
 
+        /// <summary>Loading a save.</summary>
+        public void PlaceAt(Vector3 p, Quaternion r)
+        {
+            grips.Clear();
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+            body.position = p;
+            body.rotation = r;
+            transform.SetPositionAndRotation(p, r);
+        }
+
         public void ResetState()
         {
             grips.Clear();

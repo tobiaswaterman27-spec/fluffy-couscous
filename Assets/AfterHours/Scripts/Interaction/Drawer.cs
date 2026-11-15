@@ -51,6 +51,15 @@ namespace AfterHours.Interaction
             InteractionFx.Play(ProceduralSounds.Sfx.DrawerSlide, transform.position, 0.5f, 2.5f * who.Urgency, who.Actor);
         }
 
+        /// <summary>Loading a save.</summary>
+        public void SetOpenInstant(bool open)
+        {
+            pos = target = open ? travel : 0f;
+            Vector3 fwd = transform.parent != null ? transform.parent.InverseTransformDirection(transform.forward) : transform.forward;
+            transform.localPosition = closedLocal + fwd * pos;
+            enabled = false;
+        }
+
         void Update()
         {
             pos = Mathf.MoveTowards(pos, target, speed * Time.deltaTime);

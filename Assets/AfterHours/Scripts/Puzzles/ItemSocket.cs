@@ -83,6 +83,17 @@ namespace AfterHours.Puzzles
             }
         }
 
+        public ItemPickup FittedItem => fitted;
+
+        /// <summary>Loading a save: put the item in (and finish turning it if it had been turned).</summary>
+        public void RestoreFitted(ItemPickup item, bool satisfied)
+        {
+            if (item == null || fitted != null) return;
+            fitted = item;
+            item.AttachTo(gameObject, mountPoint != null ? mountPoint : transform);
+            if (satisfied || turnSeconds <= 0f) { turned = turnSeconds; SetSatisfied(true); }
+        }
+
         void SetSatisfied(bool value)
         {
             if (Satisfied == value) return;

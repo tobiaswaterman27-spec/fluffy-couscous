@@ -77,6 +77,22 @@ Press the **Play** button (▶, top centre). Click inside the **Game** view to c
    When it finishes, press Play again: that is the real look.
 4. To go back to preview lighting: **After Hours > 6 - Undo Baked Lighting**.
 
+### 7. Playing the whole game (Part 13)
+After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the camera drifts through the dark atrium).
+- **New game**: you wake up on the atrium floor at 11:30 PM.
+- **Continue**: carries on from the last save (it saves itself every minute when you're not being chased,
+  and when you quit). Being caught resets the run and deletes the save.
+- **Settings**: sensitivity, field of view, head bob, camera shake, blood and gore, key bindings.
+- Esc while playing: pause, settings, **Save and quit to main menu**.
+- Getting out by any of the 8 routes plays the daylight ending.
+
+### Things to know when playing
+- **Hide**: open a locker or cupboard, look inside, hold **E**. **E** again to get out.
+- **Vents**: hold **Ctrl** to crawl through the low grilles in the service corridors.
+- **Lifts**: call button beside the doors, floor buttons inside. No power = stuck. The alarm bell is very loud.
+- **Power cuts**: breakers trip now and then; the area goes dark. The switchboard is in the car park plant room.
+- **Escalators**: the red button at the bottom stops them (and restarts them).
+
 ---
 
 ## Getting new updates later
@@ -84,7 +100,7 @@ Press the **Play** button (▶, top centre). Click inside the **Game** view to c
 In Unity: **After Hours > Get Latest Update**. (Or in a terminal, then click back into Unity:)
 
 ```bash
-cd ~/AfterHoursGame && git pull
+cd "/home/tobias/AFTER HOURS" && git pull
 ```
 
 If a part says to rebuild the test scene, run the menu item again.
@@ -111,7 +127,11 @@ All controls can be changed: **Esc > Controls**, click a binding, press the new 
 | Crouch (hold) | Left Shift | Hold B / Circle |
 | Crawl (hold; slow and very quiet) | Left Ctrl | Hold RB / R1 |
 | Grab heavy object (hold), push / pull by walking | E | A / Cross |
-| Drop (used from Part 6) | G | X / Square |
+| Use / open / pick up / hide (hold) | E | A / Cross |
+| Drop held item | G | X / Square |
+| Throw held item | Right mouse | RT / R2 |
 | Pause, settings, key rebinding | Esc | Start |
 | Developer info panel | F3 | |
 | See your own collision body (debug) | F5 | |
+| Full-bright view (debug) | F6 | |
+| Screenshot | F12 | |

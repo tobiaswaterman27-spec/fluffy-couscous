@@ -41,6 +41,15 @@ namespace AfterHours.Puzzles
             Changed?.Invoke();
         }
 
+        /// <summary>Loading a save.</summary>
+        public void RestoreSatisfied()
+        {
+            if (Satisfied) return;
+            Satisfied = true;
+            if (indicator != null && greenMat != null) indicator.sharedMaterial = greenMat;
+            Changed?.Invoke();
+        }
+
         public void ResetState()
         {
             Satisfied = false;

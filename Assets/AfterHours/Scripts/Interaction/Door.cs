@@ -114,6 +114,16 @@ namespace AfterHours.Interaction
             if (body != null) body.rotation = world;
         }
 
+        /// <summary>Loading a save: jump straight to an angle (no sound, no noise).</summary>
+        public void SetAngleInstant(float a)
+        {
+            moving = false;
+            angle = target = Mathf.Clamp(a, -maxAngle, maxAngle);
+            Quaternion world = (transform.parent != null ? transform.parent.rotation : Quaternion.identity) * closedRotation * Quaternion.Euler(0f, angle, 0f);
+            transform.rotation = world;
+            if (body != null) body.rotation = world;
+        }
+
         public override string GetPrompt(IInteractor who)
         {
             if (!interactable) return null;

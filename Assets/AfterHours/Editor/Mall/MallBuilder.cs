@@ -139,6 +139,8 @@ namespace AfterHours.EditorTools
                 ElliotFactory.CreateWithAI(null, new Vector3(30f, MallLayout.CarParkY + 0.05f, 70f), 180f);
 
                 new GameObject("Noise Debug Gizmos").AddComponent<NoiseDebugGizmos>();
+                Progress("Main menu, opening, saving and the ending", 0.97f);
+                BuildGameFlow(Group("Game", null));
                 DevLocation start = MallLayout.DevLocations[0];
                 GameObject player = PlayerFactory.CreatePlayer(start.position, start.yaw);
 

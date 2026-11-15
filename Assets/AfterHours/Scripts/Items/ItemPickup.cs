@@ -95,6 +95,16 @@ namespace AfterHours.Items
             transform.SetParent(null, true);
         }
 
+        /// <summary>Loading a save: lying exactly here, at rest.</summary>
+        public void PlaceAt(Vector3 position, Quaternion rotation)
+        {
+            Release(position, Vector3.zero);
+            transform.rotation = rotation;
+            body.position = position;
+            body.rotation = rotation;
+            body.angularVelocity = Vector3.zero;
+        }
+
         /// <summary>Let go at the current position with a velocity (0 = just let it fall).</summary>
         public void Release(Vector3 position, Vector3 velocity)
         {

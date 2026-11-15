@@ -39,6 +39,15 @@ namespace AfterHours.Puzzles
             Changed?.Invoke();
         }
 
+        /// <summary>Loading a save.</summary>
+        public void RestoreSatisfied()
+        {
+            if (Satisfied) return;
+            Satisfied = true;
+            foreach (GameObject b in blockers) if (b != null) b.SetActive(false);
+            Changed?.Invoke();
+        }
+
         public void ResetState()
         {
             Satisfied = false;

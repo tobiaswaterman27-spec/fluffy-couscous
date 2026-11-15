@@ -18,11 +18,17 @@ namespace AfterHours.Puzzles
         float t;
         GUIStyle style;
 
-        public static bool Escaping => active != null;
+        public static bool Escaping => active != null || (AfterHours.Flow.GameFlow.Instance != null && AfterHours.Flow.GameFlow.Instance.State == AfterHours.Flow.FlowState.Ending);
 
         public static void BeginEscape(EscapeRouteId route, PlayerController player)
         {
             if (active != null) return;
+            if (AfterHours.Flow.GameFlow.Instance != null)
+            {
+                // The full ending (daylight, the figure behind the glass, the credits).
+                AfterHours.Flow.GameFlow.Instance.BeginEnding(route);
+                return;
+            }
             var go = new GameObject("[Escape]");
             active = go.AddComponent<EscapeDirector>();
             active.route = route;

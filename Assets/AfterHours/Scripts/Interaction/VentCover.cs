@@ -116,6 +116,25 @@ namespace AfterHours.Interaction
             InteractionFx.Play(ProceduralSounds.Sfx.MetalClank, cover.position, 0.7f, 8f, actor, NoiseKind.Interaction);
         }
 
+        /// <summary>Loading a save: the cover's state and (if off) where it lies.</summary>
+        public void RestoreState(State s, Vector3 coverPos, Quaternion coverRot)
+        {
+            animT = -1f;
+            state = s;
+            if (s == State.Removed)
+            {
+                coverBody.isKinematic = false;
+                cover.SetPositionAndRotation(coverPos, coverRot);
+                coverBody.position = coverPos;
+                coverBody.rotation = coverRot;
+            }
+            else
+            {
+                coverBody.isKinematic = true;
+                cover.SetPositionAndRotation(slotPos, slotRot);
+            }
+        }
+
         public void Replace(GameObject actor)
         {
             coverBody.isKinematic = true;

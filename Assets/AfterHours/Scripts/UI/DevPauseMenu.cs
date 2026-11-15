@@ -24,10 +24,27 @@ namespace AfterHours.UI
         int ignorePauseUntilFrame;
         GUIStyle title, rowLabel, waiting;
 
+        static DevPauseMenu instance;
+        void Awake() => instance = this;
+
+        /// <summary>The main menu's "Settings" button: opens this menu on the settings page.</summary>
+        public static void OpenFromMenu()
+        {
+            if (instance == null) return;
+            instance.page = Page.Settings;
+            instance.SetPaused(true);
+        }
+
         void Update()
         {
             InputService input = InputService.Instance;
             if (input == null) return;
+            if (GameFlowFlags.InMainMenu)
+            {
+                // The main menu owns the screen; Esc only closes the settings opened from it.
+                if (GamePause.IsPaused && rebind == null && input.Pause.WasPressedThisFrame() && Time.frameCount > ignorePauseUntilFrame) SetPaused(false);
+                return;
+            }
 
             if (!cursorLockedOnce)
             {
@@ -55,7 +72,8 @@ namespace AfterHours.UI
         {
             if (!paused) CancelRebind();
             GamePause.SetPaused(paused);
-            InputService.Instance?.SetGameplayEnabled(!paused);
+            if (GameFlowFlags.InMainMenu) GamePause.SetCursorLocked(false);
+            InputService.Instance?.SetGameplayEnabled(!paused && !GameFlowFlags.InMainMenu);
             if (!paused) SettingsService.Instance?.Save();
         }
 
@@ -90,10 +108,22 @@ namespace AfterHours.UI
 
             GUILayout.FlexibleSpace();
             GUI.enabled = rebind == null;
-            if (GUILayout.Button("Resume", GUILayout.Height(36))) SetPaused(false);
+            if (GUILayout.Button(GameFlowFlags.InMainMenu ? "Back" : "Resume", GUILayout.Height(36))) SetPaused(false);
+            if (!GameFlowFlags.InMainMenu && GameFlowFlags.QuitToMenu != null && GUILayout.Button("Save and quit to main menu", GUILayout.Height(30)))
+            {
+                service.Save();
+                System.Action quit = GameFlowFlags.QuitToMenu;
+                SetPaused(false);
+                quit();
+                GUI.enabled = true;
+                GUILayout.EndArea();
+                GUI.matrix = Matrix4x4.identity;
+                return;
+            }
             if (GUILayout.Button("Quit", GUILayout.Height(30)))
             {
                 service.Save();
+                if (!GameFlowFlags.InMainMenu && AfterHours.Flow.GameFlow.Instance != null) AfterHours.Flow.GameFlow.Instance.SaveNow();
 #if UNITY_EDITOR
                 UnityEditor.EditorApplication.isPlaying = false;
 #else

@@ -29,7 +29,13 @@ namespace AfterHours.Rendering
 
         void Start()
         {
-            Volume volume = FindAnyObjectByType<Volume>();
+            // The main global post-processing volume (not a power-cut area or the ending's daylight).
+            Volume volume = null;
+            foreach (Volume v in FindObjectsByType<Volume>(FindObjectsSortMode.None))
+            {
+                if (!v.isGlobal || v.GetComponent<AfterHours.Power.PowerZone>() != null) continue;
+                if (volume == null || v.priority < volume.priority) volume = v;
+            }
             if (volume != null && volume.profile != null && volume.profile.TryGet(out colorAdjustments))
             {
                 baseExposure = colorAdjustments.postExposure.value;

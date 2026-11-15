@@ -155,10 +155,10 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - 🧪 Random malfunctions every few minutes: breaker trips, escalator faults, lift supply cuts
 
 ## Part 13 — Single-player completion
-- ⬜ Opening sequence (11:30 PM, wake on atrium floor, vision clears)
-- ⬜ Save/continue on quit (versioned, atomic), reset on death
-- ⬜ All 8 escape sequences, daylight ending where something feels slightly wrong
-- ⬜ Main menu (New, Continue, Settings, Host, Join)
+- 🧪 Opening sequence (11:30 PM, wake on atrium floor: ringing ears, blinking, sit up, stand, vision clears)
+- 🧪 Save/continue (versioned JSON, crash-safe writes, autosave every minute when safe, on quit); death deletes the save
+- 🧪 All 8 escape routes lead to the daylight ending; something is standing behind the entrance glass, closer each time you look away
+- 🧪 Main menu (New, Continue, Settings, Quit; Host / Join shown, enabled with co-op)
 
 ## Parts 14–17 — LAN co-op
 - ⬜ Host, LAN discovery, join/leave, disconnect handling, up to 4 players

@@ -116,6 +116,14 @@ namespace AfterHours.Interaction
             motorActor = actor;
         }
 
+        /// <summary>Loading a save.</summary>
+        public void SetRaisedInstant(float amount01)
+        {
+            motorSpeed = 0f;
+            raised = Mathf.Clamp01(amount01) * travel;
+            panel.localPosition = closedLocal + Vector3.up * raised;
+        }
+
         public void ResetToStart()
         {
             motorSpeed = 0f;
