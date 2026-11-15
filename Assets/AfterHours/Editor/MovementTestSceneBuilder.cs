@@ -53,6 +53,13 @@ namespace AfterHours.EditorTools
             BuildHeavyObjects();
             BuildMovingGround(env);
             BuildInteractionTests(env);
+
+            // Part 8: Elliot (test driver: follows you; number keys change how it moves).
+            GameObject elliot = ElliotFactory.Create(null, new Vector3(8f, 0.05f, -16f), 270f);
+            var driver = elliot.AddComponent<AfterHours.DevTools.ElliotTestDriver>();
+            driver.motor = elliot.GetComponent<AfterHours.Creature.ElliotMotor>();
+            driver.animator = elliot.GetComponent<AfterHours.Creature.ElliotAnimator>();
+            EditorBuild.Label(env, "ELLIOT TEST: 1 still 2 idle 3 slow 4 walk 5 fast 6 run 7 crawl\n8 scream 9 bang 0 look around  - stare", new Vector3(8f, 3.2f, -14.5f), 180f, 0.035f);
             BuildLights();
 
             new GameObject("Noise Debug Gizmos").AddComponent<NoiseDebugGizmos>();
