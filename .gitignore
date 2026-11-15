@@ -16,3 +16,4 @@
 .idea/
 *.apk
 *.unitypackage
+__pycache__/
