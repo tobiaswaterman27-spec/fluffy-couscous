@@ -28,7 +28,9 @@ namespace AfterHours.Audio
             s.dopplerLevel = 0f;
             s.volume = volume;
             // Start each loop at a different point so many identical sources don't phase together.
-            s.timeSamples = Mathf.Abs(GetInstanceID() * 7919) % Mathf.Max(1, s.clip.samples);
+            Vector3 p = transform.position;
+            int offset = Mathf.Abs((int)(p.x * 73.1f) * 7919 + (int)(p.z * 37.7f) * 104729 + (int)(p.y * 11f));
+            s.timeSamples = offset % Mathf.Max(1, s.clip.samples);
             s.Play();
         }
     }
