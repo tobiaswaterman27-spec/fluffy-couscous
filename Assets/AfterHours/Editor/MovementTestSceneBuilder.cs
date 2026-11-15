@@ -360,6 +360,26 @@ namespace AfterHours.EditorTools
             InteractiveFactory.AddDrawer(t, new Vector3(-6.05f, 0.6f, -17.15f), new Vector3(0.42f, 0.14f, 0.5f), Vector3.back, door);
 
             InteractiveFactory.Switch(t, new Vector3(-9f, 1.3f, z + 0.1f), Vector3.forward, "light", metal, accent);
+
+            // Items to try: pick up (hold E), drop (G), throw (right mouse). The key opens the locked door below.
+            ItemFactory.Reset();
+            ItemFactory.Create("screwdriver", t, new Vector3(-13f, 0.01f, -18.2f));
+            ItemFactory.Create("coin", t, new Vector3(-12.4f, 0.01f, -18.2f));
+            ItemFactory.Create("coin", t, new Vector3(-12.2f, 0.01f, -18.4f));
+            ItemFactory.Create("metal_can", t, new Vector3(-11.6f, 0.01f, -18.2f));
+            ItemFactory.Create("glass_bottle", t, new Vector3(-11f, 0.01f, -18.2f));
+            ItemFactory.Create("card_staff", t, new Vector3(-6.6f, 0.76f, -16.9f));
+            ItemFactory.Create("key_storage", t, new Vector3(-6.2f, 0.76f, -16.8f));
+            EditorBuild.Label(t, "ITEMS: hold E pick up, G drop, right mouse throw", new Vector3(-12f, 0.8f, -18.9f), 180f, 0.03f);
+
+            // A locked storage door (needs the storage key) and a screwed-shut vent (needs the screwdriver).
+            EditorBuild.Box("Test wall", t, new Vector3(-4.5f, 1.5f, -23.2f), new Vector3(0.2f, 3f, 1.6f), wall, SurfaceType.Concrete);
+            EditorBuild.Box("Test wall", t, new Vector3(-4.5f, 1.5f, -20.6f), new Vector3(0.2f, 3f, 1.6f), wall, SurfaceType.Concrete);
+            EditorBuild.Box("Test wall", t, new Vector3(-4.5f, 2.55f, -21.9f), new Vector3(0.2f, 0.9f, 1.0f), wall, SurfaceType.Concrete);
+            Physics.SyncTransforms();
+            InteractiveFactory.HingedDoor(t, "Locked test door", new Vector3(-4.5f, 0f, -21.9f), Vector3.forward, 0.9f, 2.1f, door, SurfaceType.Wood, metal,
+                DoorKind.Storage, AfterHours.Interaction.DoorWeight.Light, true, "key_storage", false, false, true);
+            InteractiveFactory.Vent(t, new Vector3(-17.5f, 1.8f, z + 0.11f), Vector3.forward, new Vector2(0.5f, 0.4f), AfterHours.Interaction.VentCover.State.Screwed, grille);
         }
 
         static void PropBox(Transform parent, string name, Vector3 pos, Vector3 size, float mass, Material m, SurfaceType s, int layer)

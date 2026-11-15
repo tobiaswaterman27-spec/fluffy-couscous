@@ -1,6 +1,7 @@
 using UnityEngine;
 using AfterHours.Controls;
 using AfterHours.Interaction;
+using AfterHours.Items;
 
 namespace AfterHours.Player
 {
@@ -19,6 +20,7 @@ namespace AfterHours.Player
         PlayerLook look;
         PlayerGrab grab;
         PlayerInteractor interactor;
+        PlayerInventory inventory;
         IPlayerInputSource input;
 
         public PlayerMotor Motor => motor;
@@ -30,6 +32,7 @@ namespace AfterHours.Player
             look = GetComponent<PlayerLook>();
             grab = GetComponent<PlayerGrab>();
             interactor = GetComponent<PlayerInteractor>();
+            inventory = GetComponent<PlayerInventory>();
             input = GetComponent<IPlayerInputSource>();
         }
 
@@ -57,6 +60,7 @@ namespace AfterHours.Player
         public void Teleport(Vector3 position, float yaw)
         {
             if (grab != null) grab.Release();
+            if (inventory != null) inventory.DropAtFeet();
             motor.Warp(position, yaw);
             look.Initialize(yaw);
             if (input is LocalPlayerInput local) local.ResetState();
@@ -67,6 +71,7 @@ namespace AfterHours.Player
             float dt = Time.deltaTime;
             PlayerInputFrame frame = input != null ? input.ReadFrame(dt) : default;
             if (interactor != null) interactor.Tick(frame, dt);
+            if (inventory != null) inventory.Tick(frame);
             if (grab != null && (interactor == null || interactor.Target == null)) grab.PreMove(frame);
             look.ApplyLook(frame.lookDelta, motor, dt);
             motor.Tick(frame, dt);

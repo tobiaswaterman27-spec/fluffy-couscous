@@ -60,6 +60,7 @@ namespace AfterHours.Controls
             frame.interactHeld = input.Interact.IsPressed();
             frame.interactPressed = input.Interact.WasPressedThisFrame();
             frame.dropPressed = input.Drop.WasPressedThisFrame();
+            frame.throwPressed = input.Throw.WasPressedThisFrame();
             return frame;
         }
 

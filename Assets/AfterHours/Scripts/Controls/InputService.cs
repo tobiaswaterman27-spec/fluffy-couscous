@@ -18,7 +18,7 @@ namespace AfterHours.Controls
         public static InputService Instance { get; private set; }
 
         /// <summary>Actions shown in the Controls menu, in display order.</summary>
-        public static readonly string[] RebindableActions = { "Move", "Sprint", "Crouch", "Crawl", "Interact", "Drop" };
+        public static readonly string[] RebindableActions = { "Move", "Sprint", "Crouch", "Crawl", "Interact", "Drop", "Throw" };
 
         public InputActionMap GameplayMap { get; private set; }
         public InputActionMap SystemMap { get; private set; }
@@ -33,6 +33,7 @@ namespace AfterHours.Controls
         public InputAction Crawl { get; private set; }
         public InputAction Interact { get; private set; }
         public InputAction Drop { get; private set; }
+        public InputAction Throw { get; private set; }
 
         public InputAction Pause { get; private set; }
         public InputAction ToggleStats { get; private set; }
@@ -139,6 +140,7 @@ namespace AfterHours.Controls
 
             Interact = Button("Interact", "<Keyboard>/e", "<Gamepad>/buttonSouth");
             Drop = Button("Drop", "<Keyboard>/g", "<Gamepad>/buttonWest");
+            Throw = Button("Throw", "<Mouse>/rightButton", "<Gamepad>/rightTrigger");
 
             SystemMap = new InputActionMap("System");
             Pause = SystemMap.AddAction("Pause", InputActionType.Button);

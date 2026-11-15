@@ -6,6 +6,7 @@ using AfterHours.Rendering;
 using AfterHours.Core;
 using AfterHours.DevTools;
 using AfterHours.Interaction;
+using AfterHours.Items;
 using AfterHours.Player;
 
 namespace AfterHours.EditorTools
@@ -85,6 +86,16 @@ namespace AfterHours.EditorTools
             interactor.motor = motor;
             interactor.look = look;
             interactor.grab = grab;
+
+            var hand = new GameObject("HandAnchor").transform;
+            hand.SetParent(camGo.transform, false);
+            hand.localPosition = new Vector3(0.26f, -0.26f, 0.48f);
+            hand.localRotation = Quaternion.Euler(10f, -15f, 0f);
+            PlayerInventory inventory = go.AddComponent<PlayerInventory>();
+            inventory.handAnchor = hand;
+            inventory.look = look;
+            inventory.motor = motor;
+            inventory.interactor = interactor;
 
             PlayerAnimationDriver anim = go.AddComponent<PlayerAnimationDriver>();
             anim.motor = motor;

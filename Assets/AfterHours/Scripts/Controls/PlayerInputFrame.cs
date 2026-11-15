@@ -17,6 +17,7 @@ namespace AfterHours.Controls
         public bool interactHeld;
         public bool interactPressed;
         public bool dropPressed;
+        public bool throwPressed;
     }
 
     public interface IPlayerInputSource
