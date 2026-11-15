@@ -127,7 +127,7 @@ namespace AfterHours.EditorTools
                     {
                         float x = (i + 0.5f) * T, z = (j + 0.5f) * T;
                         bool inHole = false;
-                        foreach (AreaRect h in holes) if (h.Expanded(0.3f).Contains(x, z)) { inHole = true; break; }
+                        foreach (AreaRect hole in holes) if (hole.Expanded(0.3f).Contains(x, z)) { inHole = true; break; }
                         if (inHole) continue;
 
                         ZoneInfo zone = MallZones.Classify(new Vector3(x, y + 2f, z));
