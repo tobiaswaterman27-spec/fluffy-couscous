@@ -18,13 +18,41 @@ namespace AfterHours.EditorTools
 
                 foreach (AreaRect region in MallLayout.FloorRegions(f))
                 {
-                    bool backOfHouse = Mathf.Min(Mathf.Abs(region.minX), Mathf.Abs(region.maxX)) >= MallLayout.OuterWall - 0.01f
-                                       && Mathf.Min(Mathf.Abs(region.minZ), Mathf.Abs(region.maxZ)) >= MallLayout.OuterWall - 0.01f;
-                    Slab("Floor", g, region, holes, y, MallLayout.SlabThickness, backOfHouse ? concrete : floorTile,
-                        backOfHouse ? SurfaceType.Concrete : SurfaceType.Tile);
+                    foreach (AreaRect part in SplitByZoneLines(region))
+                    {
+                        Vector2 c = part.Center;
+                        ZoneInfo zone = MallZones.Classify(new Vector3(c.x, y + 1f, c.y));
+                        Material m = FloorFor(zone, out SurfaceType surface);
+                        Slab("Floor", g, part, holes, y, MallLayout.SlabThickness, m, surface);
+                    }
                     Slab("Ceiling", g, region, ceilingHoles, y + MallLayout.CeilingHeight + 0.05f, 0.05f, ceilingMat, SurfaceType.Concrete);
                 }
             }
+        }
+
+        static readonly float[] ZoneCuts = { 2.1f, MallLayout.ConcourseHalf, MallLayout.ShopBack, MallLayout.QuadrantDivider };
+
+        /// <summary>Cuts a floor region along the lines where floor finishes change.</summary>
+        static List<AreaRect> SplitByZoneLines(AreaRect r)
+        {
+            var xs = new List<float> { r.minX, r.maxX };
+            var zs = new List<float> { r.minZ, r.maxZ };
+            foreach (float c in ZoneCuts)
+            {
+                foreach (float v in new[] { c, -c })
+                {
+                    if (v > r.minX + 0.01f && v < r.maxX - 0.01f) xs.Add(v);
+                    if (v > r.minZ + 0.01f && v < r.maxZ - 0.01f) zs.Add(v);
+                }
+            }
+            xs = SortedUnique(xs);
+            zs = SortedUnique(zs);
+            var parts = new List<AreaRect>();
+            for (int i = 0; i < xs.Count - 1; i++)
+            {
+                for (int j = 0; j < zs.Count - 1; j++) parts.Add(new AreaRect(xs[i], zs[j], xs[i + 1], zs[j + 1]));
+            }
+            return parts;
         }
 
         // =====================================================================

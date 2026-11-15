@@ -147,6 +147,8 @@ namespace AfterHours.EditorTools
             Object.DestroyImmediate(go.GetComponent<Collider>());
             go.GetComponent<Renderer>().sharedMaterial = m;
             go.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            go.isStatic = true;
+            ArtLibrary.MarkDetail(m);
         }
 
         static void Text(Transform parent, string text, Vector3 pos, float lineHeight, TextAnchor anchor, Color color)

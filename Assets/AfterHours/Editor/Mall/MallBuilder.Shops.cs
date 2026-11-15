@@ -137,6 +137,13 @@ namespace AfterHours.EditorTools
 
             if (!u.HasInterior) return;
 
+            // Floor finish for the shop type (a thin layer on top of the slab).
+            Material finish = ShopFloorFinish(u.category, out SurfaceType finishSurface);
+            if (finish != null)
+            {
+                WingBox("Shop floor finish", parent, w, u.u0 + 0.1f, u.u1 - 0.1f, side * (MallLayout.ConcourseHalf + 0.25f), side * 13.5f, y, y + 0.012f, finish, finishSurface);
+            }
+
             // Stock room partition with a doorway near the back door.
             float partitionV = side * 13.6f;
             WingWallU("Stock room wall", parent, w, y, u.u0 + 0.1f, u.u1 - 0.1f, partitionV, 0.15f,
@@ -167,6 +174,28 @@ namespace AfterHours.EditorTools
             if (Mathf.Abs(Vector3.Dot(s1 - s0, MallLayout.WingForward(w))) > 1f) BoxMinMax("Stock shelving", parent, s0, s1, metal, SurfaceType.Metal);
 
             PointLight(parent, MallLayout.WingPoint(w, mid, side * 9.5f, y + 4.1f), 8f, u.Enterable ? 0.55f : 0.35f, WarmWhite);
+        }
+
+        static Material ShopFloorFinish(UnitCategory c, out SurfaceType surface)
+        {
+            switch (c)
+            {
+                case UnitCategory.Fashion:
+                case UnitCategory.Footwear:
+                case UnitCategory.Jewellery:
+                    surface = SurfaceType.Carpet; return floorCarpet;
+                case UnitCategory.Books:
+                case UnitCategory.Music:
+                case UnitCategory.Home:
+                case UnitCategory.Cafe:
+                    surface = SurfaceType.Wood; return woodMat;
+                case UnitCategory.Electronics:
+                case UnitCategory.Services:
+                case UnitCategory.Health:
+                    surface = SurfaceType.Tile; return vinylMat;
+                default:
+                    surface = SurfaceType.Tile; return null; // keeps the mall's porcelain tiles
+            }
         }
 
         /// <summary>How a shopfront opening is closed tonight. a/b are the opening's ends on the front line.</summary>

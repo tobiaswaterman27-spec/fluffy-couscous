@@ -1,6 +1,8 @@
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using AfterHours.Controls;
+using AfterHours.Rendering;
 using AfterHours.Core;
 using AfterHours.DevTools;
 using AfterHours.Player;
@@ -50,6 +52,11 @@ namespace AfterHours.EditorTools
             cam.farClipPlane = 400f;
             cam.fieldOfView = 72f;
             camGo.AddComponent<AudioListener>();
+            UniversalAdditionalCameraData camData = cam.GetUniversalAdditionalCameraData();
+            camData.renderPostProcessing = true;
+            camData.antialiasing = AntialiasingMode.FastApproximateAntialiasing;
+            camData.dithering = true;
+            camGo.AddComponent<EyeAdaptation>();
             int bodyLayer = GameLayers.LocalBodyLayer;
             if (bodyLayer >= 0) cam.cullingMask &= ~(1 << bodyLayer);
 

@@ -155,6 +155,16 @@ namespace AfterHours.EditorTools
                     : new AreaRect(area.maxX - 1.6f, p, area.maxX, p + 0.05f);
                 if (Blocked(wall, keepClear)) continue;
                 BoxRect("Cubicle partition", g, wall, y, y + 2.0f, toiletMat, SurfaceType.Tile);
+                if (i == count) continue;
+                // WC pan at the back of the cubicle.
+                AreaRect pan = alongX
+                    ? new AreaRect(p + 0.35f, area.maxZ - 0.62f, p + 0.75f, area.maxZ - 0.05f)
+                    : new AreaRect(area.maxX - 0.62f, p + 0.35f, area.maxX - 0.05f, p + 0.75f);
+                BoxRect("WC", g, pan, y, y + 0.42f, porcelain, SurfaceType.Tile);
+                AreaRect cistern = alongX
+                    ? new AreaRect(p + 0.3f, area.maxZ - 0.2f, p + 0.8f, area.maxZ - 0.02f)
+                    : new AreaRect(area.maxX - 0.2f, p + 0.3f, area.maxX - 0.02f, p + 0.8f);
+                BoxRect("Cistern", g, cistern, y + 0.42f, y + 0.85f, porcelain, SurfaceType.Tile);
             }
             float s0 = (alongX ? area.minX : area.minZ) + 1.5f;
             float s1 = Mathf.Min(s0 + 4f, (alongX ? area.maxX : area.maxZ) - 1.5f);
@@ -163,7 +173,19 @@ namespace AfterHours.EditorTools
                 AreaRect sinks = alongX
                     ? new AreaRect(s0, area.minZ, s1, area.minZ + 0.6f)
                     : new AreaRect(area.minX, s0, area.minX + 0.6f, s1);
-                if (!Blocked(sinks, keepClear)) BoxRect("Sinks", g, sinks, y, y + 0.9f, toiletMat, SurfaceType.Tile);
+                if (!Blocked(sinks, keepClear))
+                {
+                    BoxRect("Sinks", g, sinks, y, y + 0.9f, toiletMat, SurfaceType.Tile);
+                    AreaRect mirror = alongX
+                        ? new AreaRect(s0, area.minZ, s1, area.minZ + 0.02f)
+                        : new AreaRect(area.minX, s0, area.minX + 0.02f, s1);
+                    GameObject m = BoxRect("Mirror", g, mirror, y + 1.15f, y + 2.0f, mirrorMat, SurfaceType.Glass);
+                    Object.DestroyImmediate(m.GetComponent<Collider>());
+                    AreaRect dryer = alongX
+                        ? new AreaRect(s1 + 0.4f, area.minZ, s1 + 0.7f, area.minZ + 0.22f)
+                        : new AreaRect(area.minX, s1 + 0.4f, area.minX + 0.22f, s1 + 0.7f);
+                    BoxRect("Hand dryer", g, dryer, y + 1.1f, y + 1.4f, whiteFixture, SurfaceType.Metal);
+                }
             }
         }
     }

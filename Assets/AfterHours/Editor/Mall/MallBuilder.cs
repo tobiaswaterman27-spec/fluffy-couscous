@@ -6,6 +6,7 @@ using UnityEngine.Rendering;
 using AfterHours.Audio;
 using AfterHours.World;
 using AfterHours.World.Layout;
+using AfterHours.Rendering;
 
 namespace AfterHours.EditorTools
 {
@@ -36,9 +37,10 @@ namespace AfterHours.EditorTools
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             try
             {
-                Progress("Preparing", 0f);
+                Progress("Preparing materials", 0f);
                 ProjectSetup.EnsureLayers();
                 EditorBuild.EnsureFolder(EditorBuild.Root + "/Scenes");
+                Walls.Clear();
                 CreateMaterials();
 
                 var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -46,13 +48,13 @@ namespace AfterHours.EditorTools
 
                 Transform mall = Group("Mall", null);
 
-                Progress("Floor plates and ceilings", 0.05f);
+                Progress("Floor plates and ceilings", 0.03f);
                 BuildFloorPlates(Group("Floor Plates", mall));
 
-                Progress("Atrium", 0.15f);
+                Progress("Atrium", 0.06f);
                 BuildAtrium(Group("Atrium", mall));
 
-                Progress("Shopping wings", 0.25f);
+                Progress("Shopping wings", 0.09f);
                 Transform wings = Group("Wings", mall);
                 foreach (MallFloor f in MallLayout.ShopFloors)
                 {
@@ -62,25 +64,60 @@ namespace AfterHours.EditorTools
                     }
                 }
 
-                Progress("Anchor stores", 0.5f);
+                Progress("Anchor stores", 0.15f);
                 BuildAnchors(Group("Anchors", mall));
 
-                Progress("Back of house", 0.6f);
+                Progress("Back of house", 0.18f);
                 BuildQuadrants(Group("Back Of House", mall));
 
-                Progress("Stairwells and lifts", 0.7f);
+                Progress("Stairwells and lifts", 0.21f);
                 BuildCores(Group("Stair Cores", mall));
                 BuildLiftShafts(Group("Lift Shafts", mall));
 
-                Progress("Car park", 0.8f);
-                BuildCarPark(Group("Car Park", mall));
+                Progress("Car park", 0.24f);
+                Transform carPark = Group("Car Park", mall);
+                BuildCarPark(carPark);
 
-                Progress("Roof", 0.9f);
+                Progress("Roof", 0.27f);
                 BuildRoof(Group("Roof", mall));
 
-                Progress("Escape routes and directory", 0.95f);
+                Progress("Escape routes and directory", 0.29f);
                 BuildEscapeMarkers(Group("Escape Routes", mall));
                 DirectoryBuilder.Build(Group("Directory", mall));
+
+                // ---------------- Part 4: detail, sound, lighting ----------------
+                Transform details = Group("Details", mall);
+                PrepareDressing();
+                Progress("Detail: ceilings (lights, sprinklers, vents, CCTV...)", 0.32f);
+                DressCeilings(Group("Ceilings", details));
+                Progress("Detail: walls (skirting, sockets, extinguishers, adverts...)", 0.42f);
+                DressWalls(Group("Walls", details));
+                Progress("Detail: floors (stains, scuffs, gum, cracks...)", 0.5f);
+                DressFloors(Group("Floors", details));
+                Progress("Detail: door frames and exit signs", 0.55f);
+                DressDoorways(Group("Doorways", details));
+                Progress("Detail: concourses", 0.58f);
+                DressConcourses(Group("Concourses", details));
+                Progress("Detail: shop interiors", 0.61f);
+                DressShopInteriors(Group("Shops", details));
+                Progress("Detail: pipes, trays, handrails", 0.64f);
+                DressServices(Group("Services", details));
+                Progress("Detail: car park", 0.67f);
+                DressCarPark(carPark);
+
+                Progress("Ambient sound", 0.72f);
+                BuildAmbience(mall);
+
+                Progress("Lighting, probes and post-processing", 0.75f);
+                Transform lighting = Group("Lighting", null);
+                LightingSetup.ApplyLightingSettings(false);
+                LightingSetup.AddGlobalVolume(lighting);
+                LightingSetup.AddLightProbes(lighting);
+                LightingSetup.AddReflectionProbes(lighting);
+
+                Progress("Optimising: merging meshes", 0.8f);
+                int merged = MeshCombiner.Combine(mall, Group("Combined Meshes", null));
+                Debug.Log("[AfterHours] Mall built. Merged visual meshes: " + merged);
 
                 new GameObject("Noise Debug Gizmos").AddComponent<NoiseDebugGizmos>();
                 DevLocation start = MallLayout.DevLocations[0];
@@ -97,7 +134,7 @@ namespace AfterHours.EditorTools
 
             EditorUtility.DisplayDialog("After Hours",
                 "Mall built and saved to\n" + ScenePath +
-                "\n\nPress Play to explore. Esc > Teleport (dev) jumps around the building.", "OK");
+                "\n\nPress Play to explore (Esc > Teleport jumps around).\n\nFor the final look run After Hours > 5 - Bake Lighting (slow; leave it running).", "OK");
         }
 
         static void Progress(string what, float t)
@@ -109,54 +146,96 @@ namespace AfterHours.EditorTools
         // Setup
         // =====================================================================
 
+        static Material terrazzoMat, vinylMat, laminateMat, darkPanel, trofferMat, trofferDead, trofferFlicker, exitSignMat,
+            redMat, whiteFixture, blackMat, yellowPaint, greenMat, mirrorMat, porcelain;
+
         static void CreateMaterials()
         {
-            floorTile = Mat("FloorTile", new Color(0.66f, 0.64f, 0.58f), 0.55f);
-            floorCarpet = Mat("Carpet", new Color(0.3f, 0.2f, 0.22f), 0.05f);
-            concrete = Mat("Concrete", new Color(0.46f, 0.46f, 0.45f), 0.12f);
-            wallPaint = Mat("WallPaint", new Color(0.78f, 0.75f, 0.68f), 0.15f);
-            wallService = Mat("WallService", new Color(0.6f, 0.62f, 0.6f), 0.1f);
-            ceilingMat = Mat("Ceiling", new Color(0.72f, 0.72f, 0.7f), 0.05f);
-            metal = Mat("Metal", new Color(0.55f, 0.56f, 0.58f), 0.55f, 0.8f);
-            shutterMat = Mat("Shutter", new Color(0.5f, 0.52f, 0.54f), 0.45f, 0.7f);
+            ArtLibrary.Reset();
+            Color w = Color.white;
+            floorTile = ArtLibrary.Surface("Floor_Porcelain", "floor_tile", 1.2f, w, 1f, 1f);
+            terrazzoMat = ArtLibrary.Surface("Floor_Terrazzo", "terrazzo", 2f, w, 1f, 0.6f);
+            vinylMat = ArtLibrary.Surface("Floor_Vinyl", "floor_vinyl", 2f, w, 1f, 0.5f);
+            floorCarpet = ArtLibrary.Surface("Floor_Carpet", "carpet", 1f, w, 1f, 1f);
+            concrete = ArtLibrary.Surface("Concrete", "concrete", 2f, w, 1f, 1f);
+            carParkFloor = ArtLibrary.Surface("Floor_CarPark", "carpark_floor", 4f, w, 1f, 1f);
+            wallPaint = ArtLibrary.Surface("Wall_Paint", "wall_paint", 2f, w, 1f, 0.6f);
+            wallService = ArtLibrary.Surface("Wall_Blockwork", "wall_block", 2.64f, w, 1f, 1f);
+            ceilingMat = ArtLibrary.Surface("Ceiling_Tiles", "ceiling_tile", 1.2f, w, 1f, 1f);
+            metal = ArtLibrary.Surface("Metal_Brushed", "metal_brushed", 1f, w, 1f, 0.5f, 1f);
+            railMat = metal;
+            liftDoorMat = metal;
+            shutterMat = ArtLibrary.Surface("Metal_Shutter", "shutter", 1.2f, w, 1f, 1.2f, 1f);
+            woodMat = ArtLibrary.Surface("Wood_Veneer", "wood", 1.2f, w, 1f, 0.8f);
+            laminateMat = ArtLibrary.Surface("Laminate", "laminate", 1f, w, 1f, 0.5f);
+            counterMat = laminateMat;
+            plantMat = ArtLibrary.Surface("Metal_Painted", "metal_painted", 1f, w, 1f, 1f, 1f);
+            toiletMat = ArtLibrary.Surface("Tile_White", "tile_white", 0.6f, w, 1f, 1f);
+            darkPanel = ArtLibrary.Surface("Panel_Dark", "plaster_dark", 1.5f, w, 1f, 0.5f);
+            signMat = darkPanel;
+            propMat = ArtLibrary.Surface("Prop_Wood", "wood", 0.8f, new Color(0.85f, 0.8f, 0.72f), 0.8f, 0.6f);
+            seatMat = ArtLibrary.Surface("Seat_Fabric", "carpet", 0.5f, new Color(0.9f, 0.45f, 0.45f), 0.5f, 0.6f);
+
             glassMat = TransparentMat("Glass", new Color(0.55f, 0.65f, 0.7f, 0.22f));
             darkGlass = Mat("DarkGlass", new Color(0.03f, 0.035f, 0.04f), 0.95f, 0.2f);
-            signMat = Mat("SignPanel", new Color(0.12f, 0.12f, 0.14f), 0.5f);
-            railMat = Mat("Railing", new Color(0.7f, 0.7f, 0.72f), 0.7f, 0.9f);
-            woodMat = Mat("Wood", new Color(0.42f, 0.29f, 0.18f), 0.3f);
-            counterMat = Mat("Counter", new Color(0.55f, 0.5f, 0.45f), 0.4f);
-            fixtureMat = EditorBuild.Material(MatFolder, "LightFixture", Color.white, 0.5f, 0f, new Color(2.2f, 2.3f, 2.4f));
-            carParkFloor = Mat("CarParkFloor", new Color(0.36f, 0.36f, 0.35f), 0.2f);
             waterMat = Mat("Water", new Color(0.12f, 0.2f, 0.24f), 0.95f);
             screenMat = Mat("CinemaScreen", new Color(0.85f, 0.85f, 0.85f), 0.1f);
-            seatMat = Mat("Seat", new Color(0.35f, 0.08f, 0.1f), 0.2f);
-            plantMat = Mat("Machinery", new Color(0.35f, 0.4f, 0.38f), 0.4f, 0.6f);
-            toiletMat = Mat("ToiletTile", new Color(0.8f, 0.82f, 0.8f), 0.6f);
-            liftDoorMat = Mat("LiftDoor", new Color(0.6f, 0.6f, 0.62f), 0.7f, 0.9f);
-            propMat = Mat("Prop", new Color(0.5f, 0.42f, 0.3f), 0.25f);
-            lineMat = Mat("PaintLine", new Color(0.8f, 0.75f, 0.3f), 0.2f);
+            lineMat = ArtLibrary.Plain("Paint_Line", new Color(0.82f, 0.74f, 0.32f), 0.25f);
+            yellowPaint = ArtLibrary.Plain("Paint_HazardYellow", new Color(0.85f, 0.68f, 0.1f), 0.3f);
+            redMat = ArtLibrary.Plain("Plastic_Red", new Color(0.65f, 0.06f, 0.05f), 0.55f);
+            whiteFixture = ArtLibrary.Plain("Plastic_White", new Color(0.86f, 0.86f, 0.84f), 0.45f);
+            blackMat = ArtLibrary.Plain("Plastic_Black", new Color(0.04f, 0.04f, 0.045f), 0.5f);
+            greenMat = ArtLibrary.Plain("Plastic_Green", new Color(0.1f, 0.4f, 0.2f), 0.45f);
+            porcelain = ArtLibrary.Plain("Porcelain", new Color(0.92f, 0.93f, 0.92f), 0.85f);
+            mirrorMat = ArtLibrary.Plain("Mirror", new Color(0.85f, 0.87f, 0.9f), 0.97f, 1f);
+            // Fluorescent panels: emissive (they also light the baked scene), dead ones and flickering ones.
+            trofferMat = ArtLibrary.Plain("Light_Panel", new Color(0.9f, 0.92f, 0.95f), 0.6f, 0f, new Color(3.2f, 3.35f, 3.5f), true);
+            trofferDead = ArtLibrary.Plain("Light_Panel_Dead", new Color(0.55f, 0.56f, 0.55f), 0.55f);
+            trofferFlicker = ArtLibrary.Plain("Light_Panel_Flicker", new Color(0.9f, 0.92f, 0.95f), 0.6f, 0f, new Color(3.2f, 3.35f, 3.5f), false);
+            exitSignMat = ArtLibrary.Plain("Exit_Sign", new Color(0.1f, 0.6f, 0.25f), 0.6f, 0f, new Color(0.25f, 1.6f, 0.5f), true);
+            fixtureMat = trofferMat;
+            foreach (Material m in new[] { lineMat, yellowPaint, redMat, whiteFixture, blackMat, greenMat, porcelain, mirrorMat, trofferMat, trofferDead, trofferFlicker, exitSignMat })
+            {
+                ArtLibrary.MarkDetail(m);
+            }
 
             categoryMats.Clear();
-            void C(UnitCategory c, Color col) => categoryMats[c] = Mat("Cat_" + c, col, 0.35f);
-            C(UnitCategory.Fashion, new Color(0.55f, 0.35f, 0.45f));
-            C(UnitCategory.Footwear, new Color(0.5f, 0.38f, 0.3f));
-            C(UnitCategory.Electronics, new Color(0.3f, 0.4f, 0.55f));
-            C(UnitCategory.Department, new Color(0.45f, 0.3f, 0.3f));
-            C(UnitCategory.Supermarket, new Color(0.3f, 0.5f, 0.32f));
-            C(UnitCategory.Food, new Color(0.62f, 0.45f, 0.25f));
-            C(UnitCategory.Restaurant, new Color(0.6f, 0.32f, 0.22f));
-            C(UnitCategory.Cafe, new Color(0.5f, 0.38f, 0.28f));
-            C(UnitCategory.Services, new Color(0.4f, 0.42f, 0.45f));
-            C(UnitCategory.Health, new Color(0.35f, 0.55f, 0.5f));
-            C(UnitCategory.Books, new Color(0.45f, 0.4f, 0.3f));
-            C(UnitCategory.Toys, new Color(0.62f, 0.5f, 0.25f));
-            C(UnitCategory.Jewellery, new Color(0.6f, 0.55f, 0.35f));
-            C(UnitCategory.Home, new Color(0.45f, 0.48f, 0.38f));
-            C(UnitCategory.Sports, new Color(0.3f, 0.45f, 0.48f));
-            C(UnitCategory.Music, new Color(0.42f, 0.3f, 0.5f));
-            C(UnitCategory.Leisure, new Color(0.5f, 0.3f, 0.55f));
-            C(UnitCategory.Cinema, new Color(0.25f, 0.2f, 0.35f));
-            C(UnitCategory.Vacant, new Color(0.35f, 0.35f, 0.35f));
+            void C(UnitCategory c, Color col) => categoryMats[c] = ArtLibrary.Surface("Fixture_" + c, "laminate", 1f, col, 0.9f, 0.4f);
+            C(UnitCategory.Fashion, new Color(0.75f, 0.55f, 0.62f));
+            C(UnitCategory.Footwear, new Color(0.7f, 0.58f, 0.48f));
+            C(UnitCategory.Electronics, new Color(0.45f, 0.55f, 0.72f));
+            C(UnitCategory.Department, new Color(0.7f, 0.5f, 0.48f));
+            C(UnitCategory.Supermarket, new Color(0.48f, 0.7f, 0.5f));
+            C(UnitCategory.Food, new Color(0.85f, 0.65f, 0.4f));
+            C(UnitCategory.Restaurant, new Color(0.8f, 0.5f, 0.38f));
+            C(UnitCategory.Cafe, new Color(0.7f, 0.56f, 0.42f));
+            C(UnitCategory.Services, new Color(0.6f, 0.62f, 0.66f));
+            C(UnitCategory.Health, new Color(0.55f, 0.76f, 0.7f));
+            C(UnitCategory.Books, new Color(0.66f, 0.6f, 0.46f));
+            C(UnitCategory.Toys, new Color(0.88f, 0.72f, 0.4f));
+            C(UnitCategory.Jewellery, new Color(0.82f, 0.76f, 0.52f));
+            C(UnitCategory.Home, new Color(0.64f, 0.68f, 0.55f));
+            C(UnitCategory.Sports, new Color(0.45f, 0.64f, 0.68f));
+            C(UnitCategory.Music, new Color(0.6f, 0.46f, 0.7f));
+            C(UnitCategory.Leisure, new Color(0.7f, 0.46f, 0.74f));
+            C(UnitCategory.Cinema, new Color(0.4f, 0.34f, 0.52f));
+            C(UnitCategory.Vacant, new Color(0.55f, 0.55f, 0.55f));
+        }
+
+        /// <summary>Floor finish for a zone (the slab underneath is cut along zone boundaries).</summary>
+        static Material FloorFor(ZoneInfo z, out SurfaceType surface)
+        {
+            switch (z.kind)
+            {
+                case ZoneKind.Atrium: surface = SurfaceType.Tile; return terrazzoMat;
+                case ZoneKind.ServiceCorridor:
+                case ZoneKind.BackOfHouse:
+                case ZoneKind.Passage: surface = SurfaceType.Tile; return vinylMat;
+                case ZoneKind.Toilets: surface = SurfaceType.Tile; return toiletMat;
+                case ZoneKind.Cinema: surface = SurfaceType.Carpet; return floorCarpet;
+                case ZoneKind.Stairwell: surface = SurfaceType.Concrete; return concrete;
+                default: surface = SurfaceType.Tile; return floorTile;
+            }
         }
 
         static Material Mat(string name, Color c, float smooth, float metallic = 0f)
@@ -186,9 +265,7 @@ namespace AfterHours.EditorTools
         static void SetupLighting()
         {
             RenderSettings.skybox = null;
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.13f, 0.135f, 0.14f); // blockout: readable; Part 4 makes it dark
-            RenderSettings.fog = false;
+            RenderSettings.fog = false; // no artificial fog: darkness does the work
         }
 
         static void AddSceneFirstInBuild(string path)
@@ -291,6 +368,17 @@ namespace AfterHours.EditorTools
             return result;
         }
 
+        /// <summary>Every wall built is recorded so the detail pass can dress both faces.</summary>
+        struct WallRecord
+        {
+            public Vector3 p0, p1;
+            public float thickness, y0, y1;
+            public List<Opening> openings;
+            public Material material;
+        }
+
+        static readonly List<WallRecord> Walls = new List<WallRecord>();
+
         struct Opening
         {
             public float s0, s1, top;
@@ -318,6 +406,7 @@ namespace AfterHours.EditorTools
 
             var list = openings != null ? new List<Opening>(openings) : new List<Opening>();
             list.Sort((a, b) => a.s0.CompareTo(b.s0));
+            Walls.Add(new WallRecord { p0 = p0, p1 = p1, thickness = thickness, y0 = y0, y1 = y1, openings = list, material = m });
 
             void Segment(float a, float b, float ya, float yb)
             {
@@ -401,7 +490,7 @@ namespace AfterHours.EditorTools
             }
         }
 
-        static void PointLight(Transform parent, Vector3 pos, float range, float intensity, Color color, bool fixture = true)
+        static void PointLight(Transform parent, Vector3 pos, float range, float intensity, Color color, bool fixture = false)
         {
             var go = new GameObject("Light");
             go.transform.SetParent(parent, false);
@@ -412,6 +501,7 @@ namespace AfterHours.EditorTools
             l.intensity = intensity;
             l.color = color;
             l.shadows = LightShadows.None;
+            go.AddComponent<AfterHours.Rendering.BakeableLight>();
             if (fixture)
             {
                 GameObject f = Decor("Fixture", go.transform, new Vector3(-0.6f, 0.25f, -0.15f), new Vector3(0.6f, 0.29f, 0.15f), fixtureMat);

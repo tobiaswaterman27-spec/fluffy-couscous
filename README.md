@@ -68,6 +68,15 @@ Press the **Play** button (▶, top centre). Click inside the **Game** view to c
 3. **After Hours > 4 - Capture Review Shots** saves 20 pictures of the mall into the `ReviewShots` folder
    (in Play mode, **F12** saves a single screenshot there). Send them to Claude to check.
 
+### 6. The final look (Part 4)
+1. **After Hours > 3 - Build Mall** now also adds all the detail, sound and lighting setup. It takes longer
+   (several minutes). Unity may look frozen; the progress bar shows what it is doing.
+2. Press **Play** to see the "preview" lighting.
+3. Stop Play, then **After Hours > 5 - Bake Lighting (slow)**. This pre-calculates the realistic lighting and can
+   take from 30 minutes to a few hours. Leave Unity open (progress is in the bottom-right corner).
+   When it finishes, press Play again: that is the real look.
+4. To go back to preview lighting: **After Hours > 6 - Undo Baked Lighting**.
+
 ---
 
 ## Getting new updates later

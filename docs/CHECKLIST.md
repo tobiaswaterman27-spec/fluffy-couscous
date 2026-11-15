@@ -65,17 +65,33 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - ⬜ Vent network inside the ceiling voids → Part 5 (covers) / Part 11 (crawl network)
 
 ## Part 4 — Environment art & atmosphere
-- ⬜ Realistic materials (AI-generated textures + normal/roughness maps)
-- ⬜ Dense surface detail: floors (grout, chips, wear paths, scuffs, gum, drains, tape), walls (sockets, switches,
-  alarms, extinguishers, exit signs, grilles, torn posters, tape marks, screw holes, trims, corner guards),
-  ceilings (tile grid, sagging/stained/missing tiles, sprinklers, detectors, CCTV, speakers, vents),
-  car park (oil, tyre marks, bay lines, cracks, puddles, rust drips, pillar numbers, height bars)
-- ⬜ Rule-based, seeded detail placement (fixed every run)
-- ⬜ Fluorescent, flickering, emergency lighting; shadows; light under doors; reflections
-- ⬜ Post-processing: AO, grain, grading (early-2000s), exposure adaptation
-- ⬜ Shop interiors, signage, furniture, early-2000s look, slightly neglected
-- ⬜ Ambient sound (hum, ventilation, machinery, fountain)
-- ⬜ LOD, occlusion culling, batching
+- 🧪 Procedural PBR textures (colour + normal + metal/AO/smoothness): porcelain tiles, terrazzo, ceiling tiles,
+  painted plaster, blockwork, concrete, car park slab, vinyl, carpet, brushed metal, shutters, wood, wall tiles,
+  painted metal, laminate, dark panels (`tools/texgen/generate.py`, re-runnable)
+- 🧪 Decals: stains, scuffs, gum, cracks, oil, tyre marks, puddles, ceiling water damage, wall grime, damp, tape marks
+- 🧪 Real-world texture scale on every surface (world-space box mapping in the mesh combiner)
+- 🧪 Floor finishes by zone (terrazzo atrium, porcelain concourses, vinyl service areas, tiled toilets, carpet cinema)
+  and by shop type (carpet / wood / vinyl)
+- 🧪 Ceilings: fluorescent panels (working / dead / flickering with buzz), sprinklers, smoke detectors, speakers,
+  vents, CCTV domes, water stains, missing, hanging and fallen tiles
+- 🧪 Walls: skirting, grime, sockets, switches, extinguishers + signs, call points, crash rails, damp, toilet tiling,
+  car park bands/stripes, glowing advert panels, tape marks where posters were
+- 🧪 Floors: thousands of stains, scuffs, gum, cracks, puddles
+- 🧪 Door frames on every doorway, green EXIT signs at stairs and fire exits
+- 🧪 Concourses: plants, vending machines (glowing), payphones, ATMs, advert pillars, hanging direction signs,
+  kiddie ride, abandoned wet-floor signs
+- 🧪 Shops: tills, mannequins, TVs, menu boards, coffee machines, security gates
+- 🧪 Toilets: WCs and cisterns, mirrors, hand dryers
+- 🧪 Car park: painted bays and arrows, wheel stops, pillar hazard bands, drain pipes, sprinkler mains, jet fans,
+  light battens (dead / flickering), oil stains, tyre marks, puddles with drains, cracks, signs
+- 🧪 Service corridors: pipes and cable trays; stairwell handrails
+- 🧪 Post-processing look: ACES, desaturated slightly green early-2000s grade, bloom, vignette, film grain, slight CA
+- 🧪 Eye adaptation (light-probe based) for dark/bright transitions
+- 🧪 Baked lighting pipeline: lightmap settings, ~14k light probes, ~70 box-projected reflection probes,
+  "5 - Bake Lighting" (+ occlusion culling) and "6 - Undo Baked Lighting"
+- 🧪 Ambient sound: fluorescent hum, ventilation, plant machinery, car park fans, fountain water; reverb zones per space
+- 🧪 Performance: tens of thousands of objects merged into a few thousand meshes; colliders preserved
+- ⬜ Real recorded audio (Part 10), TextMeshPro signage and higher-quality fonts (polish)
 
 ## Part 5 — Interaction & physics
 - ⬜ Look-at interaction prompt (small), hold-to-interact, range + line-of-sight checks

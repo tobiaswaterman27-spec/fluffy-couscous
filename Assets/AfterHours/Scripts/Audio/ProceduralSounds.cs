@@ -193,6 +193,78 @@ namespace AfterHours.Audio
             return clip;
         }
 
+        // ------------------------------------------------------------------ ambience loops
+
+        public enum Ambience { FluorescentHum, Ventilation, Machinery, CarParkFans, Water, Buzz }
+
+        /// <summary>Seamless looping ambience clip (generated once, cached).</summary>
+        public static AudioClip AmbienceLoop(Ambience kind)
+        {
+            int key = 4000 + (int)kind;
+            if (cache.TryGetValue(key, out AudioClip[] cached) && cached[0] != null) return cached[0];
+
+            float seconds = kind == Ambience.Machinery ? 8f : 6f;
+            int n = (int)(seconds * Rate);
+            int fade = Rate / 4;
+            float[] data = new float[n + fade];
+            var rng = new System.Random(key);
+            float lp1 = 0f, lp2 = 0f, brown = 0f, peak = 0.0001f;
+
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = i / (float)Rate;
+                float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+                brown = Mathf.Clamp(brown + white * 0.02f, -1f, 1f) * 0.999f;
+                float sample = 0f;
+                switch (kind)
+                {
+                    case Ambience.FluorescentHum:
+                        // Mains hum: 100 Hz (twice the 50 Hz supply) with harmonics, plus a faint hiss.
+                        sample = 0.5f * Mathf.Sin(2f * Mathf.PI * 100f * t) + 0.25f * Mathf.Sin(2f * Mathf.PI * 200f * t)
+                               + 0.12f * Mathf.Sin(2f * Mathf.PI * 300f * t) + 0.05f * white;
+                        break;
+                    case Ambience.Buzz:
+                        float buzzWave = Mathf.Sin(2f * Mathf.PI * 100f * t);
+                        sample = Mathf.Sign(buzzWave) * Mathf.Pow(Mathf.Abs(buzzWave), 0.3f) * 0.4f + 0.2f * Mathf.Sin(2f * Mathf.PI * 1200f * t) * (0.5f + 0.5f * Mathf.Sin(2f * Mathf.PI * 3f * t));
+                        break;
+                    case Ambience.Ventilation:
+                        lp1 += 0.05f * (white - lp1);
+                        sample = lp1 * 3f * (0.85f + 0.15f * Mathf.Sin(2f * Mathf.PI * t / seconds)) + brown * 0.3f;
+                        break;
+                    case Ambience.Machinery:
+                        lp1 += 0.02f * (white - lp1);
+                        lp2 += 0.02f * (lp1 - lp2);
+                        float thump = Mathf.Exp(-((t % 1f) * 9f)) * Mathf.Sin(2f * Mathf.PI * 45f * t);
+                        sample = lp2 * 6f + 0.35f * Mathf.Sin(2f * Mathf.PI * 50f * t) + 0.3f * thump + 0.1f * Mathf.Sin(2f * Mathf.PI * 150f * t);
+                        break;
+                    case Ambience.CarParkFans:
+                        lp1 += 0.03f * (white - lp1);
+                        sample = lp1 * 4f + 0.2f * Mathf.Sin(2f * Mathf.PI * 75f * t) + brown * 0.5f;
+                        break;
+                    case Ambience.Water:
+                        lp1 += 0.3f * (white - lp1);
+                        sample = (white - lp1) * 0.6f * (0.7f + 0.3f * (float)rng.NextDouble());
+                        break;
+                }
+                data[i] = sample;
+                peak = Mathf.Max(peak, Mathf.Abs(sample));
+            }
+
+            // Crossfade the extra tail into the start so the loop has no seam.
+            for (int i = 0; i < fade; i++)
+            {
+                float a = i / (float)fade;
+                data[i] = data[i] * a + data[n + i] * (1f - a);
+            }
+            System.Array.Resize(ref data, n);
+            for (int i = 0; i < n; i++) data[i] *= 0.8f / peak;
+
+            AudioClip clip = AudioClip.Create("Ambience_" + kind, n, 1, Rate, false);
+            clip.SetData(data, 0);
+            cache[key] = new[] { clip };
+            return clip;
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics()
         {

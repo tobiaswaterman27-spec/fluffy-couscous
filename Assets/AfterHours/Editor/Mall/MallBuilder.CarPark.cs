@@ -156,6 +156,7 @@ namespace AfterHours.EditorTools
                 {
                     int h = MallLayout.Hash((int)x, (int)z, 5, 5);
                     if (h % 5 == 0) continue; // dead fitting: near-dark area
+                    if (h % 7 == 3) continue; // faulty fitting: the detail pass adds a flickering light here
                     PointLight(lights, new Vector3(x, -0.9f, z), 15f, h % 7 == 0 ? 0.35f : 1.0f, CarParkLight);
                 }
             }
