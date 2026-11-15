@@ -94,64 +94,65 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - ⬜ Real recorded audio (Part 10), TextMeshPro signage and higher-quality fonts (polish)
 
 ## Part 5 — Interaction & physics
-- ⬜ Look-at interaction prompt (small), hold-to-interact, range + line-of-sight checks
-- ⬜ Doors (shop, staff, fire, storage, security, maintenance, lift, restricted) with weights, hinges, locks, faults, squeaks
-- ⬜ Shutters (incl. jammed/obstructed), lockers, cupboards, drawers, wardrobes
+- 🧪 Look-at interaction prompt (small), hold-to-interact, range + line-of-sight checks
+- 🧪 Doors (shop, staff, fire, storage, security, maintenance, lift, restricted) with weights, hinges, locks, faults, squeaks
+- 🧪 Shutters (incl. jammed/obstructed), lockers, cupboards, drawers, wardrobes
 - 🔨 Heavy object push/drag (built in Part 2; networking of co-op grips in Part 17)
-- ⬜ Item pickup / drop / throw
-- ⬜ Vent covers: remove with tools, **player can close vents again**
-- ⬜ Machinery, switches, mechanisms
+- 🧪 Item pickup / drop / throw
+- 🧪 Vent covers: remove with tools, **player can close vents again**
+- 🧪 Machinery, switches, mechanisms
 
 ## Part 6 — Inventory & progression
-- ⬜ One-item inventory, drop anywhere, items persist where left
-- ⬜ Keys (shop, staff, storage, maintenance, security, plant room, restricted, exit keys), access cards
-- ⬜ Tools (screwdriver, pliers, spanner, wrench, pry tool, utility tool, wire cutters)
-- ⬜ Electrical components, puzzle components, special progression parts
-- ⬜ Item state tracking compatible with creature stealing/moving items; always recoverable
+- 🧪 One-item inventory, drop anywhere, items persist where left
+- 🧪 Keys (shop, staff, storage, maintenance, security, plant room, restricted, exit keys), access cards
+- 🧪 Tools (screwdriver, pliers, spanner, wrench, pry tool, utility tool, wire cutters)
+- 🧪 Electrical components, puzzle components, special progression parts
+- 🔨 Item state tracking (items reset to where they started; creature moving items not built yet)
 
 ## Part 7 — Puzzles & 8 escape routes
-- ⬜ Puzzle framework (physical, logic, environmental), no timers, subtle physical feedback
-- ⬜ Main entrance · Car park exit · Loading bay · Emergency exit · Rooftop · Service tunnel · Restricted staff exit · Hidden route
-- ⬜ Shared early progression, distinct final sequences, alternative solutions, no softlocks
+- 🧪 Puzzle framework (physical, logic, environmental), no timers, subtle physical feedback
+- 🧪 Main entrance · Car park exit · Loading bay · Emergency exit · Rooftop · Service tunnel · Restricted staff exit · Hidden route
+- 🧪 Shared early progression, distinct final sequences, alternative solutions, no softlocks
 
 ## Part 8 — Creature (Elliot) model & animation
-- ⬜ Tall thin pale distorted humanoid, dark pupil-less eyes
-- ⬜ Idle, still, look around, walk, fast walk, jerky moves, investigate, search, turn, chase start, run, lose sight
-- ⬜ Inspect hiding places, open cupboards/lockers, bang on doors, object interactions, enter/leave areas
-- ⬜ **Crawl animation for vents**
-- ⬜ Root motion, foot placement, head/upper-body tracking, blending
-- ⬜ Player character animations from Mixamo incl. **walk/run/crouch/crawl backwards**
+- 🧪 Tall thin pale distorted humanoid, dark pupil-less eyes
+- 🧪 Idle, still, look around, walk, fast walk, jerky moves, investigate, search, turn, chase start, run, lose sight
+- 🧪 Inspect hiding places, open cupboards/lockers, bang on doors, object interactions, enter/leave areas
+- 🧪 **Crawl animation for vents**
+- 🧪 Root motion, foot placement, head/upper-body tracking, blending
+- 🔨 Player character animations incl. **walk/run/crouch/crawl backwards** (procedural body; Mixamo set optional later)
 
 ## Part 9 — Creature (Elliot) AI
-- ⬜ Wander (starts in car park, unaware), investigate, search, hunt — any order
-- ⬜ Vision (FOV, distance, line of sight, light level; sees well in darkness)
-- ⬜ Hearing via NoiseBus with uncertainty/echo confusion
-- ⬜ Memory (sightings, hiding places, routes, noisy areas, items), decaying
-- ⬜ Rare mistakes, hesitation, loss of interest; 1–2 s chase acceleration delay
-- ⬜ **Closed doors / closed vents lower its belief you are behind them unless it saw/heard you**
-- ⬜ **Can open closed vents and crawl through vents, but tends not to (especially closed ones); some vents too narrow**
-- ⬜ Environmental interactions (lights, shelves, chairs, doors, shutters)
+- 🧪 Wander (starts in car park, unaware), investigate, search, hunt — any order
+- 🧪 Vision (FOV, distance, line of sight, light level; sees well in darkness)
+- 🧪 Hearing via NoiseBus with uncertainty/echo confusion
+- 🧪 Memory (sightings, hiding places, routes, noisy areas, items), decaying
+- 🧪 Rare mistakes, hesitation, loss of interest; 1–2 s chase acceleration delay
+- 🧪 **Closed doors / closed vents lower its belief you are behind them unless it saw/heard you**
+- 🧪 **Can open closed vents and crawl through vents, but tends not to (especially closed ones); some vents too narrow**
+- 🔨 Environmental interactions (doors, shutters, vent covers, hiding places done; knocking shelves/chairs later)
 
 ## Part 10 — Sound & audio intelligence
-- ⬜ Propagation: walls, doors, room size, reverb, background masking
-- ⬜ Real recorded footsteps/doors/object sounds replacing procedural placeholders
-- ⬜ Creature footsteps from animation events, breathing, spatial audio
-- ⬜ Distractions (coins, metal, delayed-noise items, alarms, ringing phones)
+- 🧪 Propagation: walls, doors, room size, reverb, background masking
+- 🔨 Real recorded footsteps/doors/object sounds replacing procedural placeholders (procedural sounds in place; recorded set can drop in later)
+- 🧪 Creature footsteps from animation events, breathing, spatial audio
+- 🧪 Distractions (coins, metal, delayed-noise items, alarms incl. lift alarm bell)
 
 ## Part 11 — Hiding, vents & catching
-- ⬜ Hiding places with entry/exit animations (no hiding under desks)
-- ⬜ Creature checks hiding places it saw you enter; can wait, leave, return
-- ⬜ Vent network navigation
-- ⬜ Catch detection (real body distances, host-authoritative later)
-- ⬜ **Death sequence: creature picks player up, screams in their face, eats them — gore allowed**
-- ⬜ **Context variants: corridor, chase, doorway, dark room, hiding place, vent (dragged out), etc.**
-- ⬜ **First-person view and teammates' third-person view show the exact same sequence**
-- ⬜ Full run reset on death (single-player)
+- 🧪 Hiding places (lockers, cupboards) with smooth entry/exit, limited look while hidden (no hiding under desks)
+- 🧪 Creature checks hiding places it saw you enter; can wait, leave, return
+- 🧪 Vent ducts on every shop floor beside the service corridors; ground-floor ducts fit Elliot, upper ones do not
+- 🧪 Catch detection (real body distances, host-authoritative later)
+- 🧪 **Death sequence: creature picks player up, screams in their face, eats them — gore allowed**
+- 🧪 **Context variants: corridor, chase, doorway, dark room, hiding place, vent (dragged out), etc.**
+- 🧪 **First-person view and teammates' third-person view show the exact same sequence**
+- 🧪 Full run reset on death (single-player)
 
 ## Part 12 — Electricity & machinery
-- ⬜ Power grid, fuses, switches, rerouting; flicker/failure
-- ⬜ Escalators (working/stopped/faulty), lifts (public/staff/service/restricted) with real doors and movement
-- ⬜ Rare lift drop malfunction to car park
+- 🧪 Power grid: main switchboard (car park plant room) with breakers per circuit; areas go dark with emergency lights; flicker on failure
+- 🧪 Escalators (working/stopped/faulty, emergency stop) and lifts (2 public + service) with real doors, buttons, indicators, alarm
+- 🧪 Rare lift drop malfunction to car park (only with someone inside; doors jam part-open; Elliot hears it)
+- 🧪 Random malfunctions every few minutes: breaker trips, escalator faults, lift supply cuts
 
 ## Part 13 — Single-player completion
 - ⬜ Opening sequence (11:30 PM, wake on atrium floor, vision clears)

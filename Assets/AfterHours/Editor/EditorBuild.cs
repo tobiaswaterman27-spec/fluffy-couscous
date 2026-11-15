@@ -84,7 +84,7 @@ namespace AfterHours.EditorTools
             foreach (Transform child in go.transform) SetLayerRecursive(child.gameObject, layer);
         }
 
-        public static void Label(Transform parent, string text, Vector3 position, float yaw, float size = 0.06f)
+        public static TextMesh Label(Transform parent, string text, Vector3 position, float yaw, float size = 0.06f)
         {
             var go = new GameObject("Label - " + text.Split('\n')[0]);
             go.transform.SetParent(parent, false);
@@ -103,6 +103,7 @@ namespace AfterHours.EditorTools
                 tm.font = font;
                 go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
             }
+            return tm;
         }
     }
 }

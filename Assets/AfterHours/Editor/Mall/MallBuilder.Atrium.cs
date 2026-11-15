@@ -153,7 +153,7 @@ namespace AfterHours.EditorTools
         }
 
         // =====================================================================
-        // Lift shafts (lift cars and working doors: Part 12)
+        // Lift shafts (cars, doors and buttons: MallBuilder.Machines)
         // =====================================================================
 
         static readonly MallFloor[] LiftLevels = { MallFloor.CarPark, MallFloor.Ground, MallFloor.Level1, MallFloor.Level2 };
@@ -177,7 +177,8 @@ namespace AfterHours.EditorTools
             BoxMinMax("Shaft cap", parent, new Vector3(r.minX, top, r.minZ), new Vector3(r.maxX, top + 0.3f, r.maxZ), wallService, SurfaceType.Concrete);
 
             float width = r.Width - 2f * t;
-            float doorW = Mathf.Min(1.1f, width - 0.4f);
+            bool service = name.StartsWith("Service");
+            float doorW = LiftDoorWidth(service);
             for (int i = 0; i < LiftLevels.Length; i++)
             {
                 float y0 = MallLayout.FloorY(LiftLevels[i]);
@@ -188,11 +189,9 @@ namespace AfterHours.EditorTools
                 WallSpan("Shaft front", parent, p0, p1, t, y0, y1, new List<Opening> { new Opening(s0, s0 + doorW, DoorHeight) }, wallService, SurfaceType.Concrete);
 
                 float cx = (r.minX + r.maxX) * 0.5f;
-                GameObject door = BoxMinMax($"{name} doors ({MallLayout.FloorCode(LiftLevels[i])})", parent,
-                    new Vector3(cx - doorW * 0.5f, y0, r.minZ + 0.02f), new Vector3(cx + doorW * 0.5f, y0 + DoorHeight, r.minZ + 0.08f), liftDoorMat, SurfaceType.Metal);
-                Slot(door, DoorKind.Lift, doorW, DoorHeight, true, name + " landing doors (no power yet)");
-                EditorBuild.Label(parent, MallLayout.FloorCode(LiftLevels[i]), new Vector3(cx, y0 + 2.4f, r.minZ - 0.02f), 0f, 0.03f);
+                EditorBuild.Label(parent, MallLayout.FloorCode(LiftLevels[i]), new Vector3(cx, y0 + 2.75f, r.minZ - 0.02f), 0f, 0.03f);
             }
+            BuildLift(parent, r, name, service);
         }
 
         // =====================================================================

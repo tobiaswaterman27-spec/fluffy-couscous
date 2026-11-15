@@ -97,6 +97,11 @@ namespace AfterHours.EditorTools
                 DressFloors(Group("Floors", details));
                 Progress("Detail: door frames and exit signs", 0.55f);
                 DressDoorways(Group("Doorways", details));
+                Progress("Power: switchboard, circuit areas, emergency lights", 0.553f);
+                Transform power = Group("Power", mall);
+                Transform board = BuildSwitchboard(power);
+                BuildPowerZones(power);
+                BuildMalfunctions(power, board);
                 Progress("Ventilation ducts", 0.555f);
                 BuildVents(Group("Vents", mall));
                 Progress("Doors and shutters", 0.56f);
@@ -483,24 +488,6 @@ namespace AfterHours.EditorTools
             {
                 BoxMinMax(name + " glass", parent, new Vector3(a.x - t, y, lo.z), new Vector3(a.x + t, y + 1.0f, hi.z), glassMat, SurfaceType.Glass);
                 BoxMinMax(name + " rail", parent, new Vector3(a.x - 0.05f, y + 1.0f, lo.z), new Vector3(a.x + 0.05f, y + 1.08f, hi.z), railMat, SurfaceType.Metal);
-            }
-        }
-
-        /// <summary>A stopped escalator: a walkable 30 degree incline with side balustrades (moving steps in Part 12).</summary>
-        static void Escalator(string name, Transform parent, Vector3 bottom, Vector3 top, float width)
-        {
-            Transform g = Group(name, parent);
-            EditorBuild.Ramp(name + " treads", g, bottom, top, width, 0.45f, metal, SurfaceType.Metal);
-            Vector3 dir = (top - bottom).normalized;
-            Quaternion rot = Quaternion.LookRotation(dir, Vector3.up);
-            Vector3 right = rot * Vector3.right;
-            Vector3 normal = rot * Vector3.up;
-            float length = Vector3.Distance(bottom, top);
-            Vector3 mid = (bottom + top) * 0.5f;
-            for (int sgn = -1; sgn <= 1; sgn += 2)
-            {
-                Vector3 c = mid + right * (sgn * (width * 0.5f + 0.06f)) + normal * 0.45f;
-                EditorBuild.Box(name + " balustrade", g, c, new Vector3(0.1f, 1.3f, length + 1.0f), railMat, SurfaceType.Metal, rot);
             }
         }
 

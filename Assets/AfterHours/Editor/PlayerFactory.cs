@@ -58,6 +58,8 @@ namespace AfterHours.EditorTools
             camData.renderPostProcessing = true;
             camData.antialiasing = AntialiasingMode.FastApproximateAntialiasing;
             camData.dithering = true;
+            // Default volumes plus the power-cut areas (on the trigger-zone layer, so they never block rays).
+            camData.volumeLayerMask = 1 | (GameLayers.TriggerZoneLayer >= 0 ? 1 << GameLayers.TriggerZoneLayer : 0);
             camGo.AddComponent<EyeAdaptation>();
             int bodyLayer = GameLayers.LocalBodyLayer;
             if (bodyLayer >= 0) cam.cullingMask &= ~(1 << bodyLayer);

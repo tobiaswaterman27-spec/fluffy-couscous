@@ -17,6 +17,8 @@ namespace AfterHours.World
         public float travelTime = 4f;
         public float waitTime = 3f;
         public bool safetyStop = true;
+        [Tooltip("Moved by another script (lifts) through ManualMove instead of travelling back and forth.")]
+        public bool manual;
 
         public Vector3 FrameDelta { get; private set; }
         public bool IsMoving { get; private set; }
@@ -35,8 +37,22 @@ namespace AfterHours.World
             waitTimer = waitTime;
         }
 
+        /// <summary>Manual mode: moves by delta this frame (riders are carried). Call every frame, even with zero.</summary>
+        public void ManualMove(Vector3 delta)
+        {
+            FrameDelta = delta;
+            IsMoving = delta.sqrMagnitude > 0f;
+            if (!IsMoving) return;
+            transform.position += delta;
+            Physics.SyncTransforms();
+        }
+
+        /// <summary>Would moving by delta push into a character?</summary>
+        public bool WouldHit(Vector3 delta) => safetyStop && IsObstructed(delta);
+
         void Update()
         {
+            if (manual) return;
             FrameDelta = Vector3.zero;
             IsMoving = false;
             float dt = Time.deltaTime;

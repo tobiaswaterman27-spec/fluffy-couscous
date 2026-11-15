@@ -123,10 +123,11 @@ namespace AfterHours.Creature
         public static float LightLevelAt(Vector3 p)
         {
             LightProbes probes = LightmapSettings.lightProbes;
-            if (probes == null || probes.count == 0) return 0.5f;
+            float power = AfterHours.Power.PowerGrid.LightFactorAt(p);
+            if (probes == null || probes.count == 0) return 0.5f * power;
             LightProbes.GetInterpolatedProbe(p, null, out UnityEngine.Rendering.SphericalHarmonicsL2 sh);
             float lum = 0.2126f * sh[0, 0] + 0.7152f * sh[1, 0] + 0.0722f * sh[2, 0];
-            return Mathf.Clamp01(lum / 0.35f);
+            return Mathf.Clamp01(lum / 0.35f) * power;
         }
 
         void OnNoise(NoiseEvent e)
