@@ -38,6 +38,7 @@ namespace AfterHours.Controls
         public InputAction ToggleStats { get; private set; }
         public InputAction ToggleDebugView { get; private set; }
         public InputAction Screenshot { get; private set; }
+        public InputAction ToggleFullbright { get; private set; }
 
         public event Action BindingsChanged;
 
@@ -149,6 +150,8 @@ namespace AfterHours.Controls
             ToggleDebugView.AddBinding("<Keyboard>/f5", groups: KeyboardGroup);
             Screenshot = SystemMap.AddAction("Screenshot", InputActionType.Button);
             Screenshot.AddBinding("<Keyboard>/f12", groups: KeyboardGroup);
+            ToggleFullbright = SystemMap.AddAction("ToggleFullbright", InputActionType.Button);
+            ToggleFullbright.AddBinding("<Keyboard>/f6", groups: KeyboardGroup);
         }
 
         /// <summary>Button action with one keyboard/mouse and one gamepad binding (either may be empty = unbound).</summary>

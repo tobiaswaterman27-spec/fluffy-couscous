@@ -38,6 +38,7 @@ namespace AfterHours.DevTools
             }
             if (input.ToggleDebugView.WasPressedThisFrame() && look != null) look.ToggleThirdPersonDebug();
             if (input.Screenshot.WasPressedThisFrame()) TakeScreenshot();
+            if (input.ToggleFullbright.WasPressedThisFrame()) ToggleFullbright();
         }
 
         /// <summary>F12: saves a screenshot to the ReviewShots folder in the project (to share with Claude).</summary>
@@ -49,6 +50,36 @@ namespace AfterHours.DevTools
             ScreenCapture.CaptureScreenshot(file);
             lastScreenshot = file;
             lastScreenshotTime = Time.realtimeSinceStartup;
+        }
+
+        bool fullbright;
+        Color savedAmbient;
+        UnityEngine.Rendering.AmbientMode savedMode;
+        readonly System.Collections.Generic.List<UnityEngine.Rendering.Volume> disabledVolumes = new System.Collections.Generic.List<UnityEngine.Rendering.Volume>();
+
+        /// <summary>F6: developer full-bright view (bright flat light, no post effects) to inspect geometry in the dark.</summary>
+        void ToggleFullbright()
+        {
+            fullbright = !fullbright;
+            if (fullbright)
+            {
+                savedAmbient = RenderSettings.ambientLight;
+                savedMode = RenderSettings.ambientMode;
+                RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+                RenderSettings.ambientLight = new Color(0.75f, 0.75f, 0.75f);
+                disabledVolumes.Clear();
+                foreach (var v in FindObjectsByType<UnityEngine.Rendering.Volume>(FindObjectsSortMode.None))
+                {
+                    if (v.enabled) { v.enabled = false; disabledVolumes.Add(v); }
+                }
+            }
+            else
+            {
+                RenderSettings.ambientMode = savedMode;
+                RenderSettings.ambientLight = savedAmbient;
+                foreach (var v in disabledVolumes) if (v != null) v.enabled = true;
+                disabledVolumes.Clear();
+            }
         }
 
         string lastScreenshot;
@@ -102,7 +133,7 @@ namespace AfterHours.DevTools
                     "Double-tap + hold a move key = sprint (also backwards)\n" +
                     "Hold Shift = crouch   Hold Ctrl = crawl\n" +
                     "Hold E on a heavy object = push / pull it\n" +
-                    "Esc pause, settings, keys, teleport   F3 info   F5 body   F12 screenshot";
+                    "Esc pause/settings/teleport  F3 info  F5 body  F6 full-bright  F12 shot";
                 GUI.Box(new Rect(10, 195, 470, 125), GUIContent.none);
                 GUI.Label(new Rect(20, 200, 460, 120), help, style);
             }

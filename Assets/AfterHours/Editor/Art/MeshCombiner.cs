@@ -42,40 +42,67 @@ namespace AfterHours.EditorTools
                 if (f.panels != null) foreach (Renderer r in f.panels) if (r != null) keep.Add(r);
             }
 
+            // Phase 1: read everything (nothing is changed yet, so a failure leaves the scene intact).
             MeshRenderer[] renderers = root.GetComponentsInChildren<MeshRenderer>(true);
-            var emptied = new List<GameObject>();
-            int done = 0;
-            foreach (MeshRenderer r in renderers)
+            var consumed = new List<MeshRenderer>();
+            var created = new List<GameObject>();
+            try
             {
-                done++;
-                if (done % 2000 == 0) EditorUtility.DisplayProgressBar("After Hours - optimising", "Merging meshes " + done + " / " + renderers.Length, done / (float)renderers.Length);
-                if (!Eligible(r, keep)) continue;
-                MeshFilter mf = r.GetComponent<MeshFilter>();
-                Mesh mesh = mf.sharedMesh;
-                Material mat = r.sharedMaterial;
-                bool cube = IsCube(mesh);
-                if (!cube && !mesh.isReadable) continue; // can't read its triangles: leave it as a separate object
-
-                Bounds b = r.bounds;
-                bool detail = ArtLibrary.IsDetail(mat) || Mathf.Max(b.size.x, b.size.y, b.size.z) < 0.7f;
-                int cell = CellKey(b.center);
-                var key = (mat, cell, detail);
-                if (!batches.TryGetValue(key, out Batch batch))
+                int done = 0;
+                foreach (MeshRenderer r in renderers)
                 {
-                    batch = new Batch { material = mat, detail = detail };
-                    batches[key] = batch;
+                    done++;
+                    if (done % 2000 == 0) EditorUtility.DisplayProgressBar("After Hours - optimising", "Reading meshes " + done + " / " + renderers.Length, done / (float)renderers.Length);
+                    if (!Eligible(r, keep)) continue;
+                    MeshFilter mf = r.GetComponent<MeshFilter>();
+                    Mesh mesh = mf.sharedMesh;
+                    Material mat = r.sharedMaterial;
+                    bool cube = IsCube(mesh);
+                    if (!cube && !mesh.isReadable) continue;
+
+                    Bounds b = r.bounds;
+                    bool detail = ArtLibrary.IsDetail(mat) || Mathf.Max(b.size.x, b.size.y, b.size.z) < 0.7f;
+                    var key = (mat, CellKey(b.center), detail);
+                    if (!batches.TryGetValue(key, out Batch batch))
+                    {
+                        batch = new Batch { material = mat, detail = detail };
+                        batches[key] = batch;
+                    }
+                    if (cube) AddBoxMapped(batch, r.transform, ArtLibrary.TryGetTileSize(mat, out float tile) ? tile : 0f);
+                    else AddGeneric(batch, mesh, r.transform.localToWorldMatrix);
+                    consumed.Add(r);
                 }
 
-                if (cube) AddBoxMapped(batch, r.transform, ArtLibrary.TryGetTileSize(mat, out float tile) ? tile : 0f);
-                else AddGeneric(batch, mesh, r.transform.localToWorldMatrix);
-
-                GameObject go = r.gameObject;
-                Object.DestroyImmediate(r);
-                Object.DestroyImmediate(mf);
-                emptied.Add(go);
+                // Phase 2: build the merged meshes.
+                int n = 0;
+                foreach (var kv in batches)
+                {
+                    Batch batch = kv.Value;
+                    if (batch.v.Count == 0) continue;
+                    if (n++ % 50 == 0) EditorUtility.DisplayProgressBar("After Hours - optimising", "Building merged meshes", n / (float)batches.Count);
+                    created.Add(BuildObject(batch, output));
+                }
+            }
+            catch (System.Exception e)
+            {
+                // Undo phase 2 and keep the original objects: the mall stays fully visible.
+                foreach (GameObject go in created) if (go != null) Object.DestroyImmediate(go);
+                EditorUtility.ClearProgressBar();
+                Debug.LogError("[AfterHours] Mesh merging failed, keeping the unmerged mall (slower but correct): " + e);
+                return 0;
             }
 
-            // Remove objects that were only visual (no collider, no other behaviour, no children).
+            // Phase 3: success - remove the now-duplicated visuals (colliders stay).
+            var emptied = new List<GameObject>();
+            foreach (MeshRenderer r in consumed)
+            {
+                if (r == null) continue;
+                GameObject go = r.gameObject;
+                MeshFilter mf = go.GetComponent<MeshFilter>();
+                Object.DestroyImmediate(r);
+                if (mf != null) Object.DestroyImmediate(mf);
+                emptied.Add(go);
+            }
             foreach (GameObject go in emptied)
             {
                 if (go == null || go.transform.childCount > 0) continue;
@@ -88,50 +115,45 @@ namespace AfterHours.EditorTools
                 }
                 if (onlyTrivial) Object.DestroyImmediate(go);
             }
-
-            int created = 0;
-            foreach (var kv in batches)
-            {
-                Batch batch = kv.Value;
-                if (batch.v.Count == 0) continue;
-                EditorUtility.DisplayProgressBar("After Hours - optimising", "Building combined meshes", created / (float)batches.Count);
-                var mesh = new Mesh { name = "Combined " + batch.material.name };
-                if (batch.v.Count > 65000) mesh.indexFormat = IndexFormat.UInt32;
-                mesh.SetVertices(batch.v);
-                mesh.SetNormals(batch.n);
-                mesh.SetTangents(batch.t);
-                mesh.SetUVs(0, batch.uv);
-                mesh.SetTriangles(batch.tri, 0);
-                mesh.RecalculateBounds();
-                if (!batch.detail)
-                {
-                    UnwrapParam.SetDefaults(out UnwrapParam p);
-                    Unwrapping.GenerateSecondaryUVSet(mesh, p);
-                }
-
-                var go = new GameObject(mesh.name);
-                go.transform.SetParent(output, false);
-                go.AddComponent<MeshFilter>().sharedMesh = mesh;
-                MeshRenderer mr = go.AddComponent<MeshRenderer>();
-                mr.sharedMaterial = batch.material;
-                bool transparent = batch.material.renderQueue >= (int)RenderQueue.Transparent - 100;
-                if (batch.detail)
-                {
-                    GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic);
-                    mr.receiveGI = ReceiveGI.LightProbes;
-                    mr.shadowCastingMode = transparent ? ShadowCastingMode.Off : ShadowCastingMode.On;
-                }
-                else
-                {
-                    GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccluderStatic |
-                        StaticEditorFlags.OccludeeStatic | StaticEditorFlags.ContributeGI | StaticEditorFlags.ReflectionProbeStatic);
-                    mr.receiveGI = ReceiveGI.Lightmaps;
-                }
-                if (transparent) mr.shadowCastingMode = ShadowCastingMode.Off;
-                created++;
-            }
             EditorUtility.ClearProgressBar();
-            return created;
+            return created.Count;
+        }
+
+        static GameObject BuildObject(Batch batch, Transform output)
+        {
+            var mesh = new Mesh { name = "Combined " + batch.material.name };
+            if (batch.v.Count > 65000) mesh.indexFormat = IndexFormat.UInt32;
+            mesh.SetVertices(batch.v);
+            mesh.SetNormals(batch.n);
+            mesh.SetTangents(batch.t);
+            mesh.SetUVs(0, batch.uv);
+            mesh.SetTriangles(batch.tri, 0);
+            mesh.RecalculateBounds();
+            if (!batch.detail)
+            {
+                UnwrapParam.SetDefaults(out UnwrapParam p);
+                Unwrapping.GenerateSecondaryUVSet(mesh, p);
+            }
+
+            var go = new GameObject(mesh.name);
+            go.transform.SetParent(output, false);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            MeshRenderer mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = batch.material;
+            bool transparent = batch.material.renderQueue >= (int)RenderQueue.Transparent - 100;
+            if (batch.detail)
+            {
+                GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic);
+                mr.receiveGI = ReceiveGI.LightProbes;
+            }
+            else
+            {
+                GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccluderStatic |
+                    StaticEditorFlags.OccludeeStatic | StaticEditorFlags.ContributeGI | StaticEditorFlags.ReflectionProbeStatic);
+                mr.receiveGI = ReceiveGI.Lightmaps;
+            }
+            mr.shadowCastingMode = transparent ? ShadowCastingMode.Off : ShadowCastingMode.On;
+            return go;
         }
 
         static bool Eligible(MeshRenderer r, HashSet<Renderer> keep)
