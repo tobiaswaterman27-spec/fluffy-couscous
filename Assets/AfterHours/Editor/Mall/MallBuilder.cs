@@ -28,6 +28,11 @@ namespace AfterHours.EditorTools
         [MenuItem("After Hours/3 - Build Mall", priority = 3)]
         public static void Build()
         {
+            if (EditorApplication.isPlaying)
+            {
+                EditorUtility.DisplayDialog("After Hours", "Stop Play mode first (press the Play button again), then try again.", "OK");
+                return;
+            }
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             try
             {

@@ -27,6 +27,11 @@ namespace AfterHours.EditorTools
         [MenuItem("After Hours/2 - Build Movement Test Scene", priority = 2)]
         public static void Build()
         {
+            if (EditorApplication.isPlaying)
+            {
+                EditorUtility.DisplayDialog("After Hours", "Stop Play mode first (press the Play button again), then try again.", "OK");
+                return;
+            }
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
             ProjectSetup.EnsureLayers();
