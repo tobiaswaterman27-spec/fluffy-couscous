@@ -1,5 +1,6 @@
 using UnityEngine;
 using AfterHours.Controls;
+using AfterHours.Interaction;
 
 namespace AfterHours.Player
 {
@@ -17,6 +18,7 @@ namespace AfterHours.Player
         PlayerMotor motor;
         PlayerLook look;
         PlayerGrab grab;
+        PlayerInteractor interactor;
         IPlayerInputSource input;
 
         public PlayerMotor Motor => motor;
@@ -27,6 +29,7 @@ namespace AfterHours.Player
             motor = GetComponent<PlayerMotor>();
             look = GetComponent<PlayerLook>();
             grab = GetComponent<PlayerGrab>();
+            interactor = GetComponent<PlayerInteractor>();
             input = GetComponent<IPlayerInputSource>();
         }
 
@@ -63,7 +66,8 @@ namespace AfterHours.Player
         {
             float dt = Time.deltaTime;
             PlayerInputFrame frame = input != null ? input.ReadFrame(dt) : default;
-            if (grab != null) grab.PreMove(frame);
+            if (interactor != null) interactor.Tick(frame, dt);
+            if (grab != null && (interactor == null || interactor.Target == null)) grab.PreMove(frame);
             look.ApplyLook(frame.lookDelta, motor, dt);
             motor.Tick(frame, dt);
             if (grab != null) grab.PostMove();

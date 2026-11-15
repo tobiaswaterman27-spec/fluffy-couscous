@@ -69,6 +69,7 @@ namespace AfterHours.EditorTools
 
                 Progress("Back of house", 0.18f);
                 BuildQuadrants(Group("Back Of House", mall));
+                BuildLockers(Group("Lockers & Cupboards", mall));
 
                 Progress("Stairwells and lifts", 0.21f);
                 BuildCores(Group("Stair Cores", mall));
@@ -96,6 +97,8 @@ namespace AfterHours.EditorTools
                 DressFloors(Group("Floors", details));
                 Progress("Detail: door frames and exit signs", 0.55f);
                 DressDoorways(Group("Doorways", details));
+                Progress("Doors and shutters", 0.56f);
+                BuildDoors(Group("Doors", mall));
                 Progress("Detail: concourses", 0.58f);
                 DressConcourses(Group("Concourses", details));
                 Progress("Detail: shop interiors", 0.61f);

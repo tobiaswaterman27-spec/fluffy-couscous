@@ -5,6 +5,7 @@ using AfterHours.Controls;
 using AfterHours.Rendering;
 using AfterHours.Core;
 using AfterHours.DevTools;
+using AfterHours.Interaction;
 using AfterHours.Player;
 
 namespace AfterHours.EditorTools
@@ -79,6 +80,11 @@ namespace AfterHours.EditorTools
             PlayerGrab grab = go.AddComponent<PlayerGrab>();
             grab.motor = motor;
             grab.look = look;
+
+            PlayerInteractor interactor = go.AddComponent<PlayerInteractor>();
+            interactor.motor = motor;
+            interactor.look = look;
+            interactor.grab = grab;
 
             PlayerAnimationDriver anim = go.AddComponent<PlayerAnimationDriver>();
             anim.motor = motor;

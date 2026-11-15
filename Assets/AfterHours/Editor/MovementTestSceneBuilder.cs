@@ -52,6 +52,7 @@ namespace AfterHours.EditorTools
             BuildProps();
             BuildHeavyObjects();
             BuildMovingGround(env);
+            BuildInteractionTests(env);
             BuildLights();
 
             new GameObject("Noise Debug Gizmos").AddComponent<NoiseDebugGizmos>();
@@ -321,6 +322,44 @@ namespace AfterHours.EditorTools
             GameObject belt = EditorBuild.Box("Moving walkway", t, new Vector3(23f, 0.03f, 1f), new Vector3(1.2f, 0.06f, 12f), darkTile, SurfaceType.Metal, null, false);
             belt.AddComponent<ConveyorSurface>().localVelocity = new Vector3(0f, 0f, 0.8f);
             EditorBuild.Label(t, "MOVING WALKWAY", new Vector3(23f, 1.2f, -5.3f), 0f);
+        }
+
+        static void BuildInteractionTests(Transform env)
+        {
+            Transform t = new GameObject("Interaction Tests").transform;
+            t.SetParent(env, false);
+            Material door = EditorBuild.Material(MatFolder, "DoorWood", new Color(0.45f, 0.32f, 0.2f), 0.35f);
+            Material grille = EditorBuild.Material(MatFolder, "Grille", new Color(0.6f, 0.62f, 0.64f), 0.5f, 0.8f);
+
+            // A wall at z = -20 (x -23.9 .. -8) with a doorway, a shutter opening and a vent hole at floor level.
+            const float z = -20f;
+            void W(float x0, float x1, float y0, float y1) =>
+                EditorBuild.Box("Test wall", t, new Vector3((x0 + x1) * 0.5f, (y0 + y1) * 0.5f, z), new Vector3(x1 - x0, y1 - y0, 0.2f), wall, SurfaceType.Concrete);
+            W(-23.9f, -21.3f, 0f, 3f);            // left of vent
+            W(-20.7f, -16.45f, 0f, 3f);           // between vent and door
+            W(-21.3f, -20.7f, 0.65f, 3f);         // above vent hole (0.6 x 0.65)
+            W(-16.45f, -15.55f, 2.1f, 3f);        // door lintel
+            W(-15.55f, -13.2f, 0f, 3f);           // between door and shutter
+            W(-13.2f, -10.8f, 2.6f, 3f);          // shutter lintel
+            W(-10.8f, -8f, 0f, 3f);               // right end
+            EditorBuild.Label(t, "INTERACTION TESTS (hold E)", new Vector3(-16f, 2.6f, z + 0.15f), 180f, 0.05f);
+
+            Physics.SyncTransforms();
+            InteractiveFactory.HingedDoor(t, "Test door", new Vector3(-16f, 0f, z), Vector3.right, 0.9f, 2.1f, door, SurfaceType.Wood, metal,
+                DoorKind.Staff, AfterHours.Interaction.DoorWeight.Normal, false, "", true, false, true);
+
+            GameObject panel = EditorBuild.Box("Test shutter", t, new Vector3(-12f, 1.3f, z), new Vector3(2.4f, 2.6f, 0.06f), metal, SurfaceType.Metal, null, false);
+            InteractiveFactory.MakeShutter(panel, false, false, 0f, "");
+
+            InteractiveFactory.Vent(t, new Vector3(-21f, 0.325f, z + 0.11f), Vector3.forward, new Vector2(0.6f, 0.65f), AfterHours.Interaction.VentCover.State.Loose, grille);
+
+            InteractiveFactory.Locker(t, new Vector3(-9.2f, 0f, -21.5f), Vector3.back, metal, metal, metal);
+            InteractiveFactory.Cupboard(t, new Vector3(-22.5f, 0f, -18.6f), Vector3.right, door, door, metal);
+
+            EditorBuild.Box("Test desk", t, new Vector3(-6.5f, 0.375f, -17f), new Vector3(1.6f, 0.75f, 0.8f), crate, SurfaceType.Wood);
+            InteractiveFactory.AddDrawer(t, new Vector3(-6.05f, 0.6f, -17.15f), new Vector3(0.42f, 0.14f, 0.5f), Vector3.back, door);
+
+            InteractiveFactory.Switch(t, new Vector3(-9f, 1.3f, z + 0.1f), Vector3.forward, "light", metal, accent);
         }
 
         static void PropBox(Transform parent, string name, Vector3 pos, Vector3 size, float mass, Material m, SurfaceType s, int layer)

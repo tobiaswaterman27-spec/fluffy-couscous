@@ -193,6 +193,105 @@ namespace AfterHours.Audio
             return clip;
         }
 
+        // ------------------------------------------------------------------ interaction one-shots
+
+        public enum Sfx { Latch, Creak, Slam, Rattle, ShutterRoll, ShutterStop, DrawerSlide, MetalClank, Click, Unlock, Bump }
+
+        /// <summary>One-shot interaction sounds (doors, shutters, drawers, switches...). A few variations each.</summary>
+        public static AudioClip Effect(Sfx kind)
+        {
+            int key = 5000 + (int)kind;
+            if (!cache.TryGetValue(key, out AudioClip[] clips) || clips[0] == null)
+            {
+                clips = new AudioClip[3];
+                for (int v = 0; v < clips.Length; v++) clips[v] = RenderEffect(kind, key * 13 + v);
+                cache[key] = clips;
+            }
+            return clips[Random.Range(0, clips.Length)];
+        }
+
+        static AudioClip RenderEffect(Sfx kind, int seed)
+        {
+            var rng = new System.Random(seed);
+            float seconds;
+            switch (kind)
+            {
+                case Sfx.Creak: seconds = 1.1f; break;
+                case Sfx.ShutterRoll: seconds = 1.0f; break;
+                case Sfx.Slam: seconds = 0.9f; break;
+                case Sfx.Rattle: seconds = 0.6f; break;
+                case Sfx.DrawerSlide: seconds = 0.5f; break;
+                default: seconds = 0.35f; break;
+            }
+            int n = (int)(seconds * Rate);
+            float[] d = new float[n];
+            float lp = 0f, phase = 0f, peak = 0.0001f;
+            float pitch = 0.9f + (float)rng.NextDouble() * 0.2f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate;
+                float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+                float s = 0f;
+                switch (kind)
+                {
+                    case Sfx.Latch:
+                    case Sfx.Click:
+                        s = white * Mathf.Exp(-t * 90f) + 0.6f * Mathf.Sin(2f * Mathf.PI * 1800f * pitch * t) * Mathf.Exp(-t * 60f);
+                        if (kind == Sfx.Latch && t > 0.08f) s += 0.7f * white * Mathf.Exp(-(t - 0.08f) * 80f);
+                        break;
+                    case Sfx.Unlock:
+                        s = white * (Mathf.Exp(-t * 70f) + 0.8f * Mathf.Exp(-Mathf.Max(0f, t - 0.15f) * 70f) * (t > 0.15f ? 1f : 0f))
+                            + 0.4f * Mathf.Sin(2f * Mathf.PI * 2400f * t) * Mathf.Exp(-t * 30f);
+                        break;
+                    case Sfx.Creak:
+                        // Stick-slip hinge squeal: a wavering tone made of tiny pulses.
+                        float f = (380f + 260f * Mathf.Sin(t * 2.2f + seed) + 60f * Mathf.Sin(t * 13f)) * pitch;
+                        phase += f / Rate;
+                        float pulse = Mathf.Pow(Mathf.Abs(Mathf.Sin(phase * Mathf.PI)), 18f);
+                        s = (pulse * 0.9f + 0.1f * white) * Mathf.Sin(Mathf.PI * t / seconds);
+                        break;
+                    case Sfx.Slam:
+                        lp += 0.08f * (white - lp);
+                        s = Mathf.Sin(2f * Mathf.PI * 70f * t) * Mathf.Exp(-t * 9f) * 1.2f + lp * 4f * Mathf.Exp(-t * 14f)
+                            + 0.3f * white * Mathf.Exp(-t * 40f);
+                        break;
+                    case Sfx.Rattle:
+                        float tick = (t * 22f) % 1f;
+                        s = white * Mathf.Exp(-tick * 25f) * (1f - t / seconds) + 0.3f * Mathf.Sin(2f * Mathf.PI * 900f * t) * Mathf.Exp(-tick * 30f);
+                        break;
+                    case Sfx.ShutterRoll:
+                        float slat = (t * 18f) % 1f;
+                        lp += 0.3f * (white - lp);
+                        s = (lp * 1.5f + 0.6f * white * Mathf.Exp(-slat * 20f)) * (0.7f + 0.3f * Mathf.Sin(t * 30f))
+                            + 0.25f * Mathf.Sin(2f * Mathf.PI * 520f * t) * Mathf.Exp(-slat * 12f);
+                        break;
+                    case Sfx.ShutterStop:
+                    case Sfx.MetalClank:
+                        s = 0.5f * white * Mathf.Exp(-t * 40f);
+                        foreach (float fr in new[] { 310f, 845f, 1520f, 2390f }) s += 0.25f * Mathf.Sin(2f * Mathf.PI * fr * pitch * t) * Mathf.Exp(-t * 9f);
+                        break;
+                    case Sfx.DrawerSlide:
+                        lp += 0.15f * (white - lp);
+                        s = lp * 2f * Mathf.Sin(Mathf.PI * t / seconds) + (t > seconds * 0.85f ? white * Mathf.Exp(-(t - seconds * 0.85f) * 80f) : 0f);
+                        break;
+                    case Sfx.Bump:
+                        s = Mathf.Sin(2f * Mathf.PI * 110f * t) * Mathf.Exp(-t * 25f) + 0.3f * white * Mathf.Exp(-t * 50f);
+                        break;
+                }
+                d[i] = s;
+                peak = Mathf.Max(peak, Mathf.Abs(s));
+            }
+            int fade = Mathf.Min(n, Rate / 100);
+            for (int i = 0; i < n; i++)
+            {
+                d[i] *= 0.9f / peak;
+                if (n - 1 - i < fade) d[i] *= (n - 1 - i) / (float)fade;
+            }
+            AudioClip clip = AudioClip.Create("Sfx_" + kind + "_" + seed, n, 1, Rate, false);
+            clip.SetData(d, 0);
+            return clip;
+        }
+
         // ------------------------------------------------------------------ ambience loops
 
         public enum Ambience { FluorescentHum, Ventilation, Machinery, CarParkFans, Water, Buzz }

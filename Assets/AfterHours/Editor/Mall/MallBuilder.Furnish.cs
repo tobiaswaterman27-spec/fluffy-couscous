@@ -41,6 +41,7 @@ namespace AfterHours.EditorTools
                     PlaceGrid(g, area, y, 1.6f, 0.8f, 0.75f, 3.4f, woodMat, SurfaceType.Wood, keepClear, (centre) =>
                     {
                         Prop(g, "Office chair", centre + new Vector3(0f, 0f, -0.75f), new Vector3(0.5f, 0.9f, 0.5f), 8f, propMat, SurfaceType.Metal);
+                        InteractiveFactory.AddDrawer(g, centre + new Vector3(0.45f, 0.6f, -0.15f), new Vector3(0.42f, 0.14f, 0.5f), Vector3.back, woodMat);
                     });
                     break;
                 case FurnishStyle.Plant:

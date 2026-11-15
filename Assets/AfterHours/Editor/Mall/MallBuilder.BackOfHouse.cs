@@ -165,6 +165,7 @@ namespace AfterHours.EditorTools
                 core,
                 new AreaRect(33.5f, o, 36.5f, 22.5f).Mirrored(sx, sz),          // corridor door
                 new AreaRect(38.2f, d - 3f, 41.8f, d).Mirrored(sx, sz),         // divider door
+                new AreaRect(25.5f, d - 1.6f, 33.5f, d).Mirrored(sx, sz),       // lockers / cupboards row
             };
             if (loadingBay) clearA.Add(new AreaRect(38f, o, q, d).Mirrored(sx, sz));
             var clearB = new List<AreaRect>
@@ -173,6 +174,7 @@ namespace AfterHours.EditorTools
                 new AreaRect(38.2f, d, 41.8f, d + 3f).Mirrored(sx, sz),         // divider door
                 MallLayout.ServiceLift.Expanded(2f),
                 new AreaRect(37f, 41f, 43f, q).Mirrored(sx, sz),                 // exterior door (staff exit)
+                new AreaRect(25.5f, d, 33.5f, d + 1.6f).Mirrored(sx, sz),        // lockers / cupboards row
             };
             int seed = MallLayout.Hash((int)f, sx, sz, 99);
             Furnish(g, Inset(rectA, 0.4f), y, ra.style, clearA, seed, propMat);
