@@ -66,7 +66,7 @@ Press the **Play** button (▶, top centre). Click inside the **Game** view to c
 
 ## Getting new updates later
 
-Close nothing; just run this in a terminal, then click back into Unity (it reloads automatically):
+In Unity: **After Hours > Get Latest Update**. (Or in a terminal, then click back into Unity:)
 
 ```bash
 cd ~/AfterHoursGame && git pull
