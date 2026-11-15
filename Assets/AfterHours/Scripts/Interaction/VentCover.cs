@@ -12,8 +12,25 @@ namespace AfterHours.Interaction
     ///   moves back into place (smoothly, not teleported) so you can close a vent behind you.
     /// - Elliot can pull covers off too (Part 9) and is less likely to search vents that look closed.
     /// </summary>
-    public class VentCover : Interactable
+    public class VentCover : Interactable, AfterHours.Puzzles.IResettable
     {
+        State startState;
+        static readonly System.Collections.Generic.List<VentCover> all = new System.Collections.Generic.List<VentCover>();
+        public static System.Collections.Generic.IReadOnlyList<VentCover> All => all;
+        void OnEnable() => all.Add(this);
+        void OnDisable() => all.Remove(this);
+        /// <summary>Where the opening is (centre of the grille slot).</summary>
+        public Vector3 SlotPosition => slotPos;
+        public Vector3 Outward => transform.forward;
+
+        public void ResetState()
+        {
+            animT = -1f;
+            coverBody.isKinematic = true;
+            cover.SetPositionAndRotation(slotPos, slotRot);
+            state = startState;
+        }
+
         public enum State { Screwed, Loose, Removed }
 
         public State state = State.Loose;
@@ -32,6 +49,7 @@ namespace AfterHours.Interaction
 
         void Awake()
         {
+            startState = state;
             if (cover == null) cover = transform.GetChild(0);
             slotPos = cover.position;
             slotRot = cover.rotation;

@@ -501,10 +501,79 @@ def decals():
     save_decal("tape_marks", np.ones((n, n, 3)) * col([150, 140, 110]), a)
 
 
+def blood_decals():
+    """Gore (the catch sequence): pools, spatter, drag smears and blood running down a lens."""
+    n = 512
+    x, y = coords(n)
+    rng = np.random.default_rng(900)
+    dark = col([70, 4, 6])
+    fresh = col([120, 8, 10])
+
+    def colour(a, wet):
+        c = dark * (1 - wet[..., None]) + fresh * wet[..., None]
+        return c
+
+    # pool: thick, glossy, darker in the middle, with satellite drops
+    b = blob(n, 901, 0.36, 0.45, 2.4)
+    a = b.copy()
+    for _ in range(26):
+        cx, cy = rng.random() * n, rng.random() * n
+        r = rng.uniform(3, 12)
+        a = np.maximum(a, smoothstep(r, r * 0.5, np.sqrt((x - cx) ** 2 + (y - cy) ** 2)) * 0.95)
+    wet = np.clip(1 - b * 0.8 + 0.2 * fnoise(n, 2.0, 902), 0, 1)
+    save_decal("blood_pool", colour(a, wet), np.clip(a, 0, 1) * 0.97)
+
+    # spatter: impact centre with radiating streaks and droplets
+    a = blob(n, 910, 0.12, 0.6, 2.0) * 0.95
+    for _ in range(70):
+        ang = rng.uniform(0, 2 * np.pi)
+        dist = rng.uniform(0.08, 0.46) * n
+        cx, cy = n / 2 + np.cos(ang) * dist, n / 2 + np.sin(ang) * dist
+        r = rng.uniform(1.5, 9) * (1.2 - dist / n)
+        L = r * rng.uniform(1.5, 4.0)
+        dx, dy = x - cx, y - cy
+        u = dx * np.cos(ang) + dy * np.sin(ang)
+        v = -dx * np.sin(ang) + dy * np.cos(ang)
+        drop = smoothstep(1, 0.6, np.sqrt((u / L) ** 2 + (v / r) ** 2))
+        a = np.maximum(a, drop * rng.uniform(0.7, 1.0))
+    save_decal("blood_spatter", colour(a, np.full((n, n), 0.6)), a)
+
+    # drag smear: long streaky band with finger lines
+    a = np.zeros((n, n))
+    streak = aniso(n, 14, 2.0, 920).T
+    band_ = smoothstep(150, 90, np.abs(x - n / 2 - 30 * np.sin(y / n * 3)))
+    a = band_ * (0.35 + 0.65 * streak) * smoothstep(0, 80, y) * smoothstep(n, n - 140, y)
+    for k in range(4):
+        cx = n / 2 - 75 + k * 50
+        a = np.maximum(a, smoothstep(7, 2, np.abs(x - cx - 6 * np.sin(y / 40 + k))) * smoothstep(n * 0.2, n * 0.9, y) * 0.9)
+    save_decal("blood_smear", colour(a, np.full((n, n), 0.3)), np.clip(a, 0, 1))
+
+    # lens: spatter around the edges of the view, with drips running down (drawn over the screen)
+    a = np.zeros((n, n))
+    for _ in range(90):
+        side = rng.integers(4)
+        t = rng.random()
+        cx, cy = [(t * n, rng.uniform(0, 0.25) * n), (t * n, n - rng.uniform(0, 0.3) * n),
+                  (rng.uniform(0, 0.25) * n, t * n), (n - rng.uniform(0, 0.25) * n, t * n)][side]
+        r = rng.uniform(4, 26)
+        a = np.maximum(a, smoothstep(r, r * 0.55, np.sqrt((x - cx) ** 2 + (y - cy) ** 2)) * rng.uniform(0.6, 0.95))
+    for _ in range(14):
+        cx = rng.uniform(0.05, 0.95) * n
+        top = rng.uniform(0, 0.35) * n
+        L = rng.uniform(0.2, 0.55) * n
+        w = rng.uniform(2, 6)
+        wob = cx + 5 * np.sin(y / 23 + cx)
+        a = np.maximum(a, smoothstep(w, w * 0.4, np.abs(x - wob)) * (y > top) * smoothstep(top + L, top + L * 0.8, y) * 0.9)
+    vign = smoothstep(0.15, 0.75, np.sqrt(((x - n / 2) / n) ** 2 + ((y - n / 2) / n) ** 2) * 1.6)
+    a = np.maximum(a, vign * 0.55)
+    save_decal("blood_lens", colour(a, np.full((n, n), 0.5)), np.clip(a, 0, 1))
+
+
 if __name__ == "__main__":
     print("Generating textures into", os.path.abspath(OUT))
     for fn in (floor_tile, terrazzo, ceiling_tile, wall_paint, wall_block, concrete, carpark_floor, floor_vinyl,
                carpet, metal_brushed, shutter, wood, tile_white, metal_painted, laminate, plaster_dark):
         fn()
     decals()
+    blood_decals()
     print("Done.")

@@ -34,6 +34,25 @@ namespace AfterHours.Creature
         public float upperArm = 0.56f, foreArm = 0.56f;
 
         public Vector3? LookTarget { get; set; }
+
+        /// <summary>
+        /// Full-body override used by the catch sequence (a scripted, deterministic pose so every player sees the
+        /// same thing). Hands go to these world points, the head pushes / shakes, the jaw is set directly.
+        /// </summary>
+        public class PuppetPose
+        {
+            public float weight;
+            public Vector3 handL, handR;
+            public Vector3 look;
+            public float jaw = -1f;        // degrees; < 0 = automatic
+            public float lean;             // extra forward bend (degrees)
+            public Vector3 headPush;       // world offset (lunging bite)
+            public float headShake;        // degrees of violent side-to-side thrash
+        }
+        public PuppetPose Puppet { get; set; }
+
+        /// <summary>Roughly where the mouth is (for bites, blood, camera framing).</summary>
+        public Vector3 MouthPosition => head != null ? head.position + head.up * 0.12f + head.forward * 0.13f : transform.position + Vector3.up * 2.2f;
         public ElliotAction CurrentAction => action;
 
         // gait state
@@ -214,16 +233,20 @@ namespace AfterHours.Creature
             float actLean = 0f;
             if (action == ElliotAction.InspectLow) actLean = 45f;
             else if (action == ElliotAction.Scream) actLean = 12f;
-            Quaternion spineRot = yaw * Quaternion.Euler(lean + actLean * actionW, -twist * 1.4f, 0f);
+            PuppetPose pp = Puppet != null && Puppet.weight > 0.001f ? Puppet : null;
+            float bend = actLean * actionW;
+            if (pp != null) bend = Mathf.Lerp(bend, pp.lean, pp.weight);
+            Quaternion spineRot = yaw * Quaternion.Euler(lean + bend, -twist * 1.4f, 0f);
             spine.SetPositionAndRotation(pelvisPos, spineRot);
             Vector3 chest = pelvisPos + spineRot * up * spineLength;
             Quaternion neckRot = spineRot * Quaternion.Euler(-Mathf.Lerp(lean * 0.7f, 70f, crawlW), 0f, 0f);
             neck.SetPositionAndRotation(chest, neckRot);
             Vector3 headBase = chest + neckRot * up * neckLength;
+            if (pp != null) headBase += pp.headPush * pp.weight;
 
             // ---------------- head (turns far too far; twitches) ----------------
             float wantYaw = 0f, wantPitch = 0f;
-            Vector3? look = action != ElliotAction.None ? actionTarget : LookTarget;
+            Vector3? look = pp != null ? pp.look : action != ElliotAction.None ? actionTarget : LookTarget;
             if (look.HasValue)
             {
                 Vector3 d = look.Value - headBase;
@@ -232,7 +255,7 @@ namespace AfterHours.Creature
                 wantPitch = Mathf.Clamp(-Mathf.Atan2(local.y, new Vector2(local.x, local.z).magnitude) * Mathf.Rad2Deg, -50f, 60f);
             }
             if (action == ElliotAction.LookAround) wantYaw = Mathf.Sin(actionTime * 1.7f) * 130f;
-            float headK = 1f - Mathf.Exp(-(action == ElliotAction.Stare ? 2f : 7f) * dt);
+            float headK = 1f - Mathf.Exp(-(pp != null ? 18f : action == ElliotAction.Stare ? 2f : 7f) * dt);
             headYaw = Mathf.LerpAngle(headYaw, wantYaw, headK);
             headPitch = Mathf.Lerp(headPitch, wantPitch, headK);
             twitchTimer -= dt;
@@ -251,11 +274,17 @@ namespace AfterHours.Creature
                 if (twitchT > 0.6f) twitchT = -1f;
             }
             headRoll = Mathf.Lerp(headRoll, action == ElliotAction.Stare ? 18f : 0f, 1f - Mathf.Exp(-2f * dt));
+            if (pp != null && pp.headShake > 0f)
+            {
+                float sh = pp.headShake * pp.weight;
+                tw += new Vector3(Mathf.Sin(Time.time * 31f) * sh * 0.3f, Mathf.Sin(Time.time * 23f) * sh, Mathf.Sin(Time.time * 37f + 1f) * sh * 0.6f);
+            }
             Quaternion headRot = yaw * Quaternion.Euler(headPitch + tw.x - crawlW * 10f, headYaw + tw.y, headRoll + tw.z);
             head.SetPositionAndRotation(headBase, headRot);
 
             float jawWant = action == ElliotAction.Scream ? 38f : action == ElliotAction.Grab ? 20f : (Mathf.Sin(Time.time * 1.6f) * 0.5f + 0.5f) * 3f;
-            jawOpen = Mathf.Lerp(jawOpen, jawWant, 1f - Mathf.Exp(-12f * dt));
+            if (pp != null && pp.jaw >= 0f) jawWant = Mathf.Lerp(jawWant, pp.jaw, pp.weight);
+            jawOpen = Mathf.Lerp(jawOpen, jawWant, 1f - Mathf.Exp(-(pp != null ? 30f : 12f) * dt));
             if (jaw != null) jaw.localRotation = Quaternion.Euler(jawOpen, 0f, 0f);
 
             // ---------------- arms ----------------
@@ -326,6 +355,11 @@ namespace AfterHours.Creature
                 }
                 handTargetL = Vector3.Lerp(handTargetL, aL, actionW);
                 handTargetR = Vector3.Lerp(handTargetR, aR, actionW);
+            }
+            if (pp != null)
+            {
+                handTargetL = Vector3.Lerp(handTargetL, pp.handL, pp.weight);
+                handTargetR = Vector3.Lerp(handTargetR, pp.handR, pp.weight);
             }
 
             Vector3 elbowPole = -fwd + Vector3.down * 0.4f;

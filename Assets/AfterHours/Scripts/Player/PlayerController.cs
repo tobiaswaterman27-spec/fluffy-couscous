@@ -27,8 +27,36 @@ namespace AfterHours.Player
         /// <summary>Every player in the scene (used by Elliot's senses).</summary>
         public static System.Collections.Generic.IReadOnlyList<PlayerController> All => all;
 
-        /// <summary>True while hidden in a hiding place (Part 11).</summary>
+        /// <summary>True while hidden in a hiding place.</summary>
         public bool IsHidden { get; set; }
+        public AfterHours.Hiding.HidingSpot CurrentHidingSpot { get; set; }
+
+        /// <summary>True while something else moves the body (hiding, being caught). lookAllowed: limited looking.</summary>
+        public bool ControlLocked { get; private set; }
+        bool lockLook;
+
+        public void SetControlLock(bool locked, bool noLook)
+        {
+            ControlLocked = locked;
+            lockLook = noLook;
+            if (motor != null) motor.ClearLocomotion();
+            if (grab != null && locked) grab.Release();
+            if (interactor != null) interactor.ForcedTarget = locked && !noLook ? CurrentHidingSpot : null;
+            CharacterController cc = GetComponent<CharacterController>();
+            if (cc != null) cc.enabled = !locked;
+        }
+
+        /// <summary>Moves the body while control is locked (hiding / being carried). Never used for normal movement.</summary>
+        public void MoveBodyTo(Vector3 position, float yaw)
+        {
+            transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
+        }
+
+        /// <summary>Full orientation (lifted, upside down, lying on the floor) - only while control is locked.</summary>
+        public void MoveBodyTo(Vector3 position, Quaternion rotation)
+        {
+            transform.SetPositionAndRotation(position, rotation);
+        }
         public Vector3 EyePosition => look != null && look.playerCamera != null ? look.playerCamera.transform.position : transform.position + Vector3.up * 1.6f;
 
         void OnEnable() { if (!all.Contains(this)) all.Add(this); }
@@ -81,6 +109,16 @@ namespace AfterHours.Player
         {
             float dt = Time.deltaTime;
             PlayerInputFrame frame = input != null ? input.ReadFrame(dt) : default;
+            if (ControlLocked)
+            {
+                // Hidden: look around a little and use the hiding place; no walking.
+                if (!lockLook && CurrentHidingSpot != null)
+                {
+                    look.ApplyLimitedLook(frame.lookDelta, CurrentHidingSpot.facingYaw, CurrentHidingSpot.lookRange);
+                    if (interactor != null) interactor.Tick(frame, dt);
+                }
+                return;
+            }
             if (interactor != null) interactor.Tick(frame, dt);
             if (inventory != null) inventory.Tick(frame);
             if (grab != null && (interactor == null || interactor.Target == null)) grab.PreMove(frame);

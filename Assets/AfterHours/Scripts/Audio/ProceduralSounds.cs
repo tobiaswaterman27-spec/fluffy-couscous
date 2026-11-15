@@ -195,7 +195,7 @@ namespace AfterHours.Audio
 
         // ------------------------------------------------------------------ interaction one-shots
 
-        public enum Sfx { Latch, Creak, Slam, Rattle, ShutterRoll, ShutterStop, DrawerSlide, MetalClank, Click, Unlock, Bump }
+        public enum Sfx { Latch, Creak, Slam, Rattle, ShutterRoll, ShutterStop, DrawerSlide, MetalClank, Click, Unlock, Bump, Crunch, Tear, Splatter, Thud, Gasp }
 
         /// <summary>One-shot interaction sounds (doors, shutters, drawers, switches...). A few variations each.</summary>
         public static AudioClip Effect(Sfx kind)
@@ -221,6 +221,11 @@ namespace AfterHours.Audio
                 case Sfx.Slam: seconds = 0.9f; break;
                 case Sfx.Rattle: seconds = 0.6f; break;
                 case Sfx.DrawerSlide: seconds = 0.5f; break;
+                case Sfx.Crunch: seconds = 0.7f; break;
+                case Sfx.Tear: seconds = 0.9f; break;
+                case Sfx.Splatter: seconds = 0.6f; break;
+                case Sfx.Thud: seconds = 0.5f; break;
+                case Sfx.Gasp: seconds = 0.8f; break;
                 default: seconds = 0.35f; break;
             }
             int n = (int)(seconds * Rate);
@@ -277,6 +282,44 @@ namespace AfterHours.Audio
                     case Sfx.Bump:
                         s = Mathf.Sin(2f * Mathf.PI * 110f * t) * Mathf.Exp(-t * 25f) + 0.3f * white * Mathf.Exp(-t * 50f);
                         break;
+                    case Sfx.Crunch:
+                    {
+                        // Bone: a dense cluster of sharp cracks over a wet, low squelch.
+                        float grain = (t * (60f + 40f * pitch)) % 1f;
+                        float crack = rng.NextDouble() < 0.03 ? 1f : 0f;
+                        lp += 0.05f * (white - lp);
+                        s = white * Mathf.Exp(-grain * 18f) * Mathf.Exp(-t * 4f) * 1.2f + crack * 2.5f * Mathf.Exp(-t * 3f)
+                            + lp * 5f * Mathf.Exp(-t * 3f) + 0.5f * Mathf.Sin(2f * Mathf.PI * 60f * t) * Mathf.Exp(-t * 8f);
+                        break;
+                    }
+                    case Sfx.Tear:
+                    {
+                        // Flesh tearing: filtered noise with a ragged, stretching rhythm.
+                        lp += 0.25f * (white - lp);
+                        float rip = 0.5f + 0.5f * Mathf.Sin(2f * Mathf.PI * (14f + 20f * t) * t + white * 0.8f);
+                        s = (lp * 2.5f * rip + 0.4f * white * rip) * Mathf.Sin(Mathf.PI * Mathf.Clamp01(t / seconds)) ;
+                        break;
+                    }
+                    case Sfx.Splatter:
+                    {
+                        lp += 0.1f * (white - lp);
+                        float drops = rng.NextDouble() < 0.01 ? 1f : 0f;
+                        s = lp * 4f * Mathf.Exp(-t * 9f) + drops * white * 2f * Mathf.Exp(-t * 4f);
+                        break;
+                    }
+                    case Sfx.Thud:
+                        lp += 0.04f * (white - lp);
+                        s = Mathf.Sin(2f * Mathf.PI * 52f * t) * Mathf.Exp(-t * 11f) * 1.4f + lp * 5f * Mathf.Exp(-t * 16f);
+                        break;
+                    case Sfx.Gasp:
+                    {
+                        // A human gasp / choked cry: breathy noise with a short voiced formant.
+                        lp += 0.3f * (white - lp);
+                        phase += (210f + 80f * Mathf.Sin(t * 9f)) * pitch / Rate;
+                        float voiced = Mathf.Sin(2f * Mathf.PI * phase) * Mathf.Clamp01(t / 0.08f) * Mathf.Exp(-t * 3f);
+                        s = (lp * 1.4f + voiced * 0.6f) * Mathf.Sin(Mathf.PI * Mathf.Clamp01(t / seconds));
+                        break;
+                    }
                 }
                 d[i] = s;
                 peak = Mathf.Max(peak, Mathf.Abs(s));

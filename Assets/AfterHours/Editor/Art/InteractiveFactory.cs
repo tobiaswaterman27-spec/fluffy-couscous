@@ -1,6 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 using AfterHours.Core;
+using AfterHours.Hiding;
 using AfterHours.Interaction;
 using AfterHours.World;
 
@@ -104,6 +105,7 @@ namespace AfterHours.EditorTools
             Door d = HingedDoor(root.transform, "Locker door", floorCentre + facing * (dpt * 0.5f) + Vector3.up * 0.12f, worldAxis, w - 0.02f, h - 0.15f,
                 door, SurfaceType.Metal, handle, DoorKind.Storage, DoorWeight.Light, locked, "key_lockers", false, false, true, 0.018f, facing);
             d.maxAngle = 110f;
+            AddHidingSpot(root, floorCentre, facing, w - 0.06f, dpt, 0.12f, 0.35f, 35f, d);
             Dynamic(root);
             return root;
         }
@@ -123,12 +125,37 @@ namespace AfterHours.EditorTools
             Part("Bottom", root.transform, new Vector3(0f, 0.05f, 0f), new Vector3(w, 0.1f, dpt), body, SurfaceType.Wood);
             Vector3 right = root.transform.right;
             Vector3 front = floorCentre + facing * (dpt * 0.5f) + Vector3.up * 0.1f;
-            HingedDoor(root.transform, "Cupboard door L", front - right * (w * 0.25f), -right, w * 0.5f - 0.02f, h - 0.12f, doors, SurfaceType.Wood, handle,
+            Door dl = HingedDoor(root.transform, "Cupboard door L", front - right * (w * 0.25f), -right, w * 0.5f - 0.02f, h - 0.12f, doors, SurfaceType.Wood, handle,
                 DoorKind.Storage, DoorWeight.Light, false, "", false, false, true, 0.02f, facing);
-            HingedDoor(root.transform, "Cupboard door R", front + right * (w * 0.25f), right, w * 0.5f - 0.02f, h - 0.12f, doors, SurfaceType.Wood, handle,
+            Door dr = HingedDoor(root.transform, "Cupboard door R", front + right * (w * 0.25f), right, w * 0.5f - 0.02f, h - 0.12f, doors, SurfaceType.Wood, handle,
                 DoorKind.Storage, DoorWeight.Light, false, "", false, false, true, 0.02f, facing);
+            AddHidingSpot(root, floorCentre, facing, w - 0.1f, dpt, 0.1f, 0.6f, 50f, dl, dr);
             Dynamic(root);
             return root;
+        }
+
+        /// <summary>
+        /// Makes a hollow furniture piece a hiding place: a thin trigger at the back wall (so the ray reaches it only
+        /// when the door is open, and items on the floor of the locker are still reachable).
+        /// </summary>
+        public static HidingSpot AddHidingSpot(GameObject root, Vector3 floorCentre, Vector3 facing, float innerWidth, float depth,
+                                               float floorHeight, float quality, float lookRange, params Door[] doors)
+        {
+            var go = new GameObject("Hiding place");
+            go.transform.SetParent(root.transform, false);
+            go.transform.localPosition = new Vector3(0f, 1.15f, -depth * 0.5f + 0.09f);
+            BoxCollider box = go.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.size = new Vector3(innerWidth, 1.3f, 0.1f);
+            go.layer = GameLayers.InteractableLayer >= 0 ? GameLayers.InteractableLayer : 0;
+            HidingSpot spot = go.AddComponent<HidingSpot>();
+            spot.doors = doors;
+            spot.insidePoint = floorCentre + Vector3.up * floorHeight - facing * 0.03f;
+            spot.outsidePoint = floorCentre + facing * (depth * 0.5f + 0.55f);
+            spot.facingYaw = Quaternion.LookRotation(facing).eulerAngles.y;
+            spot.quality = quality;
+            spot.lookRange = lookRange;
+            return spot;
         }
 
         /// <summary>A drawer whose front sits flush at closedCentre and slides out along slideDir.</summary>

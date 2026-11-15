@@ -119,6 +119,8 @@ namespace AfterHours.UI
             s.masterVolume = GUILayout.HorizontalSlider(s.masterVolume, 0f, 1f);
             s.invertY = GUILayout.Toggle(s.invertY, " Invert look Y");
             s.headBob = GUILayout.Toggle(s.headBob, " Head bob");
+            s.cameraShake = GUILayout.Toggle(s.cameraShake, " Camera shake");
+            s.gore = GUILayout.Toggle(s.gore, " Blood and gore");
             s.vSync = GUILayout.Toggle(s.vSync, " V-Sync");
             if (GUI.changed) service.ApplyRuntime();
         }

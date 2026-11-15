@@ -10,8 +10,17 @@ namespace AfterHours.Interaction
     /// or another route (Part 7). Lowering stops if anything is underneath (never crushes).
     /// The shutter panel moves up into the wall above the opening (it is never scaled or teleported).
     /// </summary>
-    public class RollerShutter : Interactable
+    public class RollerShutter : Interactable, AfterHours.Puzzles.IResettable
     {
+        bool startLocked, startJammed;
+        void Start() { startLocked = locked; startJammed = jammed; }
+        public void ResetState()
+        {
+            ResetToStart();
+            locked = startLocked;
+            jammed = startJammed;
+        }
+
         public Transform panel;
         public float travel = 3.3f;       // how far it can rise
         public float crankSpeed = 0.22f;  // m/s while cranking

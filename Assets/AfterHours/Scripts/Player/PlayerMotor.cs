@@ -337,6 +337,19 @@ namespace AfterHours.Player
         /// Instantly places the player (only for spawning, respawning and loading a save,
         /// never for normal movement).
         /// </summary>
+        /// <summary>Standing still (used while hidden or carried, when Tick isn't running).</summary>
+        public void ClearLocomotion()
+        {
+            LocomotionState l = Locomotion;
+            l.mode = MoveMode.Idle;
+            l.planarSpeed = 0f;
+            l.sprinting = false;
+            l.worldVelocity = Vector3.zero;
+            l.localPlanarVelocity = Vector2.zero;
+            l.yawRate = 0f;
+            Locomotion = l;
+        }
+
         public void Warp(Vector3 position, float yaw)
         {
             controller.enabled = false;

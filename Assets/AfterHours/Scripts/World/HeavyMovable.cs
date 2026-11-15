@@ -11,8 +11,21 @@ namespace AfterHours.World
     /// It scrapes loudly, and the scraping is a real noise event creatures can hear.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
-    public class HeavyMovable : MonoBehaviour
+    public class HeavyMovable : MonoBehaviour, AfterHours.Puzzles.IResettable
     {
+        Vector3 startPos;
+        Quaternion startRot;
+
+        public void ResetState()
+        {
+            grips.Clear();
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+            body.position = startPos;
+            body.rotation = startRot;
+            transform.SetPositionAndRotation(startPos, startRot);
+        }
+
         [Header("Speed")]
         public float soloSpeed = 0.55f;
         public float extraSpeedPerHelper = 0.35f;
@@ -44,6 +57,12 @@ namespace AfterHours.World
         void Awake()
         {
             body = GetComponent<Rigidbody>();
+            startPos = transform.position;
+            startRot = transform.rotation;
+            // Elliot paths around it while it stands still.
+            var obstacle = gameObject.AddComponent<UnityEngine.AI.NavMeshObstacle>();
+            obstacle.carving = true;
+            obstacle.carveOnlyStationary = true;
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
             body.constraints |= RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;

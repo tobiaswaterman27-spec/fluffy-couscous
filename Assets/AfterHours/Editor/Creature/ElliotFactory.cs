@@ -66,6 +66,23 @@ namespace AfterHours.EditorTools
             Part(anim.jaw, PrimitiveType.Sphere, new Vector3(0f, -0.04f, 0.04f), new Vector3(0.14f, 0.08f, 0.15f), skin);
             Part(anim.jaw, PrimitiveType.Cube, new Vector3(0f, -0.005f, 0.07f), new Vector3(0.08f, 0.012f, 0.06f), mouth);
 
+            // Inside the mouth: a dark wet throat and gums, and far too many thin, uneven teeth (seen up close when it
+            // screams in your face and bites).
+            Material gum = Mat("Elliot_Gum", new Color(0.32f, 0.07f, 0.08f), 0.85f);
+            Material tooth = Mat("Elliot_Tooth", new Color(0.78f, 0.74f, 0.6f), 0.6f);
+            Part(anim.head, PrimitiveType.Sphere, new Vector3(0f, 0.06f, 0.06f), new Vector3(0.11f, 0.07f, 0.09f), mouth);  // throat
+            Part(anim.head, PrimitiveType.Cube, new Vector3(0f, 0.078f, 0.085f), new Vector3(0.1f, 0.012f, 0.05f), gum);   // upper gum
+            Part(anim.jaw, PrimitiveType.Cube, new Vector3(0f, 0.004f, 0.066f), new Vector3(0.1f, 0.012f, 0.05f), gum);    // lower gum
+            for (int i = 0; i < 11; i++)
+            {
+                float a = (i / 10f - 0.5f) * 2.4f;              // around the arch of the mouth
+                float x = Mathf.Sin(a) * 0.05f, z = 0.07f + Mathf.Cos(a) * 0.035f;
+                float len = 0.014f + ((i * 37) % 7) * 0.003f;   // uneven lengths
+                float tilt = ((i * 53) % 9 - 4) * 3f;
+                Part(anim.head, PrimitiveType.Capsule, new Vector3(x, 0.07f - len * 0.5f, z), new Vector3(0.006f, len, 0.006f), tooth, new Vector3(tilt, 0f, -tilt));
+                Part(anim.jaw, PrimitiveType.Capsule, new Vector3(x * 0.95f, 0.01f + len * 0.45f, z - 0.004f), new Vector3(0.006f, len * 0.9f, 0.006f), tooth, new Vector3(-tilt, 0f, tilt));
+            }
+
             for (int s = -1; s <= 1; s += 2)
             {
                 string side = s < 0 ? "L" : "R";
@@ -114,7 +131,32 @@ namespace AfterHours.EditorTools
             brain.senses = senses;
             brain.memory = memory;
             brain.audioOut = root.GetComponent<ElliotAudio>();
+            AddGoreKit(root);
             return root;
+        }
+
+        /// <summary>Blood materials used by the catch sequence (decals, droplets, blood on the camera).</summary>
+        public static void AddGoreKit(GameObject root)
+        {
+            var kit = root.AddComponent<AfterHours.Gore.GoreKit>();
+            kit.poolMaterial = ArtLibrary.Decal("BloodPool", "blood_pool", Color.white, 0.85f);
+            kit.spatterMaterial = ArtLibrary.Decal("BloodSpatter", "blood_spatter", Color.white, 0.7f);
+            kit.smearMaterial = ArtLibrary.Decal("BloodSmear", "blood_smear", Color.white, 0.55f);
+            kit.lensTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(EditorBuild.Root + "/Textures/Generated/decal_blood_lens.png");
+
+            EditorBuild.EnsureFolder(MatFolder);
+            string path = MatFolder + "/Blood_Drop.mat";
+            Material drop = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (drop == null)
+            {
+                Shader sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+                if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
+                drop = new Material(sh);
+                AssetDatabase.CreateAsset(drop, path);
+            }
+            if (drop.HasProperty("_BaseColor")) drop.SetColor("_BaseColor", new Color(0.45f, 0.02f, 0.03f, 1f));
+            EditorUtility.SetDirty(drop);
+            kit.dropMaterial = drop;
         }
 
         static Material Mat(string name, Color c, float smooth)

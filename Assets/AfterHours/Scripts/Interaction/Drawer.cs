@@ -4,8 +4,15 @@ using AfterHours.Audio;
 namespace AfterHours.Interaction
 {
     /// <summary>A drawer that slides out along its local forward axis (desks, filing cabinets, counters).</summary>
-    public class Drawer : Interactable
+    public class Drawer : Interactable, AfterHours.Puzzles.IResettable
     {
+        public void ResetState()
+        {
+            pos = target = 0f;
+            transform.localPosition = closedLocal;
+            enabled = false;
+        }
+
         public float travel = 0.38f;
         public float speed = 0.9f;
         public bool locked;

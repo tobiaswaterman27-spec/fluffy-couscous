@@ -44,6 +44,9 @@ namespace AfterHours.Player
         bool thirdPerson;
         int firstPersonMask = ~0;
 
+        /// <summary>While true, something else (the catch sequence) positions and aims the camera.</summary>
+        public bool ExternallyDriven { get; set; }
+
         public float Pitch => pitch;
         public float HeadYaw => headYaw;
         public bool ThirdPersonDebug => thirdPerson;
@@ -71,6 +74,32 @@ namespace AfterHours.Player
             lookYaw = body + headYaw;
         }
 
+        /// <summary>Looking around while the body can't turn (hiding): yaw limited around a centre direction.</summary>
+        public void ApplyLimitedLook(Vector2 delta, float centreYaw, float maxYaw)
+        {
+            lookYaw += delta.x;
+            float rel = Mathf.Clamp(Mathf.DeltaAngle(centreYaw, lookYaw), -maxYaw, maxYaw);
+            lookYaw = centreYaw + rel;
+            pitch = Mathf.Clamp(pitch - delta.y, -60f, 60f);
+            headYaw = rel;
+            transform.rotation = Quaternion.Euler(0f, centreYaw, 0f);
+        }
+
+        /// <summary>Points the view at a world position (used while being caught).</summary>
+        public void ForceLookAt(Vector3 worldPoint, float sharpness, float dt)
+        {
+            if (cameraRig == null) return;
+            Vector3 d = worldPoint - cameraRig.position;
+            if (d.sqrMagnitude < 1e-4f) return;
+            float wantYaw = Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg;
+            float wantPitch = -Mathf.Atan2(d.y, new Vector2(d.x, d.z).magnitude) * Mathf.Rad2Deg;
+            float k = 1f - Mathf.Exp(-sharpness * dt);
+            lookYaw = Mathf.LerpAngle(lookYaw, wantYaw, k);
+            pitch = Mathf.Lerp(pitch, wantPitch, k);
+            headYaw = 0f;
+            transform.rotation = Quaternion.Euler(0f, lookYaw, 0f);
+        }
+
         public void OnLanded(float fallSpeed)
         {
             landVelocity -= Mathf.Clamp(fallSpeed * 0.05f, 0f, 0.6f);
@@ -86,7 +115,7 @@ namespace AfterHours.Player
 
         public void UpdateCamera(PlayerMotor motor, float dt)
         {
-            if (cameraRig == null || playerCamera == null) return;
+            if (cameraRig == null || playerCamera == null || ExternallyDriven) return;
             GameSettings s = SettingsService.CurrentOrDefault;
             LocomotionState loco = motor.Locomotion;
 

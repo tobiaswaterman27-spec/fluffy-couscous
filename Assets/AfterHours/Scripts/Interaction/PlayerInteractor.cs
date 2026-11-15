@@ -80,14 +80,25 @@ namespace AfterHours.Interaction
             }
         }
 
+        /// <summary>While hidden, this is always the target (the hiding place you are in), whatever you look at.</summary>
+        public Interactable ForcedTarget { get; set; }
+
         Interactable FindTarget()
         {
+            if (ForcedTarget != null) return ForcedTarget;
             Camera cam = look != null ? look.playerCamera : null;
             if (cam == null) return null;
             Ray ray = new Ray(cam.transform.position, cam.transform.forward);
             int mask = GameLayers.CharacterBlockingMask & ~(GameLayers.PlayerLayer >= 0 ? 1 << GameLayers.PlayerLayer : 0);
             if (!Physics.Raycast(ray, out RaycastHit hit, reach, mask, QueryTriggerInteraction.Collide)) return null;
-            return hit.collider.GetComponentInParent<Interactable>();
+            // A locker's door and the locker (hiding place) are both interactable: use the first that offers something.
+            Interactable fallback = null;
+            foreach (Interactable i in hit.collider.GetComponentsInParent<Interactable>())
+            {
+                if (fallback == null) fallback = i;
+                if (i.GetPrompt(this) != null) return i;
+            }
+            return fallback;
         }
 
         void OnGUI()

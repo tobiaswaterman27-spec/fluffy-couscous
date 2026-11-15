@@ -12,8 +12,25 @@ namespace AfterHours.Items
     /// Elliot takes / moves items through the same Attach / Release calls (Part 9).
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
-    public class ItemPickup : Interactable
+    public class ItemPickup : Interactable, AfterHours.Puzzles.IResettable
     {
+        Quaternion homeRotation;
+
+        /// <summary>Run reset: back where it started (also out of anyone's hands).</summary>
+        public void ResetState()
+        {
+            if (Holder != null)
+            {
+                AfterHours.Items.PlayerInventory inv = Holder.GetComponent<AfterHours.Items.PlayerInventory>();
+                if (inv != null && inv.Held == this) inv.TakeHeld();
+            }
+            Release(HomePosition, Vector3.zero);
+            transform.rotation = homeRotation;
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+            gameObject.SetActive(true);
+        }
+
         public string itemId;
         public string instanceId;
 
@@ -41,6 +58,7 @@ namespace AfterHours.Items
             colliders = GetComponentsInChildren<Collider>(true);
             renderers = GetComponentsInChildren<Renderer>(true);
             HomePosition = LastRestPosition = transform.position;
+            homeRotation = transform.rotation;
         }
 
         void OnEnable() => all.Add(this);

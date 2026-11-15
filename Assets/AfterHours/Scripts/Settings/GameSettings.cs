@@ -21,6 +21,11 @@ namespace AfterHours.Settings
         [Header("Camera")]
         public float fieldOfView = 72f;
         public bool headBob = true;
+        public bool cameraShake = true;
+
+        [Header("Content")]
+        [Tooltip("Blood and gore in the death sequence.")]
+        public bool gore = true;
 
         [Header("Audio")]
         public float masterVolume = 1f;

@@ -1,6 +1,7 @@
 using UnityEngine;
 using AfterHours.Audio;
 using AfterHours.Core;
+using AfterHours.Puzzles;
 using AfterHours.World;
 
 namespace AfterHours.Interaction
@@ -16,8 +17,10 @@ namespace AfterHours.Interaction
     /// - Elliot uses the same API (Open / Close / Bang / Force) in Part 9.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
-    public class Door : Interactable
+    public class Door : Interactable, IResettable
     {
+        [Tooltip("False when something else (a hiding place) handles using this door.")]
+        public bool interactable = true;
         [Header("Shape")]
         public Transform leaf;
         public float width = 0.9f;
@@ -57,6 +60,8 @@ namespace AfterHours.Interaction
         void Awake()
         {
             closedRotation = transform.localRotation;
+            startLocked = locked;
+            startLockId = lockId;
             body = GetComponent<Rigidbody>();
             body.isKinematic = true;
             body.interpolation = RigidbodyInterpolation.Interpolate;
@@ -92,8 +97,26 @@ namespace AfterHours.Interaction
             }
         }
 
+        bool startLocked;
+        string startLockId;
+
+        /// <summary>Back to its starting state: closed, and locked again if it started locked.</summary>
+        public void ResetState()
+        {
+            moving = false;
+            angle = 0f;
+            target = 0f;
+            faultTriggered = false;
+            locked = startLocked;
+            lockId = startLockId;
+            Quaternion world = (transform.parent != null ? transform.parent.rotation : Quaternion.identity) * closedRotation;
+            transform.rotation = world;
+            if (body != null) body.rotation = world;
+        }
+
         public override string GetPrompt(IInteractor who)
         {
+            if (!interactable) return null;
             if (locked) return who.Has(lockId) ? "Unlock" : "Locked";
             if (moving) return null;
             return IsOpen ? "Close" : "Open";

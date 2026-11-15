@@ -2,13 +2,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 using AfterHours.Core;
+using AfterHours.Hiding;
 using AfterHours.Interaction;
 using AfterHours.Player;
+using AfterHours.World;
 using AfterHours.World.Layout;
 
 namespace AfterHours.Creature
 {
-    public enum ElliotState { Wander, Investigate, Search, Hunt }
+    public enum ElliotState { Wander, Investigate, Search, Hunt, CheckHidingSpot, CheckVent, CrawlVent }
 
     /// <summary>
     /// Elliot's decision making. States are not a fixed sequence; it moves between them as things happen:
@@ -20,6 +22,12 @@ namespace AfterHours.Creature
     ///               sometimes doubles back. Spots behind closed doors seem less likely unless it heard you there.
     /// Hunt        - has seen you. Occasionally stares first; then builds up speed over ~1-2 s and runs. Losing sight
     ///               does not end it: it goes where you were heading, then searches.
+    ///
+    /// CheckHidingSpot - goes to a locker / cupboard. If it SAW you get in, it runs straight there and rips it open.
+    ///               Otherwise it stands outside, completely still, listening... then may open it, or walk away
+    ///               (and sometimes comes back a little later). Worse hiding places get checked more often.
+    /// CheckVent   - peers into a vent opening, may pull the cover off and reach in (it can grab you if you're close).
+    /// CrawlVent   - rarely, on the ground floor, it squeezes into the duct after you on all fours.
     ///
     /// Doors: opens unlocked ones (slams them when hunting), bangs on locked ones, may force them, or gives up and
     /// goes another way. Rare mistakes: hesitating, picking a wrong point, misjudging where a sound came from.
@@ -63,6 +71,21 @@ namespace AfterHours.Creature
         int bangs;
         float hesitateTimer = 8f;
         bool catching;
+        bool stillPause;
+
+        // hiding places & vents
+        HidingSpot checkSpot;
+        VentCover checkVent;
+        VentDuct crawlDuct;
+        bool checkCertain;
+        int checkStep;
+        float stepTime, listenTime, waitOutside;
+        HidingSpot returnSpot;
+        float returnAt;
+        Vector3 crawlEntry, crawlGoal;
+        float crawlUntil;
+        readonly Dictionary<Object, float> recentlyChecked = new Dictionary<Object, float>();
+        readonly List<Object> searchTargets = new List<Object>();
 
         void Awake()
         {
@@ -77,11 +100,13 @@ namespace AfterHours.Creature
         void OnEnable()
         {
             if (senses != null) { senses.Spotted += OnSpotted; senses.Heard += OnHeard; }
+            HidingSpot.SomeoneHid += OnSomeoneHid;
         }
 
         void OnDisable()
         {
             if (senses != null) { senses.Spotted -= OnSpotted; senses.Heard -= OnHeard; }
+            HidingSpot.SomeoneHid -= OnSomeoneHid;
         }
 
         void Start()
@@ -118,6 +143,19 @@ namespace AfterHours.Creature
         {
             if (catching) return;
             memory.RememberNoise(s.estimatedPosition, s.strength);
+            // Focused on a hiding place / vent: a sound from right there makes it certain; others are ignored unless loud.
+            if (state == ElliotState.CheckHidingSpot && checkSpot != null)
+            {
+                if (Vector3.Distance(s.estimatedPosition, checkSpot.transform.position) < 3f) { checkCertain = true; return; }
+                if (s.strength < 0.6f) return;
+            }
+            if ((state == ElliotState.CheckVent || state == ElliotState.CrawlVent) && VentDuct.Contains(s.estimatedPosition))
+            {
+                checkCertain = true;
+                crawlGoal = s.estimatedPosition;
+                return;
+            }
+            if (state == ElliotState.CrawlVent) return;
             if (state == ElliotState.Hunt)
             {
                 // Chasing someone nearby beats a distant noise; only switch if it has lost them and this is loud.
@@ -125,6 +163,16 @@ namespace AfterHours.Creature
             }
             float threshold = state == ElliotState.Wander ? 0.08f : state == ElliotState.Search ? 0.2f : 0.3f;
             if (s.strength < threshold) return;
+            // A noise in the ducts: go and look into the nearest vent opening.
+            if (VentDuct.Contains(s.estimatedPosition))
+            {
+                VentCover v = NearestVent(s.estimatedPosition, 12f);
+                if (v != null && !RecentlyChecked(v, 20f))
+                {
+                    StartCheckVent(v, s.strength > 0.55f);
+                    return;
+                }
+            }
             Vector3 where = s.estimatedPosition;
             if (Random.value < 0.06f) where += Random.insideUnitSphere * 8f; // rare misjudgement
             where.y = s.estimatedPosition.y;
@@ -150,10 +198,17 @@ namespace AfterHours.Creature
             if (state == ElliotState.Hunt) UpdateHunt(dt);
             else if (state == ElliotState.Investigate) UpdateInvestigate();
             else if (state == ElliotState.Search) UpdateSearch();
+            else if (state == ElliotState.CheckHidingSpot) UpdateCheckSpot(dt);
+            else if (state == ElliotState.CheckVent) UpdateCheckVent(dt);
+            else if (state == ElliotState.CrawlVent) UpdateCrawl(dt);
             else UpdateWander();
+            if (catching) return;
 
-            HandleDoors();
-            Steer();
+            if (state != ElliotState.CrawlVent)
+            {
+                HandleDoors();
+                Steer();
+            }
             audioOut?.SetIntensity(state == ElliotState.Hunt ? 1f : state == ElliotState.Search ? 0.4f : 0f);
             memory.RememberPlace(transform.position);
 
@@ -170,6 +225,7 @@ namespace AfterHours.Creature
         {
             state = s;
             stateTime = 0f;
+            stillPause = false;
             if (clearGoal) hasGoal = false;
             if (s == ElliotState.Hunt) huntRamp = Mathf.Min(huntRamp, 0f);
             if (s != ElliotState.Hunt) huntRamp = 0f;
@@ -181,8 +237,18 @@ namespace AfterHours.Creature
 
         // ---------------- Wander ----------------
 
+        bool TryReturnToSpot()
+        {
+            if (returnSpot == null || Time.time < returnAt) return false;
+            HidingSpot s = returnSpot;
+            returnSpot = null;
+            StartCheckSpot(s, false);
+            return true;
+        }
+
         void UpdateWander()
         {
+            if (TryReturnToSpot()) return;
             if (!hasGoal || Arrived())
             {
                 if (hasGoal && Random.value < 0.35f)
@@ -232,10 +298,16 @@ namespace AfterHours.Creature
             searchCentre = centre;
             searchUntil = Time.time + duration;
             searchPoints.Clear();
+            searchTargets.Clear();
             searchIndex = 0;
 
             // Remembered hiding places first, then likely spots around the area.
-            searchPoints.AddRange(memory.HidingSpotsNear(centre, radius * 1.5f));
+            foreach (Vector3 remembered in memory.HidingSpotsNear(centre, radius * 1.5f))
+            {
+                HidingSpot hs = NearestSpot(remembered, 1.5f);
+                searchPoints.Add(hs != null ? SpotStand(hs) : remembered);
+                searchTargets.Add(hs);
+            }
             var candidates = new List<(Vector3 p, float w)>();
             for (int i = 0; i < 12; i++)
             {
@@ -247,14 +319,40 @@ namespace AfterHours.Creature
                 candidates.Add((hit.position, w));
             }
             candidates.Sort((a, b) => b.w.CompareTo(a.w));
-            for (int i = 0; i < Mathf.Min(5, candidates.Count); i++) searchPoints.Add(candidates[i].p);
+            for (int i = 0; i < Mathf.Min(5, candidates.Count); i++) { searchPoints.Add(candidates[i].p); searchTargets.Add(null); }
+
+            // Hiding places and vents nearby, mixed in. Closed doors look less likely; bad hiding places more likely.
+            foreach (HidingSpot hs in HidingSpot.All)
+            {
+                if (searchTargets.Contains(hs) || !hs.Closed || RecentlyChecked(hs, 60f)) continue;
+                Vector3 hp = hs.transform.position;
+                if (Mathf.Abs(hp.y - centre.y) > 2.5f || Vector3.Distance(hp, centre) > radius * 1.2f) continue;
+                float chance = 0.15f + 0.35f * (1f - hs.quality) + Mathf.Min(0.3f, memory.NoiseHeatAt(hp) * 0.4f);
+                if (Random.value < chance) InsertSearchTarget(SpotStand(hs), hs);
+            }
+            foreach (VentCover v in VentCover.All)
+            {
+                if (RecentlyChecked(v, 60f)) continue;
+                Vector3 vp = v.SlotPosition;
+                if (Mathf.Abs(vp.y - centre.y) > 4f || Vector3.Distance(vp, centre) > radius) continue;
+                float chance = (v.IsOpen ? 0.2f : 0.08f) + Mathf.Min(0.3f, memory.NoiseHeatAt(vp) * 0.4f);
+                if (Random.value < chance) InsertSearchTarget(VentStand(v), v);
+            }
             // Sometimes it doubles back to where it started looking.
-            if (Random.value < 0.3f) searchPoints.Add(centre);
+            if (Random.value < 0.3f) { searchPoints.Add(centre); searchTargets.Add(null); }
             gait = ElliotGait.Walk;
+        }
+
+        void InsertSearchTarget(Vector3 p, Object what)
+        {
+            int at = Random.Range(0, searchPoints.Count + 1);
+            searchPoints.Insert(at, p);
+            searchTargets.Insert(at, what);
         }
 
         void UpdateSearch()
         {
+            if (TryReturnToSpot()) return;
             if (Time.time > searchUntil || searchIndex >= searchPoints.Count)
             {
                 Enter(ElliotState.Wander);
@@ -270,6 +368,11 @@ namespace AfterHours.Creature
             }
             else if (Arrived())
             {
+                Object what = searchIndex < searchTargets.Count ? searchTargets[searchIndex] : null;
+                searchIndex++;
+                if (what is HidingSpot hs && hs != null && hs.Closed) { ResumeSearchAfterCheck(); StartCheckSpot(hs, false); return; }
+                if (what is VentCover vc && vc != null) { ResumeSearchAfterCheck(); StartCheckVent(vc, false); return; }
+                searchIndex--;
                 float look = Random.Range(1.5f, 3.5f);
                 animator.PlayAction(Random.value < 0.5f ? ElliotAction.LookAround : ElliotAction.InspectLow,
                     transform.position + transform.forward * 1.2f + Vector3.up * 0.5f, look);
@@ -321,6 +424,13 @@ namespace AfterHours.Creature
                 return;
             }
 
+            if (!sees && lost > 0.6f && VentDuct.Contains(lastKnown + Vector3.up * 0.3f))
+            {
+                // Saw them disappear into the vents.
+                VentCover v = NearestVent(lastKnown, 8f);
+                if (v != null) { StartCheckVent(v, true); return; }
+            }
+
             if (!sees && lost > 3f && (Arrived() || lost > 12f))
             {
                 // Lost them: search around where they were last seen (with remembered hiding places).
@@ -358,7 +468,7 @@ namespace AfterHours.Creature
             bool paused = Time.time < pauseUntil || doorInWay != null;
             if (paused || !hasGoal || agent.pathPending)
             {
-                motor.Drive(Vector3.zero, paused ? ElliotGait.Idle : gait);
+                motor.Drive(Vector3.zero, paused ? (stillPause ? ElliotGait.Still : ElliotGait.Idle) : gait);
                 return;
             }
             Vector3 dir = agent.steeringTarget - transform.position;
@@ -427,15 +537,347 @@ namespace AfterHours.Creature
         }
 
         // =====================================================================
-        // Catching (placeholder until Part 11's full grab / scream / eat sequence)
+        // Hiding places
+        // =====================================================================
+
+        void OnSomeoneHid(HidingSpot spot, PlayerController p)
+        {
+            if (catching || spot == null || p == null) return;
+            bool saw = senses.CanSee(p, out _) || (state == ElliotState.Hunt && target == p && Time.time - lastSeenTime < 2.5f);
+            if (!saw) return;
+            memory.RememberHidingSpot(spot.transform.position);
+            target = p;
+            StartCheckSpot(spot, true);
+        }
+
+        static Vector3 SpotStand(HidingSpot s)
+        {
+            Vector3 o = s.outsidePoint - s.insidePoint;
+            o.y = 0f;
+            return s.outsidePoint + o.normalized * 0.45f;
+        }
+
+        HidingSpot NearestSpot(Vector3 p, float within)
+        {
+            HidingSpot best = null;
+            float bd = within;
+            foreach (HidingSpot s in HidingSpot.All)
+            {
+                float d = Vector3.Distance(s.transform.position, p);
+                if (d < bd) { bd = d; best = s; }
+            }
+            return best;
+        }
+
+        bool RecentlyChecked(Object o, float seconds) => recentlyChecked.TryGetValue(o, out float t) && Time.time - t < seconds;
+
+        bool resumeSearch;
+        void ResumeSearchAfterCheck() => resumeSearch = true;
+
+        void StartCheckSpot(HidingSpot spot, bool certain)
+        {
+            Enter(ElliotState.CheckHidingSpot);
+            checkSpot = spot;
+            checkVent = null;
+            checkCertain = certain;
+            checkStep = 0;
+            stepTime = 0f;
+            recentlyChecked[spot] = Time.time;
+            hasGoal = TrySetDestination(SpotStand(spot));
+            gait = certain ? ElliotGait.Run : (Random.value < 0.5f ? ElliotGait.Walk : ElliotGait.FastWalk);
+            if (certain) huntRamp = 1f;
+            if (!hasGoal) EndCheck();
+        }
+
+        float OpenChance(HidingSpot s)
+        {
+            float c = 0.3f + 0.35f * (1f - s.quality) + Mathf.Min(0.35f, memory.NoiseHeatAt(s.transform.position) * 0.5f);
+            if (memory.HidingSpotsNear(s.transform.position, 1.5f).Count > 0) c += 0.3f;
+            return Mathf.Clamp01(c);
+        }
+
+        void UpdateCheckSpot(float dt)
+        {
+            if (checkSpot == null) { EndCheck(); return; }
+            stepTime += dt;
+            Vector3 front = checkSpot.insidePoint + Vector3.up * 1.3f;
+            animator.LookTarget = front;
+            switch (checkStep)
+            {
+                case 0: // going there
+                    if (Arrived() || Vector3.Distance(Flat(transform.position), Flat(SpotStand(checkSpot))) < 0.7f)
+                    {
+                        checkStep = 1;
+                        stepTime = 0f;
+                        hasGoal = false;
+                        motor.Face(front);
+                        listenTime = checkCertain ? 0.25f : Random.Range(1.5f, 4.5f);
+                        stillPause = !checkCertain;
+                        Pause(listenTime);
+                        if (!checkCertain) animator.PlayAction(ElliotAction.Stare, front, listenTime);
+                    }
+                    else if (stepTime > 25f) EndCheck();
+                    break;
+                case 1: // standing outside, listening
+                    if (stepTime < listenTime) break;
+                    stillPause = false;
+                    if (!checkSpot.Closed)
+                    {
+                        // Door open: it can see inside.
+                        animator.PlayAction(ElliotAction.InspectLow, front, 1.2f);
+                        Pause(1.2f);
+                        if (checkSpot.Occupant != null) { Catch(checkSpot.Occupant); return; }
+                        checkStep = 3;
+                        stepTime = 0f;
+                        waitOutside = 0f;
+                        break;
+                    }
+                    if (checkCertain || Random.value < OpenChance(checkSpot))
+                    {
+                        animator.PlayAction(ElliotAction.PullOpen, checkSpot.outsidePoint + Vector3.up * 1.1f, 0.9f);
+                        Pause(0.9f);
+                        checkStep = 2;
+                        stepTime = 0f;
+                    }
+                    else
+                    {
+                        // Walks away... and sometimes comes back.
+                        if (Random.value < 0.3f) { returnSpot = checkSpot; returnAt = Time.time + Random.Range(8f, 25f); }
+                        EndCheck();
+                    }
+                    break;
+                case 2: // yanks it open
+                    if (stepTime < 0.3f) break;
+                    PlayerController occ = checkSpot.Occupant;
+                    if (occ != null) { Catch(occ); return; }
+                    checkSpot.RipOpen(gameObject);
+                    animator.PlayAction(ElliotAction.InspectLow, front, 1.5f);
+                    Pause(1.5f);
+                    checkStep = 3;
+                    stepTime = 0f;
+                    waitOutside = Random.value < 0.25f ? Random.Range(5f, 10f) : 0f;
+                    break;
+                case 3: // empty. Sometimes it just stands there a while, facing away.
+                    if (stepTime < 1.5f + waitOutside)
+                    {
+                        if (waitOutside > 0f && stepTime > 1.5f)
+                        {
+                            stillPause = true;
+                            Pause(0.2f);
+                            motor.Face(transform.position - (front - transform.position));
+                        }
+                        break;
+                    }
+                    EndCheck();
+                    break;
+            }
+        }
+
+        void EndCheck()
+        {
+            Vector3 c = checkSpot != null ? checkSpot.transform.position : checkVent != null ? checkVent.SlotPosition : transform.position;
+            checkSpot = null;
+            checkVent = null;
+            stillPause = false;
+            motor.Face(null);
+            if (resumeSearch && Time.time < searchUntil && searchIndex < searchPoints.Count)
+            {
+                resumeSearch = false;
+                Enter(ElliotState.Search);
+                return;
+            }
+            resumeSearch = false;
+            BeginSearch(c, 10f, Random.Range(12f, 25f));
+        }
+
+        // =====================================================================
+        // Vents
+        // =====================================================================
+
+        static Vector3 VentStand(VentCover v)
+        {
+            Vector3 p = v.SlotPosition + v.Outward * 0.9f;
+            if (NavMesh.SamplePosition(p, out NavMeshHit hit, 3.5f, NavMesh.AllAreas)) return hit.position;
+            return p;
+        }
+
+        VentCover NearestVent(Vector3 p, float within)
+        {
+            VentCover best = null;
+            float bd = within;
+            foreach (VentCover v in VentCover.All)
+            {
+                float d = Vector3.Distance(v.SlotPosition, p);
+                if (d < bd) { bd = d; best = v; }
+            }
+            return best;
+        }
+
+        void StartCheckVent(VentCover v, bool certain)
+        {
+            Enter(ElliotState.CheckVent);
+            checkVent = v;
+            checkSpot = null;
+            checkCertain = certain;
+            checkStep = 0;
+            stepTime = 0f;
+            crawlGoal = v.SlotPosition - v.Outward * 1.5f;
+            recentlyChecked[v] = Time.time;
+            hasGoal = TrySetDestination(VentStand(v));
+            gait = certain ? ElliotGait.Run : ElliotGait.Walk;
+            if (!hasGoal) EndCheck();
+        }
+
+        PlayerController PlayerInDuctNear(Vector3 p, float within)
+        {
+            foreach (PlayerController pc in PlayerController.All)
+            {
+                if (pc == null || CatchSequence.IsBeingCaught(pc)) continue;
+                Vector3 at = pc.transform.position + Vector3.up * 0.3f;
+                if (VentDuct.Contains(at) && Vector3.Distance(at, p) < within) return pc;
+            }
+            return null;
+        }
+
+        void UpdateCheckVent(float dt)
+        {
+            if (checkVent == null) { EndCheck(); return; }
+            stepTime += dt;
+            Vector3 slot = checkVent.SlotPosition;
+            animator.LookTarget = slot;
+            switch (checkStep)
+            {
+                case 0:
+                    if (Arrived() || Vector3.Distance(Flat(transform.position), Flat(VentStand(checkVent))) < 0.7f)
+                    {
+                        checkStep = 1;
+                        stepTime = 0f;
+                        hasGoal = false;
+                        motor.Face(slot);
+                        listenTime = checkCertain ? 0.4f : Random.Range(2f, 5f);
+                        stillPause = true;
+                        Pause(listenTime);
+                        animator.PlayAction(ElliotAction.InspectLow, slot, listenTime);
+                    }
+                    else if (stepTime > 25f) EndCheck();
+                    break;
+                case 1:
+                    if (stepTime < listenTime) break;
+                    stillPause = false;
+                    if (!checkVent.IsOpen)
+                    {
+                        if (checkCertain || Random.value < 0.25f + Mathf.Min(0.4f, memory.NoiseHeatAt(slot) * 0.5f))
+                        {
+                            animator.PlayAction(ElliotAction.PullOpen, slot, 0.8f);
+                            checkVent.Remove(transform.position, gameObject);
+                            Pause(0.8f);
+                        }
+                        else { EndCheck(); break; }
+                    }
+                    checkStep = 2;
+                    stepTime = 0f;
+                    break;
+                case 2:
+                    if (stepTime < 0.7f) break;
+                    {
+                        // Long arms reach into the duct.
+                        animator.PlayAction(ElliotAction.InspectLow, slot - checkVent.Outward * 0.6f, 1.6f);
+                        PlayerController p = PlayerInDuctNear(slot, 2.4f);
+                        if (p != null) { Catch(p); return; }
+                        VentDuct duct = VentDuct.Find(slot - checkVent.Outward * 0.7f);
+                        bool heard = checkCertain || memory.NoiseHeatAt(slot) > 0.4f;
+                        if (duct != null && duct.creatureSized && heard && Random.value < 0.3f)
+                        {
+                            StartCrawl(duct);
+                            return;
+                        }
+                        Pause(Random.Range(1.6f, 3.5f));
+                        stillPause = true;
+                        checkStep = 3;
+                        stepTime = 0f;
+                    }
+                    break;
+                case 3:
+                    if (stepTime < 2f) break;
+                    EndCheck();
+                    break;
+            }
+        }
+
+        // Crawling inside a duct: no navmesh in there, it just follows the duct on all fours.
+        int crawlStep;
+
+        void StartCrawl(VentDuct duct)
+        {
+            Enter(ElliotState.CrawlVent);
+            crawlDuct = duct;
+            crawlEntry = transform.position;
+            crawlUntil = Time.time + Random.Range(10f, 18f);
+            crawlStep = 0;
+            stepTime = 0f;
+            hasGoal = false;
+        }
+
+        void UpdateCrawl(float dt)
+        {
+            stepTime += dt;
+            if (crawlDuct == null || checkVent == null) { crawlStep = 2; }
+            Vector3 slot = checkVent != null ? checkVent.SlotPosition : crawlEntry;
+            Vector3 inward = checkVent != null ? -checkVent.Outward : transform.forward;
+            Vector3 aim;
+            switch (crawlStep)
+            {
+                case 0: // into the opening
+                    aim = slot + inward * 0.9f;
+                    if (crawlDuct.ContainsPoint(transform.position + Vector3.up * 0.3f)) { crawlStep = 1; stepTime = 0f; }
+                    else if (stepTime > 5f) { crawlStep = 2; stepTime = 0f; } // can't get in
+                    break;
+                case 1: // along the duct towards the last sound
+                {
+                    Vector3 axis = crawlDuct.transform.forward;
+                    Vector3 c = crawlDuct.transform.position;
+                    float along = Vector3.Dot(crawlGoal - c, axis);
+                    aim = c + axis * along;
+                    aim.y = transform.position.y;
+                    PlayerController p = PlayerInDuctNear(transform.position, catchDistance + 0.3f);
+                    if (p != null) { Catch(p); return; }
+                    if (Time.time > crawlUntil || Vector3.Distance(Flat(aim), Flat(transform.position)) < 0.5f && stepTime > 3f)
+                    {
+                        crawlStep = 2;
+                        stepTime = 0f;
+                    }
+                    break;
+                }
+                default: // back out
+                    aim = crawlDuct != null && crawlDuct.ContainsPoint(transform.position + Vector3.up * 0.3f) ? slot : crawlEntry;
+                    if (!VentDuct.Contains(transform.position + Vector3.up * 0.3f) && Vector3.Distance(Flat(transform.position), Flat(crawlEntry)) < 0.8f || stepTime > 25f)
+                    {
+                        crawlDuct = null;
+                        EndCheck();
+                        return;
+                    }
+                    break;
+            }
+            Vector3 dir = aim - transform.position;
+            dir.y = 0f;
+            motor.Drive(dir.sqrMagnitude > 0.04f ? dir : Vector3.zero, ElliotGait.Crawl);
+            motor.Face(null);
+            animator.LookTarget = transform.position + transform.forward * 3f + Vector3.up * 0.4f;
+        }
+
+        // =====================================================================
+        // Catching: the grab / scream / eat sequence (CatchSequence)
         // =====================================================================
 
         void Catch(PlayerController p)
         {
+            if (CatchSequence.IsBeingCaught(p)) return;
             catching = true;
+            hasGoal = false;
             motor.Drive(Vector3.zero, ElliotGait.Idle);
-            animator.PlayAction(ElliotAction.Grab, p.EyePosition, 1.2f);
-            CatchHandler.Begin(this, p);
+            motor.Face(null);
+            CatchContext ctx = CatchSequence.Classify(this, p);
+            CatchSequence.Begin(this, p, ctx, Random.Range(1, 1 << 30));
         }
 
         /// <summary>Back to the car park, unaware, memories wiped (single-player run reset).</summary>
@@ -444,6 +886,14 @@ namespace AfterHours.Creature
             catching = false;
             target = null;
             doorInWay = null;
+            checkSpot = null;
+            checkVent = null;
+            crawlDuct = null;
+            returnSpot = null;
+            resumeSearch = false;
+            recentlyChecked.Clear();
+            stillPause = false;
+            motor.Face(null);
             leftStartArea = false;
             memory.Forget();
             motor.Warp(position, yaw);
@@ -453,5 +903,3 @@ namespace AfterHours.Creature
         }
     }
 }
-EOF
-echo ok

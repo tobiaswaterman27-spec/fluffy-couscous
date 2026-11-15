@@ -97,6 +97,8 @@ namespace AfterHours.EditorTools
                 DressFloors(Group("Floors", details));
                 Progress("Detail: door frames and exit signs", 0.55f);
                 DressDoorways(Group("Doorways", details));
+                Progress("Ventilation ducts", 0.555f);
+                BuildVents(Group("Vents", mall));
                 Progress("Doors and shutters", 0.56f);
                 BuildDoors(Group("Doors", mall));
                 Progress("Items", 0.57f);

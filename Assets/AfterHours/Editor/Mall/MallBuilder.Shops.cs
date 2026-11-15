@@ -91,6 +91,7 @@ namespace AfterHours.EditorTools
                 CorridorDoorSign(parent, w, side, y, MallLayout.RoomADoorU0, MallLayout.RoomADoorU1, ra.label.ToUpperInvariant(),
                     ra.type == FacilityType.Toilets ? DoorKind.Toilet : DoorKind.Restricted, ra.lockId);
             }
+            corridorDoors.AddRange(VentOpenings(f, w, side));
             float end = MallLayout.AnchorEndFor(f, w);
             WingWallU("Corridor outer wall", parent, w, y, MallLayout.OuterWall, end, corridorV, 0.3f, corridorDoors, wallService, SurfaceType.Concrete);
 
