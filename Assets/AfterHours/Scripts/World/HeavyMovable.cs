@@ -90,13 +90,20 @@ namespace AfterHours.World
         }
 
         /// <summary>Called every frame by each player holding the object: where they want it to be.</summary>
+        /// <summary>LAN co-op client: grips are applied on the host (which moves the object for everyone).</summary>
+        public static System.Action<HeavyMovable, Vector3, float> NetGrip;
+        public static System.Action<HeavyMovable> NetRelease;
+        public static bool NetDriven;
+
         public void SetGrip(object holder, Vector3 targetPosition, float targetYaw)
         {
+            if (NetDriven && NetGrip != null) { NetGrip(this, targetPosition, targetYaw); return; }
             grips[holder] = new Grip { position = targetPosition, yaw = targetYaw };
         }
 
         public void Release(object holder)
         {
+            if (NetDriven && NetRelease != null) { NetRelease(this); return; }
             grips.Remove(holder);
         }
 

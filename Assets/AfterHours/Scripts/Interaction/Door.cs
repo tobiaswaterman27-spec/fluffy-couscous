@@ -114,6 +114,15 @@ namespace AfterHours.Interaction
             if (body != null) body.rotation = world;
         }
 
+        public float TargetAngle => target;
+
+        /// <summary>LAN co-op client: swing to the angle the host reports (no sound or noise of its own).</summary>
+        public void NetMoveTo(float a)
+        {
+            if (Mathf.Abs(a - target) < 0.5f && (moving || Mathf.Abs(a - angle) < 0.5f)) return;
+            StartMove(a, 1f);
+        }
+
         /// <summary>Loading a save: jump straight to an angle (no sound, no noise).</summary>
         public void SetAngleInstant(float a)
         {

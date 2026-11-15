@@ -6,6 +6,7 @@ using AfterHours.Controls;
 using AfterHours.Core;
 using AfterHours.Creature;
 using AfterHours.Machines;
+using AfterHours.Net;
 using AfterHours.Player;
 using AfterHours.Power;
 using AfterHours.Rendering;
@@ -47,7 +48,7 @@ namespace AfterHours.Flow
         PlayerController player;
         ElliotBrain elliot;
         float playTime, autosaveTimer, t, orbit;
-        GUIStyle titleStyle, buttonStyle, smallStyle, textStyle;
+        GUIStyle titleStyle, buttonStyle, smallStyle, textStyle, smallCentered, fieldStyle;
         bool hasSave;
         string saveInfo = "";
         int hover = -1;
@@ -112,8 +113,57 @@ namespace AfterHours.Flow
         /// <summary>Elliot and the malfunctions only run while you are actually in the building.</summary>
         void SetWorldRunning(bool on)
         {
-            if (elliot != null) elliot.enabled = on;
-            foreach (MalfunctionDirector m in FindObjectsByType<MalfunctionDirector>(FindObjectsSortMode.None)) m.enabled = on;
+            bool simulate = on && !NetSession.IsClient; // co-op clients only show the host's creatures and faults
+            foreach (ElliotBrain b in FindObjectsByType<ElliotBrain>(FindObjectsSortMode.None)) b.enabled = simulate;
+            foreach (MalfunctionDirector m in FindObjectsByType<MalfunctionDirector>(FindObjectsSortMode.None)) m.enabled = simulate;
+        }
+
+        // =====================================================================
+        // LAN co-op (menu screens, start, endings)
+        // =====================================================================
+
+        enum MenuScreen { Main, Host, Join }
+        MenuScreen screen = MenuScreen.Main;
+        string addressText = "";
+        string sessionMessage = "";
+        NetSession net;
+
+        NetSession Net()
+        {
+            if (net != null) return net;
+            net = gameObject.AddComponent<NetSession>();
+            net.GameStarted += OnCoopStarted;
+            net.EscapeDecided += OnCoopEscape;
+            net.SessionEnded += msg =>
+            {
+                sessionMessage = msg;
+                if (State == FlowState.Ending) return; // the game is over anyway; let the credits finish
+                if (State != FlowState.Menu) ReloadScene();
+                else { net.Shutdown(); screen = MenuScreen.Main; }
+            };
+            return net;
+        }
+
+        void OnCoopStarted(int index)
+        {
+            SaveSystem.DeleteSave();
+            playTime = 0f;
+            coopIndex = index;
+            BeginOpening();
+        }
+
+        int coopIndex;
+        bool leftBehind;
+
+        void OnCoopEscape(EscapeRouteId r, bool escaped)
+        {
+            if (net != null) net.FreezeGame();
+            if (escaped) BeginEnding(r);
+            else
+            {
+                leftBehind = true;
+                BeginEnding(r);
+            }
         }
 
         void NewGame()
@@ -156,12 +206,12 @@ namespace AfterHours.Flow
             DevLocation start = MallLayout.DevLocations[0];
             if (player != null)
             {
-                player.Teleport(start.position, start.yaw);
+                player.Teleport(start.position + Quaternion.Euler(0f, start.yaw, 0f) * Vector3.right * (coopIndex * 1.3f), start.yaw);
                 player.SetControlLock(true, true);
                 if (player.Look != null) player.Look.ExternallyDriven = true;
             }
             wakeYaw = start.yaw;
-            wakeEye = start.position + Vector3.up * 0.16f;
+            wakeEye = start.position + Quaternion.Euler(0f, start.yaw, 0f) * Vector3.right * (coopIndex * 1.3f) + Vector3.up * 0.16f;
             var go = new GameObject("Ringing");
             go.transform.SetParent(transform, false);
             ringing = go.AddComponent<AudioSource>();
@@ -283,7 +333,7 @@ namespace AfterHours.Flow
 
         bool SafeToSave()
         {
-            if (player == null || CatchSequence.AnyActive || AfterHours.Puzzles.EscapeDirector.Escaping) return false;
+            if (player == null || NetSession.Active || CatchSequence.AnyActive || AfterHours.Puzzles.EscapeDirector.Escaping) return false;
             if (elliot != null && elliot.State == ElliotState.Hunt) return false;
             return !player.ControlLocked || player.IsHidden;
         }
@@ -342,6 +392,16 @@ namespace AfterHours.Flow
         void UpdateEnding(float dt)
         {
             t += dt;
+            if (leftBehind)
+            {
+                // The others got out. The doors are shut. Something is behind you.
+                if (Fire(10, 1.2f) && player != null)
+                    AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Slam), player.transform.position + Vector3.up * 2f, 1f, 0.6f, 60f);
+                if (Fire(11, 3.4f) && player != null && elliot != null && elliot.animator != null && elliot.animator.audioOut != null)
+                    AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Gasp), player.EyePosition, 1f, 1.1f, 10f);
+                if (t > 5.5f) StartCredits();
+                return;
+            }
             if (!transitioned && t >= 2.6f) TransitionToDaylight();
             if (!transitioned || credits) return;
             if (t > 4.2f && player != null && player.ControlLocked)
@@ -565,6 +625,8 @@ namespace AfterHours.Flow
             smallStyle.normal.textColor = new Color(0.55f, 0.54f, 0.5f);
             textStyle = new GUIStyle(GUI.skin.label) { fontSize = 34, alignment = TextAnchor.MiddleCenter };
             textStyle.normal.textColor = new Color(0.2f, 0.2f, 0.22f);
+            smallCentered = new GUIStyle(smallStyle) { alignment = TextAnchor.MiddleCenter, fontSize = 22 };
+            fieldStyle = new GUIStyle(GUI.skin.textField) { fontSize = 24 };
         }
 
         void OnGUI()
@@ -574,7 +636,11 @@ namespace AfterHours.Flow
             Rect full = new Rect(0f, 0f, w, h);
             float scale = h / 1080f;
 
-            if (State == FlowState.Menu && !GamePause.IsPaused) DrawMenu(scale);
+            if (State == FlowState.Menu && !GamePause.IsPaused)
+            {
+                if (screen == MenuScreen.Main) DrawMenu(scale);
+                else DrawLobby(scale);
+            }
 
             // Waking up: eyelids.
             float closed = EyesClosed();
@@ -610,9 +676,10 @@ namespace AfterHours.Flow
             {
                 float white = !transitioned ? Mathf.Clamp01(t / 2.6f) : Mathf.Clamp01(1f - (t - 2.6f) / 2f);
                 if (credits) white = Mathf.Clamp01(creditsT / 3f);
+                if (leftBehind) white = Mathf.Clamp01(t / 1.2f);
                 if (white > 0.001f)
                 {
-                    GUI.color = new Color(1f, 1f, 1f, white);
+                    GUI.color = leftBehind ? new Color(0f, 0f, 0f, white) : new Color(1f, 1f, 1f, white);
                     GUI.DrawTexture(full, Texture2D.whiteTexture);
                 }
                 if (credits && creditsT > 3f)
@@ -627,9 +694,22 @@ namespace AfterHours.Flow
                     GUI.Label(new Rect(0f, 330f, cx, 120f), "AFTER HOURS", titleStyle);
                     titleStyle.normal.textColor = old;
                     titleStyle.alignment = TextAnchor.MiddleLeft;
-                    GUI.Label(new Rect(0f, 480f, cx, 50f), "You got out " + RouteName(route) + ".", textStyle);
+                    Color tc = textStyle.normal.textColor;
+                    if (leftBehind) textStyle.normal.textColor = new Color(0.75f, 0.73f, 0.7f);
+                    GUI.Label(new Rect(0f, 480f, cx, 50f), leftBehind ? "They got out. You didn't." : "You got out " + RouteName(route) + ".", textStyle);
                     GUI.Label(new Rect(0f, 535f, cx, 50f), "Time inside: " + FormatTime(playTime), textStyle);
-                    GUI.Label(new Rect(0f, 590f, cx, 50f), "6:12 AM.", textStyle);
+                    if (!leftBehind) GUI.Label(new Rect(0f, 590f, cx, 50f), "6:12 AM.", textStyle);
+                    if (net != null && net.Players.Count > 1)
+                    {
+                        float y = 660f;
+                        foreach (NetSession.NetPlayer p in net.Players)
+                        {
+                            string line = $"{p.name}   {(p.escaped ? "got out" : "left behind")}   ·   solved {p.solved}   ·   caught {p.caught}";
+                            GUI.Label(new Rect(0f, y, cx, 36f), line, smallCentered);
+                            y += 36f;
+                        }
+                    }
+                    textStyle.normal.textColor = tc;
                     if (creditsT > 6f)
                     {
                         GUI.color = new Color(1f, 1f, 1f, 0.5f + 0.3f * Mathf.Sin(creditsT * 2f));
@@ -655,7 +735,7 @@ namespace AfterHours.Flow
             GUI.color = Color.white;
 
             string[] items = { "New game", "Continue", "Settings", "Host LAN game", "Join LAN game", "Quit" };
-            bool[] enabled = { true, hasSave, true, false, false, true };
+            bool[] enabled = { true, hasSave, true, true, true, true };
             Vector2 mouse = Event.current.mousePosition;
             for (int i = 0; i < items.Length; i++)
             {
@@ -668,7 +748,7 @@ namespace AfterHours.Flow
                 GUI.Label(r, (over ? "—  " : "") + items[i], st);
                 st.normal.textColor = c;
                 if (i == 1 && hasSave) GUI.Label(new Rect(360f, 400f + i * 62f, 400f, 52f), saveInfo, smallStyle);
-                if ((i == 3 || i == 4)) GUI.Label(new Rect(420f, 400f + i * 62f, 400f, 52f), "co-op arrives soon", smallStyle);
+                if (i == 3) GUI.Label(new Rect(420f, 400f + i * 62f, 400f, 52f), "up to 4 players, same network", smallStyle);
                 if (enabled[i] && Event.current.type == EventType.MouseDown && Event.current.button == 0 && r.Contains(mouse))
                 {
                     Event.current.Use();
@@ -678,6 +758,8 @@ namespace AfterHours.Flow
                         case 0: NewGame(); break;
                         case 1: ContinueGame(); break;
                         case 2: AfterHours.UI.DevPauseMenu.OpenFromMenu(); break;
+                        case 3: sessionMessage = ""; Net().Host(); screen = MenuScreen.Host; break;
+                        case 4: sessionMessage = ""; Net().Browse(); screen = MenuScreen.Join; break;
                         case 5:
 #if UNITY_EDITOR
                             UnityEditor.EditorApplication.isPlaying = false;
@@ -689,6 +771,85 @@ namespace AfterHours.Flow
                 }
             }
             GUI.Label(new Rect(120f, 1080f - 110f, 700f, 40f), "Headphones recommended. Play in the dark.", smallStyle);
+            if (!string.IsNullOrEmpty(sessionMessage)) GUI.Label(new Rect(120f, 1080f - 150f, 900f, 40f), sessionMessage, smallStyle);
+            GUI.matrix = Matrix4x4.identity;
+        }
+
+        bool LobbyButton(Rect r, string text, bool enabled = true)
+        {
+            Vector2 mouse = Event.current.mousePosition;
+            bool over = enabled && r.Contains(mouse);
+            Color c = buttonStyle.normal.textColor;
+            buttonStyle.normal.textColor = !enabled ? new Color(0.35f, 0.34f, 0.32f) : over ? new Color(0.95f, 0.93f, 0.88f) : c;
+            GUI.Label(r, (over ? "—  " : "") + text, buttonStyle);
+            buttonStyle.normal.textColor = c;
+            if (enabled && Event.current.type == EventType.MouseDown && Event.current.button == 0 && over)
+            {
+                Event.current.Use();
+                return true;
+            }
+            return false;
+        }
+
+        void DrawLobby(float scale)
+        {
+            NetSession n = Net();
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1f));
+            GUI.color = new Color(0f, 0f, 0f, 0.6f);
+            GUI.DrawTexture(new Rect(0f, 0f, 900f, 1080f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(110f, 140f, 900f, 110f), screen == MenuScreen.Host ? "HOST" : "JOIN", titleStyle);
+
+            GUI.Label(new Rect(120f, 270f, 200f, 40f), "Your name", smallStyle);
+            bool canRename = n.phase == NetSession.Phase.Lobby && !NetSession.Active;
+            GUI.enabled = canRename;
+            n.LocalName = GUI.TextField(new Rect(300f, 268f, 360f, 40f), n.LocalName, 20, fieldStyle);
+            GUI.enabled = true;
+            GUI.Label(new Rect(120f, 320f, 760f, 40f), n.Status, smallStyle);
+
+            float y = 380f;
+            if (screen == MenuScreen.Host || NetSession.IsClient)
+            {
+                GUI.Label(new Rect(120f, y, 600f, 40f), "Players", smallStyle);
+                y += 44f;
+                foreach (NetSession.NetPlayer p in n.Players)
+                {
+                    GUI.color = p.colour;
+                    GUI.DrawTexture(new Rect(124f, y + 12f, 18f, 18f), Texture2D.whiteTexture);
+                    GUI.color = Color.white;
+                    GUI.Label(new Rect(160f, y, 600f, 44f), p.name + (p.local ? "  (you)" : p.id == 0 ? "  (host)" : ""), buttonStyle);
+                    y += 46f;
+                }
+                if (screen == MenuScreen.Host)
+                {
+                    int creatures = NetCreatures.CountFor(n.Players.Count);
+                    GUI.Label(new Rect(120f, y + 10f, 700f, 40f), $"{creatures} creature{(creatures > 1 ? "s" : "")} will be hunting you.", smallStyle);
+                    if (LobbyButton(new Rect(120f, y + 70f, 500f, 52f), "Start", n.Players.Count >= 1)) n.HostStartGame();
+                }
+                else GUI.Label(new Rect(120f, y + 20f, 700f, 40f), "Waiting for the host to start...", smallStyle);
+            }
+            else
+            {
+                GUI.Label(new Rect(120f, y, 700f, 40f), "Games on this network", smallStyle);
+                y += 44f;
+                if (n.Discovery.Games.Count == 0) { GUI.Label(new Rect(120f, y, 700f, 44f), "Looking...", smallStyle); y += 46f; }
+                foreach (LanDiscovery.Found g in n.Discovery.Games)
+                {
+                    if (LobbyButton(new Rect(120f, y, 700f, 50f), $"{g.name}   ({g.players}/4)")) n.Join(g.endPoint);
+                    y += 52f;
+                }
+                y += 20f;
+                GUI.Label(new Rect(120f, y, 700f, 40f), "Or type the host's address (e.g. 192.168.1.20)", smallStyle);
+                addressText = GUI.TextField(new Rect(120f, y + 44f, 380f, 40f), addressText, 40, fieldStyle);
+                bool valid = NetSession.TryParseAddress(addressText, out System.Net.IPEndPoint ep);
+                if (LobbyButton(new Rect(520f, y + 38f, 200f, 52f), "Join", valid)) n.Join(ep);
+            }
+
+            if (LobbyButton(new Rect(120f, 1080f - 170f, 400f, 52f), "Back"))
+            {
+                n.Shutdown();
+                screen = MenuScreen.Main;
+            }
             GUI.matrix = Matrix4x4.identity;
         }
 

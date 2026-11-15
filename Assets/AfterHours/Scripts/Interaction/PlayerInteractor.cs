@@ -23,6 +23,25 @@ namespace AfterHours.Interaction
         string prompt;
         GUIStyle style;
 
+        /// <summary>
+        /// LAN co-op client: the host owns the world, so finished interactions are sent there instead of being done here
+        /// (returns true if it took the interaction). Hiding places still run here as well, because they move you.
+        /// </summary>
+        public static System.Func<Interactable, IInteractor, bool> NetInteract;
+        public static System.Func<Interactable, IInteractor, float, bool> NetHoldTick;
+
+        void DoInteract(Interactable i)
+        {
+            if (NetInteract != null && NetInteract(i, this) && !(i is AfterHours.Hiding.HidingSpot)) return;
+            i.Interact(this);
+        }
+
+        void DoHoldTick(Interactable i, float dt)
+        {
+            if (NetHoldTick != null && NetHoldTick(i, this, dt)) return;
+            i.HoldTick(this, dt);
+        }
+
         /// <summary>Optional item check provided by the inventory (Part 6).</summary>
         public System.Func<string, bool> itemCheck;
 
@@ -74,9 +93,9 @@ namespace AfterHours.Interaction
                 if (!actionDone && holdTimer >= holding.HoldTime)
                 {
                     actionDone = true;
-                    holding.Interact(this);
+                    DoInteract(holding);
                 }
-                if (actionDone && holding != null && holding.Continuous) holding.HoldTick(this, dt);
+                if (actionDone && holding != null && holding.Continuous) DoHoldTick(holding, dt);
             }
         }
 

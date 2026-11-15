@@ -94,6 +94,7 @@ namespace AfterHours.Machines
             rng = new System.Random(seed);
             current = Mathf.Clamp(startLevel, 0, levelY.Length - 1);
             carY = car != null ? car.transform.position.y : levelY[current];
+            netY = carY;
             if (car != null) car.manual = true;
             if (carLight != null) lightBase = carLight.intensity;
         }
@@ -150,9 +151,48 @@ namespace AfterHours.Machines
 
         // ---------------- update ----------------
 
+        // ---------------- LAN co-op: clients show the host's lift ----------------
+        public bool remote;
+        float netY;
+
+        public string NetCapture() => (int)state + " " + carY.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + " "
+            + openAmt.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + " " + current;
+
+        public void NetApply(string[] a)
+        {
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            remote = true;
+            LiftState s = (LiftState)int.Parse(a[0], inv);
+            if (s == LiftState.Crashed && state != LiftState.Crashed) Crash();
+            if (s == LiftState.Falling && state != LiftState.Falling) BeginFall();
+            if (s == LiftState.Moving && state != LiftState.Moving) { } // motor sound follows from velocity below
+            state = s;
+            netY = float.Parse(a[1], inv);
+            openAmt = float.Parse(a[2], inv);
+            current = int.Parse(a[3], inv);
+            if (s == LiftState.Opening && state != LiftState.Opening) { }
+        }
+
+        void UpdateRemote(float dt)
+        {
+            float delta = Mathf.MoveTowards(carY, netY, Mathf.Max(speed * 2f, 15f) * dt) - carY;
+            velocity = delta / Mathf.Max(dt, 1e-4f);
+            carY += delta;
+            if (car != null) car.ManualMove(Vector3.up * delta);
+            ApplyDoors();
+            UpdateLight();
+            if (motorAudio != null)
+            {
+                bool running = Mathf.Abs(velocity) > 0.05f;
+                motorAudio.volume = Mathf.MoveTowards(motorAudio.volume, running ? 0.35f : 0f, dt);
+            }
+            if (delta != 0f) UpdateIndicators();
+        }
+
         void Update()
         {
             float dt = Time.deltaTime;
+            if (remote) { UpdateRemote(dt); return; }
             bool powered = PowerGrid.IsPowered(circuit);
             float delta = 0f;
 

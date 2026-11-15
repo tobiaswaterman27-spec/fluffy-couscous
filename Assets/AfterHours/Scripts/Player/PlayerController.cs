@@ -107,6 +107,7 @@ namespace AfterHours.Player
 
         void Update()
         {
+            if (!isLocallyControlled) return; // a remote player: moved by the network (AfterHours.Net.NetProxy)
             float dt = Time.deltaTime;
             PlayerInputFrame frame = input != null ? input.ReadFrame(dt) : default;
             if (ControlLocked)
@@ -129,6 +130,7 @@ namespace AfterHours.Player
 
         void LateUpdate()
         {
+            if (!isLocallyControlled) return;
             look.UpdateCamera(motor, Time.deltaTime);
         }
     }

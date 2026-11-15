@@ -961,6 +961,56 @@ namespace AfterHours.Player
             };
         }
 
+        // =====================================================================
+        // Remote players (LAN co-op): the owner simulates; everyone else just shows the result.
+        // =====================================================================
+
+        /// <summary>Shows a remote player's body as reported over the network (no simulation here).</summary>
+        public void ApplyRemoteState(Vector3 position, float yaw, Stance stance, float height, Vector3 velocity, MoveMode mode,
+                                     float stridePhase, bool backward, bool legs, Vector3 knee, Vector3 feet, SurfaceType surface)
+        {
+            if (controller != null && controller.enabled) controller.enabled = false;
+            transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
+            bodyYaw = lastBodyYaw = yaw;
+            if (Mathf.Abs(height - currentHeight) > 0.001f) { currentHeight = height; ApplyDimensions(height); }
+            CurrentStance = stance;
+            legsActive = legs;
+            kneePos = knee;
+            feetPos = feet;
+            if (legs && (feet - position).sqrMagnitude > 1e-4f) legsDir = new Vector3(feet.x - position.x, 0f, feet.z - position.z).normalized;
+            GroundSurface = surface;
+            float prev = Locomotion.stridePhase;
+            Vector3 flat = new Vector3(velocity.x, 0f, velocity.z);
+            Vector3 local = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f)) * flat;
+            Locomotion = new LocomotionState
+            {
+                worldVelocity = velocity,
+                localPlanarVelocity = new Vector2(local.x, local.z),
+                planarSpeed = flat.magnitude,
+                stance = stance,
+                height = height,
+                grounded = true,
+                sprinting = mode == MoveMode.Sprint,
+                backward = backward,
+                mode = mode,
+                stridePhase = stridePhase,
+            };
+            // Their footsteps are heard here too (sound only: the host already heard the noise).
+            if (Mathf.FloorToInt(stridePhase) != Mathf.FloorToInt(prev) && mode != MoveMode.Idle)
+            {
+                Footstep?.Invoke(new FootstepInfo
+                {
+                    position = position,
+                    surface = surface,
+                    mode = mode,
+                    intensity = mode == MoveMode.Sprint ? 1f : mode == MoveMode.Crawl ? 0.3f : 0.6f,
+                    noiseRadius = 0f,
+                    foot = Mathf.FloorToInt(stridePhase) & 1,
+                    backward = backward
+                });
+            }
+        }
+
         void FixedUpdate()
         {
             if (pushRequests.Count == 0) return;

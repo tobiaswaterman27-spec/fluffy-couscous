@@ -880,6 +880,15 @@ namespace AfterHours.Creature
             CatchSequence.Begin(this, p, ctx, Random.Range(1, 1 << 30));
         }
 
+        /// <summary>LAN co-op: a player was caught and respawned elsewhere; carry on hunting the others.</summary>
+        public void EndCatchCoop()
+        {
+            catching = false;
+            target = null;
+            animator.Puppet = null;
+            BeginSearch(transform.position, 20f, Random.Range(20f, 35f));
+        }
+
         /// <summary>Back to the car park, unaware, memories wiped (single-player run reset).</summary>
         public void ResetToStart(Vector3 position, float yaw)
         {

@@ -9,13 +9,15 @@ namespace AfterHours.Core
     public static class GamePause
     {
         public static bool IsPaused { get; private set; }
+        /// <summary>LAN co-op: the world keeps running while the menu is open.</summary>
+        public static bool CannotFreeze;
         public static event System.Action<bool> Changed;
 
         public static void SetPaused(bool paused)
         {
             if (paused == IsPaused) return;
             IsPaused = paused;
-            Time.timeScale = paused ? 0f : 1f;
+            Time.timeScale = paused && !CannotFreeze ? 0f : 1f;
             SetCursorLocked(!paused);
             Changed?.Invoke(paused);
         }
@@ -31,6 +33,7 @@ namespace AfterHours.Core
         static void ResetStatics()
         {
             IsPaused = false;
+            CannotFreeze = false;
             Changed = null;
             Time.timeScale = 1f;
         }

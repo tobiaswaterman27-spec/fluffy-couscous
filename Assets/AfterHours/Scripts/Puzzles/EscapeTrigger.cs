@@ -26,9 +26,18 @@ namespace AfterHours.Puzzles
             if (requiresOpenCover != null && !requiresOpenCover.IsOpen) return;
             PlayerController player = other.GetComponentInParent<PlayerController>();
             if (player == null || !player.isLocallyControlled) return;
+            LocalAtExit = route;
+            LocalAtExitTime = Time.time;
+            if (CoopReport != null) { CoopReport(route); return; } // co-op: the host runs the five-second rule
             EscapeDirector.BeginEscape(route, player);
         }
 
         public void ResetState() => open = false;
+
+        /// <summary>The last exit the local player stood in (co-op uses it for the five-second rule).</summary>
+        public static EscapeRouteId LocalAtExit;
+        public static float LocalAtExitTime = -99f;
+        public static bool LocalIsAtExit => Time.time - LocalAtExitTime < 0.3f;
+        public static System.Action<EscapeRouteId> CoopReport;
     }
 }

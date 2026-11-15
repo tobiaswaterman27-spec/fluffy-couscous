@@ -37,6 +37,16 @@ namespace AfterHours.Machines
 
         public bool Running => state != EscalatorState.Stopped && PowerGrid.IsPowered(circuit);
 
+        /// <summary>LAN co-op: clients copy the host's state (including when a faulty one is stuck).</summary>
+        public bool remote;
+        public string NetCapture() => (int)state + " " + (faultStopped ? "1" : "0");
+        public void NetApply(string[] a)
+        {
+            remote = true;
+            state = (EscalatorState)int.Parse(a[0]);
+            faultStopped = a[1] == "1";
+        }
+
         void Awake()
         {
             startState = state;
@@ -48,7 +58,8 @@ namespace AfterHours.Machines
         {
             float dt = Time.deltaTime;
             float want = Running ? 1f : 0f;
-            if (state == EscalatorState.Faulty && Running)
+            if (state == EscalatorState.Faulty && Running && remote) want = faultStopped ? 0f : 1f;
+            else if (state == EscalatorState.Faulty && Running)
             {
                 // Lurch, grind, stop dead, sit there, then jerk back into motion.
                 faultTimer -= dt;

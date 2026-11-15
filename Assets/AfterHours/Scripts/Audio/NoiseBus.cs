@@ -48,6 +48,9 @@ namespace AfterHours.Audio
 
         public static event Action<NoiseEvent> Emitted;
 
+        /// <summary>LAN co-op client: noises are also sent to the host, where the creatures live.</summary>
+        public static Action<NoiseEvent> Forward;
+
         public static bool HasLast => count > 0;
         public static NoiseEvent Last => history[(head - 1 + HistorySize) % HistorySize];
         public static int RecentCount => count;
@@ -64,12 +67,14 @@ namespace AfterHours.Audio
             head = (head + 1) % HistorySize;
             if (count < HistorySize) count++;
             Emitted?.Invoke(e);
+            if (Forward != null && e.Kind != NoiseKind.Creature) Forward(e);
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics()
         {
             Emitted = null;
+            Forward = null;
             head = 0;
             count = 0;
         }

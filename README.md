@@ -93,6 +93,19 @@ After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the cam
 - **Power cuts**: breakers trip now and then; the area goes dark. The switchboard is in the car park plant room.
 - **Escalators**: the red button at the bottom stops them (and restarts them).
 
+### 8. LAN co-op (Parts 14-17)
+Everyone needs the same version: each player does **Get Latest Update** and **3 - Build Mall** first.
+1. One player picks **Host LAN game** on the main menu and waits in the lobby.
+2. The others pick **Join LAN game**: the host's game appears in the list (or type the host's address).
+3. The host presses **Start**. With 2-3 players there are 2 creatures; with 4 there are 3.
+- Talk normally: other players hear you from where you stand, and so do the creatures. **V** mutes your mic.
+- Caught: only you start over. When someone reaches an open exit, everyone has **5 seconds** to get into it.
+- If the game isn't found on Linux, allow UDP ports 47799 and 47800 through the firewall:
+
+```bash
+sudo ufw allow 47799:47800/udp
+```
+
 ---
 
 ## Getting new updates later

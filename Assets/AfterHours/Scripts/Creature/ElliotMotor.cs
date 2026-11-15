@@ -86,7 +86,9 @@ namespace AfterHours.Creature
         {
             controller.enabled = false;
             transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
-            controller.enabled = true;
+            controller.enabled = !remote;
+            remotePos = position;
+            remoteYaw = yaw;
             velocity = Vector3.zero;
         }
 
@@ -135,10 +137,34 @@ namespace AfterHours.Creature
             rb.AddForceAtPosition(dir * pushForce * Mathf.Clamp01(Speed / 2f + 0.3f), hit.point, ForceMode.Force);
         }
 
+        // ---------------- LAN co-op: on clients the host's Elliot is shown, not simulated ----------------
+        public bool remote;
+        Vector3 remotePos;
+        float remoteYaw;
+
+        public void ApplyRemote(Vector3 position, float yaw, Vector3 vel, ElliotGait gait, float hunch)
+        {
+            remote = true;
+            if (controller != null && controller.enabled) controller.enabled = false;
+            if ((remotePos - position).sqrMagnitude > 25f || remotePos == Vector3.zero) transform.position = position;
+            remotePos = position;
+            remoteYaw = yaw;
+            velocity = vel;
+            Gait = gait;
+            Hunch = hunch;
+        }
+
         void Update()
         {
             float dt = Time.deltaTime;
             if (dt <= 0f) return;
+            if (remote)
+            {
+                float k = 1f - Mathf.Exp(-14f * dt);
+                transform.position = Vector3.Lerp(transform.position, remotePos + velocity * 0.05f, k);
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0f, remoteYaw, 0f), k);
+                return;
+            }
             UpdateHeight(dt);
             bool frozen = Time.time < frozenUntil;
             float maxSpeed = frozen ? 0f : MaxSpeedFor(Gait) * desiredSpeedFactor;

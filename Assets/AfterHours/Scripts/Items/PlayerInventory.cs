@@ -43,6 +43,27 @@ namespace AfterHours.Items
             else if (input.throwPressed) Drop(throwSpeed, true);
         }
 
+        /// <summary>LAN co-op client: dropping / throwing is decided by the host (item, release point, velocity).</summary>
+        public static System.Action<ItemPickup, Vector3, Vector3> NetDropRequest;
+
+        /// <summary>LAN co-op: the host says this player now holds / no longer holds an item.</summary>
+        public void NetSetHeld(ItemPickup item)
+        {
+            if (Held == item) return;
+            if (item == null) { Held = null; return; }
+            Held = item;
+            item.AttachTo(gameObject, handAnchor);
+        }
+
+        /// <summary>Host: a remote player let go of their item.</summary>
+        public void NetRelease(Vector3 position, Vector3 velocity)
+        {
+            ItemPickup item = Held;
+            if (item == null) return;
+            Held = null;
+            item.Release(position, velocity);
+        }
+
         public void PickUp(ItemPickup item)
         {
             if (item == null || item.IsHeld) return;
@@ -74,6 +95,7 @@ namespace AfterHours.Items
 
             Vector3 carried = motor != null ? motor.Locomotion.worldVelocity : Vector3.zero;
             Vector3 v = isThrow ? fwd * speed + Vector3.up * 1.5f + carried : fwd * speed + carried * 0.5f;
+            NetDropRequest?.Invoke(item, release, v);
             item.Release(release, v);
             if (isThrow) NoiseBus.Emit(new NoiseEvent(eye, 1.5f, NoiseKind.Interaction, gameObject));
         }

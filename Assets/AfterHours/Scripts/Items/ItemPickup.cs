@@ -95,6 +95,29 @@ namespace AfterHours.Items
             transform.SetParent(null, true);
         }
 
+        /// <summary>LAN co-op client: items are simulated by the host; this copy just follows.</summary>
+        public static bool NetDriven;
+        Vector3 netPos;
+        Quaternion netRot;
+        bool hasNetPose;
+
+        public void NetSetPose(Vector3 position, Quaternion rotation)
+        {
+            if (IsHeld) return;
+            body.isKinematic = true;
+            netPos = position;
+            netRot = rotation;
+            if (!hasNetPose || (transform.position - position).sqrMagnitude > 9f) transform.SetPositionAndRotation(position, rotation);
+            hasNetPose = true;
+        }
+
+        void Update()
+        {
+            if (!NetDriven || !hasNetPose || IsHeld) return;
+            float k = 1f - Mathf.Exp(-15f * Time.deltaTime);
+            transform.SetPositionAndRotation(Vector3.Lerp(transform.position, netPos, k), Quaternion.Slerp(transform.rotation, netRot, k));
+        }
+
         /// <summary>Loading a save: lying exactly here, at rest.</summary>
         public void PlaceAt(Vector3 position, Quaternion rotation)
         {
@@ -116,7 +139,8 @@ namespace AfterHours.Items
             foreach (Collider c in colliders) c.enabled = true;
             foreach (Renderer r in renderers) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
             body.detectCollisions = true;
-            body.isKinematic = false;
+            body.isKinematic = NetDriven;
+            if (NetDriven) { netPos = position; netRot = transform.rotation; hasNetPose = true; return; }
             body.linearVelocity = velocity;
             body.angularVelocity = Random.insideUnitSphere * (velocity.magnitude * 0.8f);
         }

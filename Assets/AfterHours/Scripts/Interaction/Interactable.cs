@@ -41,8 +41,12 @@ namespace AfterHours.Interaction
     /// <summary>Plays an interaction sound in the world and emits a matching noise event that creatures can hear.</summary>
     public static class InteractionFx
     {
+        /// <summary>LAN co-op host: interaction sounds are sent to everyone.</summary>
+        public static System.Action<ProceduralSounds.Sfx, Vector3, float> Broadcast;
+
         public static void Play(ProceduralSounds.Sfx sfx, Vector3 position, float volume, float noiseRadius, GameObject source, NoiseKind kind = NoiseKind.Interaction)
         {
+            Broadcast?.Invoke(sfx, position, volume);
             AudioPool.PlayAt(ProceduralSounds.Effect(sfx), position, volume, Random.Range(0.94f, 1.06f), Mathf.Max(12f, noiseRadius * 1.5f));
             if (noiseRadius > 0.1f) NoiseBus.Emit(new NoiseEvent(position, noiseRadius, kind, source));
         }

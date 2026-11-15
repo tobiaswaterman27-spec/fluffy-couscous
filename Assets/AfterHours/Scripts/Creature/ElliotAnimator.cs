@@ -54,6 +54,8 @@ namespace AfterHours.Creature
         /// <summary>Roughly where the mouth is (for bites, blood, camera framing).</summary>
         public Vector3 MouthPosition => head != null ? head.position + head.up * 0.12f + head.forward * 0.13f : transform.position + Vector3.up * 2.2f;
         public ElliotAction CurrentAction => action;
+        public Vector3 ActionTarget => actionTarget;
+        public float ActionRemaining => Mathf.Max(0f, actionDuration - actionTime);
 
         // gait state
         float phase;

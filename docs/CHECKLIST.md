@@ -161,13 +161,13 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - 🧪 Main menu (New, Continue, Settings, Quit; Host / Join shown, enabled with co-op)
 
 ## Parts 14–17 — LAN co-op
-- ⬜ Host, LAN discovery, join/leave, disconnect handling, up to 4 players
-- ⬜ Muted solid-colour featureless player figures, partial player collision
-- ⬜ Smooth remote movement (interpolation, prediction, reconciliation) and animations
-- ⬜ Proximity voice chat (distance, walls, doors), mute; creatures hear whisper/talk/shout/scream
-- ⬜ Creature counts 1/2/2/3, independent AI and memory, player recognition
-- ⬜ Personal death reset with contribution tracking; 5-second team escape rule; item sharing by dropping
-- ⬜ Cooperative heavy-object moving
+- 🧪 Host, LAN discovery (or type an address), join/leave, disconnect handling, up to 4 players (own UDP netcode: reliable + unreliable channels)
+- 🧪 Muted solid-colour featureless player figures (no collision between players for now)
+- 🧪 Smooth remote movement (100 ms interpolation, short extrapolation), crouch/crawl bodies, remote footsteps
+- 🧪 Proximity voice chat (3D, occluded by walls/doors), V to mute; creatures hear whisper/talk/shout/scream
+- 🧪 Creature counts 1/2/2/3, independent AI and memory, player recognition (host runs them)
+- 🧪 Personal death reset with contribution tracking (solved / caught in the credits); 5-second team escape rule (left-behind ending); item sharing by dropping
+- 🧪 Cooperative heavy-object moving (grips sent to the host; more helpers = faster)
 
 ## Part 18 — Polish & final testing
 - ⬜ Full test matrix (1–4 players, all routes, saves, disconnects, performance)

@@ -50,7 +50,16 @@ namespace AfterHours.Creature
         }
 
         /// <summary>Raised when a catch begins (networking sends this to everyone; stats; achievements).</summary>
-        public static event Action<PlayerController, CatchContext, int> Started;
+        public static event Action<ElliotBrain, PlayerController, CatchContext, int> Started;
+
+        /// <summary>LAN co-op: called instead of the full run reset (only the caught player starts over).</summary>
+        public static Action<ElliotBrain, PlayerController> CoopRespawn;
+
+        public static bool IsCreatureBusy(ElliotBrain b)
+        {
+            foreach (CatchSequence c in active) if (c.brain == b) return true;
+            return false;
+        }
 
         ElliotBrain brain;
         ElliotAnimator anim;
@@ -89,7 +98,7 @@ namespace AfterHours.Creature
             CatchSequence c = go.AddComponent<CatchSequence>();
             c.Setup(brain, victim, ctx, seed);
             active.Add(c);
-            Started?.Invoke(victim, ctx, seed);
+            Started?.Invoke(brain, victim, ctx, seed);
             return c;
         }
 
@@ -559,8 +568,8 @@ namespace AfterHours.Creature
             lens = 0f;
             ReleasePlayer();
             if (anim != null) { anim.Puppet = null; }
-            // Single player: everything goes back to how it started. (Co-op: Part 16 makes caught players spectate
-            // and only resets when everyone has been caught.)
+            // Co-op: only the caught player starts over (the others carry on). Single player: everything resets.
+            if (CoopRespawn != null) { CoopRespawn(brain, player); return; }
             RunReset.Execute();
         }
 
