@@ -84,11 +84,12 @@ namespace MallHorror.DevTools
                 string help =
                     "<b>CONTROLS</b>\n" +
                     "WASD move (S = backwards)   Mouse look\n" +
-                    "Shift sprint   Ctrl crouch   C crawl (toggle)\n" +
-                    "Esc pause / settings   F3 info panel   F5 see your body\n" +
-                    "Walk into crates to push them.";
-                GUI.Box(new Rect(10, 195, 470, 105), GUIContent.none);
-                GUI.Label(new Rect(20, 200, 460, 100), help, style);
+                    "Shift sprint (also backwards)\n" +
+                    "Ctrl or C: tap = crouch / stand, hold = crawl / get up\n" +
+                    "Hold E on a heavy object = push / pull it\n" +
+                    "Esc pause, settings & key rebinding   F3 info   F5 see your body";
+                GUI.Box(new Rect(10, 195, 470, 125), GUIContent.none);
+                GUI.Label(new Rect(20, 200, 460, 120), help, style);
             }
 
             GUI.matrix = Matrix4x4.identity;

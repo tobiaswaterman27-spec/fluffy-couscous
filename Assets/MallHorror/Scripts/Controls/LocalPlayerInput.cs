@@ -6,12 +6,21 @@ namespace MallHorror.Controls
 {
     /// <summary>
     /// Reads the local keyboard/mouse/gamepad and turns it into a <see cref="PlayerInputFrame"/>.
-    /// Also resolves hold/toggle crouch and the crawl toggle into one desired stance.
+    ///
+    /// One button for crouch AND crawl (Ctrl or C by default):
+    ///   standing:  press = crouch immediately; keep holding = go prone (crawl)
+    ///   crouching: tap = stand up;  hold = go prone
+    ///   crawling:  tap = up to crouch; hold = stand straight up
+    /// Sprint always tries to stand you up. A dedicated Crawl key can also be assigned in Controls.
+    /// If there is no room to stand, the body simply stays low until there is.
     /// </summary>
     public class LocalPlayerInput : MonoBehaviour, IPlayerInputSource
     {
-        bool crouchToggled;
-        bool crawlToggled;
+        Stance target = Stance.Standing;
+        bool pressActive;
+        bool holdFired;
+        float pressTime;
+        Stance stanceAtPress;
 
         public PlayerInputFrame ReadFrame(float deltaTime)
         {
@@ -21,7 +30,8 @@ namespace MallHorror.Controls
 
             if (input == null || GamePause.IsPaused)
             {
-                frame.desiredStance = crawlToggled ? Stance.Crawling : (crouchToggled ? Stance.Crouching : Stance.Standing);
+                pressActive = false;
+                frame.desiredStance = target;
                 return frame;
             }
 
@@ -34,37 +44,16 @@ namespace MallHorror.Controls
             if (s.invertY) look.y = -look.y;
             frame.lookDelta = look;
 
+            UpdateStanceButton(input, s);
+
             bool sprintHeld = input.Sprint.IsPressed();
-
-            if (input.Crawl.WasPressedThisFrame())
+            if (input.Sprint.WasPressedThisFrame())
             {
-                crawlToggled = !crawlToggled;
-                if (!crawlToggled && s.crouchToggle) crouchToggled = true; // leaving crawl -> crouch first
+                target = Stance.Standing;
+                pressActive = false;
             }
 
-            if (input.Crouch.WasPressedThisFrame())
-            {
-                if (crawlToggled)
-                {
-                    crawlToggled = false;              // crawl -> crouch
-                    crouchToggled = s.crouchToggle;
-                }
-                else if (s.crouchToggle)
-                {
-                    crouchToggled = !crouchToggled;
-                }
-            }
-
-            // Starting to sprint cancels toggled crouch / crawl (only if there is space to stand).
-            if (sprintHeld && input.Sprint.WasPressedThisFrame())
-            {
-                crouchToggled = false;
-                crawlToggled = false;
-            }
-
-            bool crouching = s.crouchToggle ? crouchToggled : input.Crouch.IsPressed();
-            frame.desiredStance = crawlToggled ? Stance.Crawling : (crouching ? Stance.Crouching : Stance.Standing);
-
+            frame.desiredStance = target;
             frame.sprint = sprintHeld;
             frame.interactHeld = input.Interact.IsPressed();
             frame.interactPressed = input.Interact.WasPressedThisFrame();
@@ -72,11 +61,47 @@ namespace MallHorror.Controls
             return frame;
         }
 
-        /// <summary>Clears toggles (used on respawn / reset).</summary>
-        public void ResetStanceToggles()
+        void UpdateStanceButton(InputService input, GameSettings s)
         {
-            crouchToggled = false;
-            crawlToggled = false;
+            float now = Time.unscaledTime;
+
+            if (input.Crouch.WasPressedThisFrame())
+            {
+                pressActive = true;
+                holdFired = false;
+                pressTime = now;
+                stanceAtPress = target;
+                if (target == Stance.Standing) target = Stance.Crouching; // respond instantly
+            }
+
+            if (pressActive && !holdFired && input.Crouch.IsPressed() && now - pressTime >= s.stanceHoldTime)
+            {
+                holdFired = true;
+                target = stanceAtPress == Stance.Crawling ? Stance.Standing : Stance.Crawling;
+            }
+
+            if (pressActive && input.Crouch.WasReleasedThisFrame())
+            {
+                pressActive = false;
+                if (!holdFired)
+                {
+                    if (stanceAtPress == Stance.Crouching) target = Stance.Standing;
+                    else if (stanceAtPress == Stance.Crawling) target = Stance.Crouching;
+                }
+            }
+
+            if (input.Crawl.WasPressedThisFrame())
+            {
+                target = target == Stance.Crawling ? Stance.Crouching : Stance.Crawling;
+                pressActive = false;
+            }
+        }
+
+        /// <summary>Back to standing (used on respawn / reset).</summary>
+        public void ResetStance()
+        {
+            target = Stance.Standing;
+            pressActive = false;
         }
     }
 }

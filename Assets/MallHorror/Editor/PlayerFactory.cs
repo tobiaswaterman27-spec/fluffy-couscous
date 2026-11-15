@@ -63,12 +63,19 @@ namespace MallHorror.EditorTools
             PlayerBodyVisual bodyVisual = visualRoot.AddComponent<PlayerBodyVisual>();
             bodyVisual.motor = motor;
             bodyVisual.torso = MakeDebugCapsule("Torso", visualRoot.transform, bodyMat).transform;
-            bodyVisual.legs = MakeDebugCapsule("Legs", visualRoot.transform, bodyMat).transform;
-            bodyVisual.legs.gameObject.SetActive(false);
+            bodyVisual.thigh = MakeDebugCapsule("Thigh", visualRoot.transform, bodyMat).transform;
+            bodyVisual.shin = MakeDebugCapsule("Shin", visualRoot.transform, bodyMat).transform;
+            bodyVisual.thigh.gameObject.SetActive(false);
+            bodyVisual.shin.gameObject.SetActive(false);
             EditorBuild.SetLayerRecursive(visualRoot, bodyLayer);
+
+            PlayerGrab grab = go.AddComponent<PlayerGrab>();
+            grab.motor = motor;
+            grab.look = look;
 
             PlayerAnimationDriver anim = go.AddComponent<PlayerAnimationDriver>();
             anim.motor = motor;
+            anim.grab = grab;
 
             DevOverlay overlay = go.AddComponent<DevOverlay>();
             overlay.motor = motor;

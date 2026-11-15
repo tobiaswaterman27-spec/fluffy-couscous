@@ -107,9 +107,9 @@ namespace MallHorror.Player
         public float groundSnapDistance = 0.35f;
         public float steepSlideAcceleration = 7f;
 
-        [Header("Crawling body")]
+        [Header("Crawling body (thigh + shin following the crawled path)")]
         public float legLength = 0.85f;
-        public float legRadius = 0.16f;
+        public float legRadius = 0.15f;
         [Tooltip("Max angle the torso can twist away from the legs.")]
         public float maxHipBend = 110f;
         [Tooltip("How fast the torso can rotate while crawling (deg/s).")]
@@ -149,8 +149,16 @@ namespace MallHorror.Player
         public LocomotionState Locomotion { get; private set; }
         public float BodyYaw => bodyYaw;
         public bool LegsActive => legsActive;
+        /// <summary>Direction from hips to knee (horizontal).</summary>
         public Vector3 LegsDirection => legsDir;
+        public Vector3 KneePosition => kneePos;
         public Vector3 FeetPosition => feetPos;
+
+        /// <summary>Set each frame by other systems (e.g. pushing a heavy object). Infinity = no limit.</summary>
+        public float ExternalSpeedLimit { get; set; } = float.PositiveInfinity;
+        public float ExternalYawRateLimit { get; set; } = float.PositiveInfinity;
+        public bool ExternalSprintBlocked { get; set; }
+        public Collider GroundCollider { get; private set; }
         public float LegLength => legLength;
         public float LegRadius => legRadius;
         public float LastNoiseRadius { get; private set; }
@@ -171,7 +179,11 @@ namespace MallHorror.Player
 
         bool legsActive;
         Vector3 legsDir = Vector3.back;
+        Vector3 kneePos;
         Vector3 feetPos;
+        const float TrailSpacing = 0.05f;
+        readonly List<Vector3> trail = new List<Vector3>(64);        // hip first, then the path crawled
+        readonly List<Vector3> trailScratch = new List<Vector3>(64); // used for "what if" checks
 
         float stridePhase;
         int footIndex;
@@ -213,7 +225,9 @@ namespace MallHorror.Player
         {
             if (!legsActive)
             {
-                bodyYaw = targetYaw;
+                bodyYaw = float.IsPositiveInfinity(ExternalYawRateLimit)
+                    ? targetYaw
+                    : Mathf.MoveTowardsAngle(bodyYaw, targetYaw, ExternalYawRateLimit * deltaTime);
             }
             else
             {
@@ -243,13 +257,15 @@ namespace MallHorror.Player
             bool walkable = hasGround && GroundSlope <= slopeLimit;
             grounded = (controller.isGrounded || (hasGround && groundGap <= 0.06f)) && verticalVelocity <= 0.01f;
             bool steep = grounded && hasGround && !walkable;
+            GroundCollider = hasGround && groundGap <= 0.12f ? groundHit.collider : null;
             if (hasGround) GroundSurface = SurfaceLookup.Get(groundHit.collider, SurfaceType.Concrete);
 
             // ----- Desired velocity -----
             Vector2 mv = Vector2.ClampMagnitude(input.move, 1f);
-            bool sprintAllowed = input.sprint && CurrentStance == Stance.Standing && currentHeight > standHeight - 0.05f && mv.sqrMagnitude > 0.04f;
+            bool sprintAllowed = input.sprint && !ExternalSprintBlocked && CurrentStance == Stance.Standing && currentHeight > standHeight - 0.05f && mv.sqrMagnitude > 0.04f;
             Vector3 localDesired = ComputeLocalDesired(mv, sprintAllowed, out bool backward);
             Vector3 desired = Quaternion.Euler(0f, bodyYaw, 0f) * localDesired;
+            if (!float.IsPositiveInfinity(ExternalSpeedLimit)) desired = Vector3.ClampMagnitude(desired, ExternalSpeedLimit);
             lastDesiredSpeed = desired.magnitude;
 
             Accelerate(desired, grounded && !steep, dt);
@@ -278,9 +294,11 @@ namespace MallHorror.Player
             // ----- Move (collision-safe sweep) -----
             Vector3 motion = (horizontalVelocity + slideVelocity + Vector3.up * verticalVelocity) * dt;
             motion = ConstrainCrawlMotion(motion);
+            Vector3 carried = grounded ? GroundCarry(dt) : Vector3.zero; // lifts, moving walkways
 
             Vector3 before = transform.position;
-            CollisionFlags flags = controller.Move(motion);
+            CollisionFlags flags = controller.Move(motion + carried);
+            before += carried; // platform movement is not the player's own speed
 
             // Stay glued to stairs/ramps when walking down instead of floating off them.
             if (wasGrounded && !steep && verticalVelocity <= 0f && (flags & CollisionFlags.Below) == 0)
@@ -328,6 +346,7 @@ namespace MallHorror.Player
             horizontalVelocity = slideVelocity = Vector3.zero;
             verticalVelocity = 0f;
             legsActive = false;
+            trail.Clear();
             currentHeight = standHeight;
             ApplyDimensions(currentHeight);
         }
@@ -379,11 +398,12 @@ namespace MallHorror.Player
             if (desired == Stance.Crawling && !legsActive)
             {
                 Vector3 candidate = -(Quaternion.Euler(0f, bodyYaw, 0f) * Vector3.forward);
-                if (LegsFit(transform.position, candidate))
+                ResetTrail(trailScratch, transform.position, candidate);
+                if (LegsFitPath(trailScratch))
                 {
                     legsActive = true;
-                    legsDir = candidate;
-                    feetPos = transform.position + legsDir * legLength;
+                    ResetTrail(trail, transform.position, candidate);
+                    RefreshLegPoints();
                 }
                 else
                 {
@@ -448,22 +468,6 @@ namespace MallHorror.Player
             return true;
         }
 
-        bool LegsFit(Vector3 hip, Vector3 dir)
-        {
-            float y = legRadius + 0.05f;
-            Vector3 a = hip + dir * (crawlRadius * 0.8f) + Vector3.up * y;
-            Vector3 b = hip + dir * legLength + Vector3.up * y;
-            int n = Physics.OverlapCapsuleNonAlloc(a, b, legRadius, overlapBuffer, BlockMask, QueryTriggerInteraction.Ignore);
-            for (int i = 0; i < n; i++)
-            {
-                Collider c = overlapBuffer[i];
-                if (IsOwnCollider(c)) continue;
-                if (c.gameObject.layer == GameLayers.PlayerLayer) continue; // other players: handled in co-op part
-                return false;
-            }
-            return true;
-        }
-
         bool IsOwnCollider(Collider c)
         {
             if (c == controller) return true;
@@ -476,53 +480,198 @@ namespace MallHorror.Player
 
         // =====================================================================
         // Crawling legs
+        //
+        // The legs are two capsules (thigh: hip->knee, shin: knee->feet) laid along the path the
+        // hips have actually crawled ("trail"). Because they follow the real path, they go round
+        // vent bends without cutting corners. Crawling backwards extends the path behind the feet,
+        // and that new space is checked before the move is allowed.
         // =====================================================================
+
+        void ResetTrail(List<Vector3> path, Vector3 hip, Vector3 backDir)
+        {
+            path.Clear();
+            path.Add(hip);
+            path.Add(hip + backDir.normalized * (legLength + 0.05f));
+        }
+
+        /// <summary>Moves the front of the path to the new hip position and keeps the path exactly leg-length long.</summary>
+        void AdvanceTrail(List<Vector3> path, Vector3 newHip)
+        {
+            if (path.Count < 2) return;
+            Vector3 d = newHip - path[0];
+            d.y = 0f;
+            Vector3 back = path[1] - path[0];
+            back.y = 0f;
+            float backLen = back.magnitude;
+            float towardLegs = backLen > 1e-5f ? Vector3.Dot(d, back / backLen) : 0f;
+
+            if (towardLegs > 0f)
+            {
+                // Hips moving back along the body: eat into the path, tail extends later.
+                float amount = towardLegs;
+                while (amount > 0f && path.Count >= 2)
+                {
+                    float seg = Vector3.Distance(path[0], path[1]);
+                    if (seg <= amount && path.Count > 2)
+                    {
+                        amount -= seg;
+                        path.RemoveAt(0);
+                    }
+                    else
+                    {
+                        path[0] = Vector3.MoveTowards(path[0], path[1], Mathf.Min(amount, seg * 0.95f));
+                        amount = 0f;
+                    }
+                }
+                path[0] = newHip;
+            }
+            else if (Vector3.Distance(newHip, path[1]) >= TrailSpacing * 2f)
+            {
+                path.Insert(0, newHip); // leave a breadcrumb
+            }
+            else
+            {
+                path[0] = newHip;
+            }
+
+            // Keep total length = leg length (+ small margin): trim or extend the tail.
+            float required = legLength + 0.05f;
+            float total = 0f;
+            for (int i = 1; i < path.Count; i++)
+            {
+                float seg = Vector3.Distance(path[i - 1], path[i]);
+                if (total + seg >= required)
+                {
+                    Vector3 dir = (path[i] - path[i - 1]).normalized;
+                    path[i] = path[i - 1] + dir * (required - total);
+                    if (path.Count > i + 1) path.RemoveRange(i + 1, path.Count - i - 1);
+                    total = required;
+                    break;
+                }
+                total += seg;
+            }
+            if (total < required)
+            {
+                int n = path.Count;
+                Vector3 dir = n >= 2 ? path[n - 1] - path[n - 2] : -transform.forward;
+                dir.y = 0f;
+                if (dir.sqrMagnitude < 1e-6f) dir = -transform.forward;
+                path[n - 1] = path[n - 1] + dir.normalized * (required - total);
+            }
+
+            for (int i = 0; i < path.Count; i++)
+            {
+                Vector3 p = path[i];
+                p.y = newHip.y;
+                path[i] = p;
+            }
+        }
+
+        static Vector3 PointAlong(List<Vector3> path, float distance)
+        {
+            float walked = 0f;
+            for (int i = 1; i < path.Count; i++)
+            {
+                float seg = Vector3.Distance(path[i - 1], path[i]);
+                if (walked + seg >= distance && seg > 1e-6f)
+                {
+                    return Vector3.Lerp(path[i - 1], path[i], (distance - walked) / seg);
+                }
+                walked += seg;
+            }
+            return path[path.Count - 1];
+        }
+
+        void LegPoints(List<Vector3> path, out Vector3 knee, out Vector3 feet)
+        {
+            knee = PointAlong(path, legLength * 0.5f);
+            feet = PointAlong(path, legLength);
+        }
+
+        void RefreshLegPoints()
+        {
+            LegPoints(trail, out kneePos, out feetPos);
+            Vector3 d = kneePos - trail[0];
+            d.y = 0f;
+            if (d.sqrMagnitude > 1e-6f) legsDir = d.normalized;
+        }
+
+        bool LegsFitPath(List<Vector3> path)
+        {
+            if (path.Count < 2) return true;
+            LegPoints(path, out Vector3 knee, out Vector3 feet);
+            Vector3 hip = path[0];
+            Vector3 thighDir = knee - hip;
+            thighDir.y = 0f;
+            thighDir = thighDir.sqrMagnitude > 1e-6f ? thighDir.normalized : -transform.forward;
+            Vector3 up = Vector3.up * (legRadius + 0.05f);
+            Vector3 hipStart = hip + thighDir * (crawlRadius * 0.8f);
+            return CapsuleClear(hipStart + up, knee + up) && CapsuleClear(knee + up, feet + up);
+        }
+
+        bool CapsuleClear(Vector3 a, Vector3 b)
+        {
+            int n = Physics.OverlapCapsuleNonAlloc(a, b, legRadius, overlapBuffer, BlockMask, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                Collider c = overlapBuffer[i];
+                if (IsOwnCollider(c)) continue;
+                if (c.gameObject.layer == GameLayers.PlayerLayer) continue; // other players: handled in co-op part
+                return false;
+            }
+            return true;
+        }
 
         /// <summary>Stops crawling motion that would shove the legs into a wall.</summary>
         Vector3 ConstrainCrawlMotion(Vector3 motion)
         {
-            if (!legsActive) return motion;
+            if (!legsActive || trail.Count < 2) return motion;
             Vector3 flat = new Vector3(motion.x, 0f, motion.z);
             if (flat.sqrMagnitude < 1e-8f) return motion;
 
             float towardFeet = Vector3.Dot(flat, legsDir);
             Vector3 lateral = flat - legsDir * towardFeet;
-            bool legsLead = towardFeet > 0f;                 // moving backwards (feet first)
+            bool legsLead = towardFeet > 0f;
             bool sideways = lateral.magnitude > flat.magnitude * 0.3f;
-            if (!legsLead && !sideways) return motion;       // head first: legs simply follow
+            if (!legsLead && !sideways) return motion; // head first: legs simply follow the path
 
-            if (!LegsFit(transform.position, legsDir)) return motion; // already wedged (corner); don't trap the player
-            if (LegsFit(transform.position + flat, legsDir)) return motion;
+            if (!LegsFitPath(trail)) return motion;    // never trap a player who is already wedged
+            if (TrailFitsAfter(flat)) return motion;
 
-            // Try keeping only the part of the motion that the legs allow.
             Vector3 alt = legsLead ? lateral : legsDir * Mathf.Min(0f, towardFeet);
-            if (alt.sqrMagnitude > 1e-8f && LegsFit(transform.position + alt, legsDir))
-            {
-                return new Vector3(alt.x, motion.y, alt.z);
-            }
+            if (alt.sqrMagnitude > 1e-8f && TrailFitsAfter(alt)) return new Vector3(alt.x, motion.y, alt.z);
             return new Vector3(0f, motion.y, 0f);
+        }
+
+        bool TrailFitsAfter(Vector3 flatMove)
+        {
+            trailScratch.Clear();
+            trailScratch.AddRange(trail);
+            AdvanceTrail(trailScratch, transform.position + flatMove);
+            return LegsFitPath(trailScratch);
         }
 
         void UpdateLegsAfterMove()
         {
             if (!legsActive) return;
-            Vector3 hip = transform.position;
-            Vector3 toFeet = feetPos - hip;
-            toFeet.y = 0f;
-            if (toFeet.sqrMagnitude < 1e-4f) toFeet = legsDir;
-            legsDir = toFeet.normalized;
+            if (trail.Count < 2) ResetTrail(trail, transform.position, -transform.forward);
+            AdvanceTrail(trail, transform.position);
+            RefreshLegPoints();
+        }
 
-            // Torso can only twist so far from the legs; beyond that the legs get dragged round.
-            Vector3 forward = Quaternion.Euler(0f, bodyYaw, 0f) * Vector3.forward;
-            float bend = Vector3.SignedAngle(-legsDir, forward, Vector3.up);
-            if (Mathf.Abs(bend) > maxHipBend)
-            {
-                Vector3 legsBack = Quaternion.AngleAxis(-Mathf.Sign(bend) * maxHipBend, Vector3.up) * forward;
-                legsDir = -legsBack.normalized;
-            }
+        // =====================================================================
+        // Moving ground (lifts, platforms, travelators)
+        // =====================================================================
 
-            feetPos = hip + legsDir * legLength;
-            feetPos.y = hip.y;
+        Vector3 GroundCarry(float dt)
+        {
+            if (GroundCollider == null) return Vector3.zero;
+            Vector3 carry = Vector3.zero;
+            MovingPlatform platform = GroundCollider.GetComponentInParent<MovingPlatform>();
+            if (platform != null) carry += platform.FrameDelta;
+            ConveyorSurface conveyor = GroundCollider.GetComponentInParent<ConveyorSurface>();
+            if (conveyor != null) carry += conveyor.WorldVelocity * dt;
+            return carry;
         }
 
         // =====================================================================
@@ -838,15 +987,16 @@ namespace MallHorror.Player
             Gizmos.DrawLine(bottom + Vector3.right * r, top + Vector3.right * r);
             Gizmos.DrawLine(bottom - Vector3.right * r, top - Vector3.right * r);
 
-            if (legsActive)
+            if (legsActive && trail.Count >= 2)
             {
-                Gizmos.color = CrawlBlocked ? Color.red : new Color(0.3f, 0.7f, 1f);
-                float y = legRadius + 0.05f;
-                Vector3 a = p + legsDir * (crawlRadius * 0.8f) + Vector3.up * y;
-                Vector3 b = p + legsDir * legLength + Vector3.up * y;
-                Gizmos.DrawWireSphere(a, legRadius);
-                Gizmos.DrawWireSphere(b, legRadius);
-                Gizmos.DrawLine(a, b);
+                Gizmos.color = new Color(0.3f, 0.7f, 1f);
+                Vector3 up = Vector3.up * (legRadius + 0.05f);
+                Gizmos.DrawLine(p + up, kneePos + up);
+                Gizmos.DrawLine(kneePos + up, feetPos + up);
+                Gizmos.DrawWireSphere(kneePos + up, legRadius);
+                Gizmos.DrawWireSphere(feetPos + up, legRadius);
+                Gizmos.color = new Color(0.3f, 0.7f, 1f, 0.4f);
+                for (int i = 1; i < trail.Count; i++) Gizmos.DrawLine(trail[i - 1] + up * 0.2f, trail[i] + up * 0.2f);
             }
         }
     }

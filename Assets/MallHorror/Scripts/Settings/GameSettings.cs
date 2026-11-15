@@ -15,7 +15,10 @@ namespace MallHorror.Settings
         public float mouseSensitivity = 0.12f;   // degrees per mouse pixel
         public float gamepadSensitivity = 180f;  // degrees per second at full stick
         public bool invertY = false;
-        public bool crouchToggle = false;        // false = hold to crouch
+        [Tooltip("Crouch button: tap = crouch/stand, hold this long (seconds) = go prone / get up.")]
+        public float stanceHoldTime = 0.35f;
+        [Tooltip("Custom key bindings (Input System override JSON). Empty = defaults.")]
+        public string bindingOverrides = "";
 
         [Header("Camera")]
         public float fieldOfView = 72f;
@@ -32,6 +35,8 @@ namespace MallHorror.Settings
         {
             mouseSensitivity = Mathf.Clamp(mouseSensitivity, 0.01f, 1f);
             gamepadSensitivity = Mathf.Clamp(gamepadSensitivity, 20f, 600f);
+            stanceHoldTime = Mathf.Clamp(stanceHoldTime, 0.15f, 1f);
+            if (bindingOverrides == null) bindingOverrides = "";
             fieldOfView = Mathf.Clamp(fieldOfView, 55f, 100f);
             masterVolume = Mathf.Clamp01(masterVolume);
             targetFrameRate = Mathf.Clamp(targetFrameRate, 0, 360);

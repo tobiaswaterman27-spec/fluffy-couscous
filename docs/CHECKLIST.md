@@ -12,6 +12,7 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - 🧪 Settings (sensitivity, FOV, invert Y, crouch toggle, head bob, volume, vsync) with crash-safe saving
 - 🧪 Physics layers created automatically
 - 🧪 Dev pause/settings menu, dev info panel (F3), debug body view (F5)
+- 🧪 Key rebinding for every gameplay action (keyboard/mouse and gamepad separately), saved, reset to defaults
 - 🧪 One-click test scene builder
 - ⬜ Renderer choice (URP vs HDRP) — waiting on GPU info, needed before Part 4
 
@@ -21,7 +22,9 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - 🧪 Sharp turns at speed reduce momentum slightly
 - 🧪 Backwards movement: walk, run, crouch and crawl backwards (slower, shorter strides)
 - 🧪 Crouching: real collider shrink, very quiet, can't stand up under low ceilings
-- 🧪 Crawling: torso + legs body, fits vents, legs follow bends, can't turn round in narrow ducts
+- 🧪 Crouch and crawl on one button (tap = crouch/stand, hold = crawl/get up), optional separate crawl key
+- 🧪 Crawling: torso + thigh + shin body laid along the crawled path; fits vents, follows bends without
+  cutting corners, can't back legs-first into walls, can't turn round in narrow ducts
 - 🧪 Smooth stance transitions (stand ↔ crouch ↔ crawl), never instant
 - 🧪 Ground detection, slopes, too-steep slopes slide, stairs up and down, falls and landings
 - 🧪 Collision: walls, doorways, narrow gaps, low beams, vent-size spaces, pillars
@@ -30,8 +33,8 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - 🧪 Noise events for creature hearing (footsteps, landings, impacts)
 - 🧪 Head bob synced to footsteps, landing dip, sprint FOV, crawl sway
 - 🔨 Animation foundation: Animator parameters incl. backward motion (clips arrive Part 8/15)
-- ⬜ Deliberate grab-and-push/drag of heavy objects → Part 5
-- ⬜ Standing on moving platforms (lifts, escalators) → Part 12
+- 🧪 Heavy objects: hold E to grab, push/pull/rotate slowly, loud scraping noise; extra players add speed (co-op ready)
+- 🧪 Riding moving platforms (lift test platform) and moving walkways; platforms refuse to crush characters
 
 ## Part 3 — Mall blockout & layout
 - ⬜ 3 shopping floors, central atrium (fountain, info desk, seating, escalators, clock, directory)
@@ -61,7 +64,7 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - ⬜ Look-at interaction prompt (small), hold-to-interact, range + line-of-sight checks
 - ⬜ Doors (shop, staff, fire, storage, security, maintenance, lift, restricted) with weights, hinges, locks, faults, squeaks
 - ⬜ Shutters (incl. jammed/obstructed), lockers, cupboards, drawers, wardrobes
-- ⬜ Heavy object push/drag (one player slow; co-op faster)
+- 🔨 Heavy object push/drag (built in Part 2; networking of co-op grips in Part 17)
 - ⬜ Item pickup / drop / throw
 - ⬜ Vent covers: remove with tools, **player can close vents again**
 - ⬜ Machinery, switches, mechanisms

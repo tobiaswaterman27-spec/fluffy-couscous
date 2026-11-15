@@ -14,7 +14,8 @@ namespace MallHorror.EditorTools
     /// Builds a 48 x 48 m test hall that checks every movement and collision case:
     /// floor materials, doorways (one too narrow), a low beam, a crouch tunnel, a crawlable vent with a bend,
     /// a vent that is too small, stairs, a walkable ramp, a too-steep slope, a narrow corridor,
-    /// pillars, a 2 m drop, and pushable physics props.
+    /// pillars, a 2 m drop, pushable physics props, heavy grab-and-push objects, a lift platform
+    /// and a moving walkway.
     /// </summary>
     public static class MovementTestSceneBuilder
     {
@@ -44,6 +45,8 @@ namespace MallHorror.EditorTools
             BuildStairsAndSlopes(env);
             BuildCorridorAndPillars(env);
             BuildProps();
+            BuildHeavyObjects();
+            BuildMovingGround(env);
             BuildLights();
 
             new GameObject("Noise Debug Gizmos").AddComponent<NoiseDebugGizmos>();
@@ -273,6 +276,46 @@ namespace MallHorror.EditorTools
             // Static shelf (not movable).
             EditorBuild.Box("Shelf (static)", t, new Vector3(22f, 1f, 4f), new Vector3(0.5f, 2f, 3f), wood, SurfaceType.Wood);
             EditorBuild.Label(t, "PUSH THE CRATES", new Vector3(19f, 1.6f, -9.5f), 0f);
+        }
+
+        static void BuildHeavyObjects()
+        {
+            Transform t = new GameObject("Heavy Objects").transform;
+            Material dark = EditorBuild.Material(MatFolder, "VendingMachine", new Color(0.18f, 0.2f, 0.25f), 0.45f, 0.3f);
+            Material grey = EditorBuild.Material(MatFolder, "Cabinet", new Color(0.5f, 0.52f, 0.5f), 0.35f, 0.6f);
+            Heavy(t, "Vending machine 140kg", new Vector3(20.5f, 0.9f, 12f), new Vector3(0.9f, 1.8f, 0.8f), 140f, dark, 0.45f);
+            Heavy(t, "Filing cabinet 70kg", new Vector3(17.5f, 0.65f, 12f), new Vector3(0.5f, 1.3f, 0.6f), 70f, grey, 0.7f);
+            EditorBuild.Label(t, "HEAVY: look + HOLD E\npush / pull", new Vector3(19f, 2.3f, 11.2f), 0f);
+        }
+
+        static void Heavy(Transform parent, string name, Vector3 pos, Vector3 size, float mass, Material m, float soloSpeed)
+        {
+            GameObject go = EditorBuild.Box(name, parent, pos, size, m, SurfaceType.Metal, null, false);
+            Rigidbody rb = go.AddComponent<Rigidbody>();
+            rb.mass = mass;
+            HeavyMovable hm = go.AddComponent<HeavyMovable>();
+            hm.soloSpeed = soloSpeed;
+            hm.material = SurfaceType.Metal;
+            EditorBuild.SetLayerRecursive(go, GameLayers.PropLayer);
+        }
+
+        static void BuildMovingGround(Transform env)
+        {
+            Transform t = new GameObject("Moving Ground").transform;
+            t.SetParent(env, false);
+
+            // Lift platform beside the stair platform: rises from floor level to 2.16 m and back.
+            GameObject lift = EditorBuild.Box("Lift platform", t, new Vector3(-19.3f, -0.1f, 9.6f), new Vector3(2.2f, 0.2f, 2.2f), metal, SurfaceType.Metal, null, false);
+            MovingPlatform mp = lift.AddComponent<MovingPlatform>();
+            mp.travel = new Vector3(0f, 2.16f, 0f);
+            mp.travelTime = 4f;
+            mp.waitTime = 3f;
+            EditorBuild.Label(t, "LIFT\n(stand on it; it won't crush you)", new Vector3(-19.3f, 2.8f, 8.4f), 0f);
+
+            // Moving walkway: 12 m long, carries you at 0.8 m/s towards +Z.
+            GameObject belt = EditorBuild.Box("Moving walkway", t, new Vector3(23f, 0.03f, 1f), new Vector3(1.2f, 0.06f, 12f), darkTile, SurfaceType.Metal, null, false);
+            belt.AddComponent<ConveyorSurface>().localVelocity = new Vector3(0f, 0f, 0.8f);
+            EditorBuild.Label(t, "MOVING WALKWAY", new Vector3(23f, 1.2f, -5.3f), 0f);
         }
 
         static void PropBox(Transform parent, string name, Vector3 pos, Vector3 size, float mass, Material m, SurfaceType s, int layer)

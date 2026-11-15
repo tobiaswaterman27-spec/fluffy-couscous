@@ -1,15 +1,24 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using MallHorror.Settings;
 
 namespace MallHorror.Controls
 {
     /// <summary>
-    /// Builds all input actions in code (no asset to set up by hand).
-    /// Keyboard + mouse and gamepad are both supported.
+    /// Builds all input actions in code (no asset to set up by hand), and handles key rebinding.
+    /// Every binding belongs to a group ("KeyboardMouse" or "Gamepad") so the controls menu can show
+    /// and rebind each device separately. Custom bindings are stored in the settings file.
     /// </summary>
     public class InputService : MonoBehaviour
     {
+        public const string KeyboardGroup = "KeyboardMouse";
+        public const string GamepadGroup = "Gamepad";
+
         public static InputService Instance { get; private set; }
+
+        /// <summary>Actions shown in the Controls menu, in display order.</summary>
+        public static readonly string[] RebindableActions = { "Move", "Sprint", "Crouch", "Crawl", "Interact", "Drop" };
 
         public InputActionMap GameplayMap { get; private set; }
         public InputActionMap SystemMap { get; private set; }
@@ -18,7 +27,9 @@ namespace MallHorror.Controls
         public InputAction Look { get; private set; }
         public InputAction LookStick { get; private set; }
         public InputAction Sprint { get; private set; }
+        /// <summary>Crouch/crawl button: tap = crouch or stand, hold = go prone or get up.</summary>
         public InputAction Crouch { get; private set; }
+        /// <summary>Optional dedicated crawl toggle (unbound by default; assign it in Controls).</summary>
         public InputAction Crawl { get; private set; }
         public InputAction Interact { get; private set; }
         public InputAction Drop { get; private set; }
@@ -26,6 +37,8 @@ namespace MallHorror.Controls
         public InputAction Pause { get; private set; }
         public InputAction ToggleStats { get; private set; }
         public InputAction ToggleDebugView { get; private set; }
+
+        public event Action BindingsChanged;
 
         void Awake()
         {
@@ -36,6 +49,7 @@ namespace MallHorror.Controls
             }
             Instance = this;
             Build();
+            LoadBindingOverrides();
             GameplayMap.Enable();
             SystemMap.Enable();
         }
@@ -54,6 +68,40 @@ namespace MallHorror.Controls
             else GameplayMap.Disable();
         }
 
+        // ---------------- rebinding ----------------
+
+        public void LoadBindingOverrides()
+        {
+            string json = SettingsService.CurrentOrDefault.bindingOverrides;
+            if (string.IsNullOrEmpty(json)) return;
+            try
+            {
+                GameplayMap.LoadBindingOverridesFromJson(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[MallHorror] Saved key bindings could not be loaded, using defaults: " + e.Message);
+                GameplayMap.RemoveAllBindingOverrides();
+            }
+        }
+
+        public void SaveBindingOverrides()
+        {
+            SettingsService service = SettingsService.Instance;
+            if (service == null) return;
+            service.Current.bindingOverrides = GameplayMap.SaveBindingOverridesAsJson();
+            service.Save();
+            BindingsChanged?.Invoke();
+        }
+
+        public void ResetAllBindings()
+        {
+            GameplayMap.RemoveAllBindingOverrides();
+            SaveBindingOverrides();
+        }
+
+        // ---------------- default bindings ----------------
+
         void Build()
         {
             GameplayMap = new InputActionMap("Gameplay");
@@ -61,43 +109,52 @@ namespace MallHorror.Controls
             Move = GameplayMap.AddAction("Move", InputActionType.Value);
             Move.expectedControlType = "Vector2";
             Move.AddCompositeBinding("2DVector")
-                .With("Up", "<Keyboard>/w")
-                .With("Down", "<Keyboard>/s")
-                .With("Left", "<Keyboard>/a")
-                .With("Right", "<Keyboard>/d");
+                .With("Up", "<Keyboard>/w", KeyboardGroup)
+                .With("Down", "<Keyboard>/s", KeyboardGroup)
+                .With("Left", "<Keyboard>/a", KeyboardGroup)
+                .With("Right", "<Keyboard>/d", KeyboardGroup);
             Move.AddCompositeBinding("2DVector")
-                .With("Up", "<Keyboard>/upArrow")
-                .With("Down", "<Keyboard>/downArrow")
-                .With("Left", "<Keyboard>/leftArrow")
-                .With("Right", "<Keyboard>/rightArrow");
-            Move.AddBinding("<Gamepad>/leftStick");
+                .With("Up", "<Keyboard>/upArrow", KeyboardGroup)
+                .With("Down", "<Keyboard>/downArrow", KeyboardGroup)
+                .With("Left", "<Keyboard>/leftArrow", KeyboardGroup)
+                .With("Right", "<Keyboard>/rightArrow", KeyboardGroup);
+            Move.AddBinding("<Gamepad>/leftStick", groups: GamepadGroup);
 
-            Look = GameplayMap.AddAction("Look", InputActionType.Value, "<Mouse>/delta");
+            Look = GameplayMap.AddAction("Look", InputActionType.Value);
             Look.expectedControlType = "Vector2";
+            Look.AddBinding("<Mouse>/delta", groups: KeyboardGroup);
 
-            LookStick = GameplayMap.AddAction("LookStick", InputActionType.Value, "<Gamepad>/rightStick");
+            LookStick = GameplayMap.AddAction("LookStick", InputActionType.Value);
             LookStick.expectedControlType = "Vector2";
+            LookStick.AddBinding("<Gamepad>/rightStick", groups: GamepadGroup);
 
-            Sprint = GameplayMap.AddAction("Sprint", InputActionType.Button, "<Keyboard>/leftShift");
-            Sprint.AddBinding("<Gamepad>/leftStickPress");
+            Sprint = Button("Sprint", "<Keyboard>/leftShift", "<Gamepad>/leftStickPress");
 
-            Crouch = GameplayMap.AddAction("Crouch", InputActionType.Button, "<Keyboard>/leftCtrl");
-            Crouch.AddBinding("<Gamepad>/buttonEast");
+            Crouch = Button("Crouch", "<Keyboard>/leftCtrl", "<Gamepad>/buttonEast");
+            Crouch.AddBinding("<Keyboard>/c", groups: KeyboardGroup); // second key for the same button
 
-            Crawl = GameplayMap.AddAction("Crawl", InputActionType.Button, "<Keyboard>/c");
-            Crawl.AddBinding("<Gamepad>/dpad/down");
+            Crawl = Button("Crawl", "", "");
 
-            Interact = GameplayMap.AddAction("Interact", InputActionType.Button, "<Keyboard>/e");
-            Interact.AddBinding("<Gamepad>/buttonSouth");
-
-            Drop = GameplayMap.AddAction("Drop", InputActionType.Button, "<Keyboard>/g");
-            Drop.AddBinding("<Gamepad>/buttonWest");
+            Interact = Button("Interact", "<Keyboard>/e", "<Gamepad>/buttonSouth");
+            Drop = Button("Drop", "<Keyboard>/g", "<Gamepad>/buttonWest");
 
             SystemMap = new InputActionMap("System");
-            Pause = SystemMap.AddAction("Pause", InputActionType.Button, "<Keyboard>/escape");
-            Pause.AddBinding("<Gamepad>/start");
-            ToggleStats = SystemMap.AddAction("ToggleStats", InputActionType.Button, "<Keyboard>/f3");
-            ToggleDebugView = SystemMap.AddAction("ToggleDebugView", InputActionType.Button, "<Keyboard>/f5");
+            Pause = SystemMap.AddAction("Pause", InputActionType.Button);
+            Pause.AddBinding("<Keyboard>/escape", groups: KeyboardGroup);
+            Pause.AddBinding("<Gamepad>/start", groups: GamepadGroup);
+            ToggleStats = SystemMap.AddAction("ToggleStats", InputActionType.Button);
+            ToggleStats.AddBinding("<Keyboard>/f3", groups: KeyboardGroup);
+            ToggleDebugView = SystemMap.AddAction("ToggleDebugView", InputActionType.Button);
+            ToggleDebugView.AddBinding("<Keyboard>/f5", groups: KeyboardGroup);
+        }
+
+        /// <summary>Button action with one keyboard/mouse and one gamepad binding (either may be empty = unbound).</summary>
+        InputAction Button(string name, string keyboardPath, string gamepadPath)
+        {
+            InputAction a = GameplayMap.AddAction(name, InputActionType.Button);
+            a.AddBinding(keyboardPath, groups: KeyboardGroup);
+            a.AddBinding(gamepadPath, groups: GamepadGroup);
+            return a;
         }
     }
 }

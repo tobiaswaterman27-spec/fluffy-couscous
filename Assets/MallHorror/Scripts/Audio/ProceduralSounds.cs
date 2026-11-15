@@ -46,6 +46,47 @@ namespace MallHorror.Audio
             }, "Impact_" + surface);
         }
 
+        /// <summary>Seamless looping scrape for heavy objects dragged across the floor.</summary>
+        public static AudioClip ScrapeLoop(SurfaceType material)
+        {
+            int key = 3000 + (int)material;
+            if (cache.TryGetValue(key, out AudioClip[] cached) && cached[0] != null) return cached[0];
+
+            bool metallic = material == SurfaceType.Metal || material == SurfaceType.VentMetal;
+            int n = Rate * 2;
+            float[] data = new float[n];
+            var rng = new System.Random(key);
+            float lp1 = 0f, lp2 = 0f, peak = 0.0001f;
+            float coef = metallic ? 0.35f : 0.15f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate;
+                float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+                lp1 += coef * (white - lp1);
+                lp2 += coef * (lp1 - lp2);
+                // Uneven "stick-slip" grinding texture, periodic over the 2 s loop.
+                float grind = 0.6f + 0.25f * Mathf.Sin(2f * Mathf.PI * 3f * t) + 0.15f * Mathf.Sin(2f * Mathf.PI * 11f * t + 1.3f);
+                float sample = lp2 * grind;
+                if (metallic) sample += 0.12f * Mathf.Sin(2f * Mathf.PI * 410f * t) * grind;
+                data[i] = sample;
+                peak = Mathf.Max(peak, Mathf.Abs(sample));
+            }
+            // Crossfade the ends so the loop has no click.
+            int fade = Rate / 10;
+            for (int i = 0; i < fade; i++)
+            {
+                float a = i / (float)fade;
+                data[i] = data[i] * a + data[n - fade + i] * (1f - a);
+            }
+            System.Array.Resize(ref data, n - fade);
+            for (int i = 0; i < data.Length; i++) data[i] *= 0.8f / peak;
+
+            AudioClip clip = AudioClip.Create("Scrape_" + material, data.Length, 1, Rate, false);
+            clip.SetData(data, 0);
+            cache[key] = new[] { clip };
+            return clip;
+        }
+
         static AudioClip Pick(int key, System.Func<Recipe> recipe, string name)
         {
             if (!cache.TryGetValue(key, out AudioClip[] clips) || clips[0] == null)

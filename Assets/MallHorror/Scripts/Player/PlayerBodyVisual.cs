@@ -10,7 +10,8 @@ namespace MallHorror.Player
     {
         public PlayerMotor motor;
         public Transform torso;
-        public Transform legs;
+        public Transform thigh;
+        public Transform shin;
 
         void LateUpdate()
         {
@@ -25,23 +26,25 @@ namespace MallHorror.Player
                 torso.localScale = new Vector3(r * 2f, h * 0.5f, r * 2f);
             }
 
-            if (legs != null)
-            {
-                bool on = motor.LegsActive;
-                if (legs.gameObject.activeSelf != on) legs.gameObject.SetActive(on);
-                if (on)
-                {
-                    Vector3 hip = motor.transform.position;
-                    Vector3 dir = motor.LegsDirection;
-                    float lr = motor.LegRadius;
-                    Vector3 a = hip + dir * (r * 0.8f);
-                    Vector3 b = hip + dir * motor.LegLength;
-                    legs.position = (a + b) * 0.5f + Vector3.up * (lr + 0.05f);
-                    legs.rotation = Quaternion.FromToRotation(Vector3.up, dir);
-                    float length = Vector3.Distance(a, b) + lr * 2f;
-                    legs.localScale = new Vector3(lr * 2f, length * 0.5f, lr * 2f);
-                }
-            }
+            bool on = motor.LegsActive;
+            Vector3 hip = motor.transform.position + motor.LegsDirection * (r * 0.8f);
+            Place(thigh, on, hip, motor.KneePosition);
+            Place(shin, on, motor.KneePosition, motor.FeetPosition);
+        }
+
+        void Place(Transform part, bool on, Vector3 a, Vector3 b)
+        {
+            if (part == null) return;
+            if (part.gameObject.activeSelf != on) part.gameObject.SetActive(on);
+            if (!on) return;
+            float lr = motor.LegRadius;
+            Vector3 up = Vector3.up * (lr + 0.05f);
+            Vector3 dir = b - a;
+            if (dir.sqrMagnitude < 1e-6f) dir = -motor.transform.forward * 0.01f;
+            part.position = (a + b) * 0.5f + up;
+            part.rotation = Quaternion.FromToRotation(Vector3.up, dir.normalized);
+            float length = dir.magnitude + lr * 2f;
+            part.localScale = new Vector3(lr * 2f, length * 0.5f, lr * 2f);
         }
     }
 }

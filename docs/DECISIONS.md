@@ -27,12 +27,17 @@
 - **CharacterController** (swept capsule): cannot pass through colliders, handles steps/slopes, no tunnelling.
 - Stance changes resize the real capsule over time and only grow when an overlap test proves there is room
   ("NO ROOM" in the F3 panel). You cannot stand up in a vent or under a low ceiling.
-- **Crawling body = torso capsule + legs capsule.** A vertical capsule cannot represent a 1.4 m long crawling body,
-  so the legs are a second capsule trailing behind, dragged like a towed trailer. Effects:
-  legs follow ducts round bends; you cannot back legs-first into a wall; you cannot spin round in a duct
-  (must back out or reach a junction); the head can still turn ±75° to look around.
-  Known simplification: legs may slightly cut an inside corner while being dragged forward (they never block or
-  push the player, so it cannot cause clipping of the player body).
+- **Crawling body = torso capsule + thigh + shin.** A vertical capsule cannot represent a 1.4 m long crawling body,
+  so the hips leave a breadcrumb path and the two leg capsules are laid along it (knee at half leg length).
+  Because the legs follow the actual crawled path, they go round vent bends without cutting the corner.
+  Backing up extends the path behind the feet; that space is checked first, so you cannot back into a wall
+  or spin round in a duct (back out or reach a junction); the head can still turn ±75° to look around.
+- **One crouch/crawl button.** Tap = crouch/stand, hold (0.35 s, adjustable) = crawl/get up. An optional
+  dedicated crawl key can be assigned. All gameplay keys are rebindable; overrides live in settings.json.
+- **Heavy objects** are dynamic rigidbodies driven by velocity towards each grabbing player's target pose
+  (averaged; speed grows with helpers). They collide normally and can jam, which releases the grip.
+- **Moving ground**: platforms report their per-frame movement and riders are carried by it inside the same
+  collision sweep; walkways add belt velocity. Platforms stop instead of crushing characters.
 - Momentum: gradual sprint build-up, sharp turns at speed cost up to ~22% speed per 90°, reversing brakes.
   Sprint 6.2 m/s; creature will be ~5.9 m/s.
 - Backwards movement is a first-class direction: slower walk-back, backward run (3.4 m/s), backward crouch and

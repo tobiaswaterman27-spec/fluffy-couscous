@@ -16,6 +16,7 @@ namespace MallHorror.Player
 
         PlayerMotor motor;
         PlayerLook look;
+        PlayerGrab grab;
         IPlayerInputSource input;
 
         public PlayerMotor Motor => motor;
@@ -25,6 +26,7 @@ namespace MallHorror.Player
         {
             motor = GetComponent<PlayerMotor>();
             look = GetComponent<PlayerLook>();
+            grab = GetComponent<PlayerGrab>();
             input = GetComponent<IPlayerInputSource>();
         }
 
@@ -50,8 +52,10 @@ namespace MallHorror.Player
         {
             float dt = Time.deltaTime;
             PlayerInputFrame frame = input != null ? input.ReadFrame(dt) : default;
+            if (grab != null) grab.PreMove(frame);
             look.ApplyLook(frame.lookDelta, motor, dt);
             motor.Tick(frame, dt);
+            if (grab != null) grab.PostMove();
         }
 
         void LateUpdate()

@@ -84,13 +84,17 @@ If a part says to rebuild the test scene, run the menu item again.
 
 ## Controls (development build)
 
+All controls can be changed: **Esc > Controls**, click a binding, press the new key. Saved automatically.
+
 | Action | Keyboard / mouse | Gamepad |
 |---|---|---|
 | Move (S = walk backwards) | WASD / arrows | Left stick |
 | Look | Mouse | Right stick |
 | Sprint (works backwards too, slower) | Left Shift | Left stick click |
-| Crouch (hold, or toggle in settings) | Left Ctrl | B / Circle |
-| Crawl (toggle) | C | D-pad down |
-| Pause + settings | Esc | Start |
+| Crouch / crawl: **tap** = crouch or stand, **hold** = crawl or get up | Left Ctrl or C | B / Circle |
+| Dedicated crawl toggle (optional) | unbound — assign in Controls | unbound |
+| Grab heavy object (hold), push / pull by walking | E | A / Cross |
+| Drop (used from Part 6) | G | X / Square |
+| Pause, settings, key rebinding | Esc | Start |
 | Developer info panel | F3 | |
 | See your own collision body (debug) | F5 | |

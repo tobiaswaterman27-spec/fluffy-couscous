@@ -16,11 +16,12 @@ namespace MallHorror.Player
     ///   HipBend (float) crawling torso twist, degrees
     ///   TurnRate (float) degrees per second (turn-in-place clips)
     ///   StridePhase (float) 0..1 within the current step (foot sync)
-    ///   Grounded (bool), Sprinting (bool), Backward (bool)
+    ///   Grounded (bool), Sprinting (bool), Backward (bool), Pushing (bool, holding a heavy object)
     /// </summary>
     public class PlayerAnimationDriver : MonoBehaviour
     {
         public PlayerMotor motor;
+        public PlayerGrab grab;
         public Animator animator;
         public float damping = 0.1f;
 
@@ -34,6 +35,7 @@ namespace MallHorror.Player
         static readonly int Grounded = Animator.StringToHash("Grounded");
         static readonly int Sprinting = Animator.StringToHash("Sprinting");
         static readonly int Backward = Animator.StringToHash("Backward");
+        static readonly int Pushing = Animator.StringToHash("Pushing");
 
         readonly HashSet<int> available = new HashSet<int>();
         Animator cachedFor;
@@ -59,6 +61,7 @@ namespace MallHorror.Player
             SetBool(Grounded, l.grounded);
             SetBool(Sprinting, l.sprinting);
             SetBool(Backward, l.backward);
+            SetBool(Pushing, grab != null && grab.IsHolding);
         }
 
         void CacheParameters()
