@@ -23,6 +23,11 @@ namespace AfterHours.Audio
             s.volume = Mathf.Clamp01(volume);
             s.pitch = pitch;
             s.maxDistance = maxDistance;
+            // Muffle one-shot sounds that start behind walls.
+            AudioLowPassFilter lp = s.GetComponent<AudioLowPassFilter>();
+            float occ = AudioOcclusion.Occlusion(position);
+            lp.cutoffFrequency = Mathf.Lerp(22000f, 900f, occ);
+            s.volume = Mathf.Clamp01(volume) * (1f - 0.35f * occ);
             s.Play();
         }
 
@@ -45,6 +50,7 @@ namespace AfterHours.Audio
                 s.minDistance = 1f;
                 s.maxDistance = 40f;
                 s.dopplerLevel = 0f;
+                child.AddComponent<AudioLowPassFilter>().cutoffFrequency = 22000f;
                 sources.Add(s);
             }
         }

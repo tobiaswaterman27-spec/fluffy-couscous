@@ -200,6 +200,14 @@ namespace AfterHours.EditorTools
             prop.noiseScale = def.category == ItemCategory.Distraction ? 6f : 4f;
             root.AddComponent<SurfaceMaterial>().type = def.material;
 
+            if (def.shape == ItemShape.AlarmClock || def.shape == ItemShape.Phone)
+            {
+                TimedDistraction td = root.AddComponent<TimedDistraction>();
+                td.isPhone = def.shape == ItemShape.Phone;
+                td.delay = td.isPhone ? 12f : 8f;
+            }
+            if (def.shape == ItemShape.Bottle) root.AddComponent<Shatterable>();
+
             ItemPickup pick = root.AddComponent<ItemPickup>();
             pick.itemId = id;
             pick.instanceId = id + "#" + (++counter);

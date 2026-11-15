@@ -33,6 +33,12 @@ namespace AfterHours.Items
         public void Tick(in PlayerInputFrame input)
         {
             if (Held == null || GamePause.IsPaused) return;
+            // Setting a device you are holding (alarm clock / phone): Interact with nothing in front of you.
+            if (input.interactPressed && (interactor == null || interactor.Target == null))
+            {
+                TimedDistraction device = Held.GetComponent<TimedDistraction>();
+                if (device != null && !device.Armed) device.Arm();
+            }
             if (input.dropPressed) Drop(0.6f, false);
             else if (input.throwPressed) Drop(throwSpeed, true);
         }

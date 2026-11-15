@@ -38,6 +38,7 @@ namespace AfterHours.EditorTools
             breath.playOnAwake = false;
             AudioSource voice = voiceGo.AddComponent<AudioSource>();
             voice.playOnAwake = false;
+            voiceGo.AddComponent<AfterHours.Audio.AudioOcclusion>();
             ElliotAudio audio = root.AddComponent<ElliotAudio>();
             audio.breathing = breath;
             audio.voice = voice;
