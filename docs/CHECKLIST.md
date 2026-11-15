@@ -1,4 +1,4 @@
-# Development checklist
+# AFTER HOURS — development checklist
 
 Status key: ✅ built and confirmed working in Unity · 🧪 built, waiting for in-editor test · 🔨 foundation only ·
 ⬜ not started
@@ -6,7 +6,7 @@ Status key: ✅ built and confirmed working in Unity · 🧪 built, waiting for 
 Nothing on this list may be dropped silently. If something changes, it is noted here with the reason.
 
 ## Part 1 — Project foundation
-- 🧪 Unity 6 project structure (`Assets/MallHorror/...`), assembly definitions
+- 🧪 Unity 6 project structure (`Assets/AfterHours/...`), assembly definitions
 - 🧪 Automatic services bootstrap (settings, input, pause)
 - 🧪 Input system built in code (keyboard/mouse + gamepad)
 - 🧪 Settings (sensitivity, FOV, invert Y, crouch toggle, head bob, volume, vsync) with crash-safe saving
@@ -22,7 +22,7 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - 🧪 Sharp turns at speed reduce momentum slightly
 - 🧪 Backwards movement: walk, run, crouch and crawl backwards (slower, shorter strides)
 - 🧪 Crouching: real collider shrink, very quiet, can't stand up under low ceilings
-- 🧪 Crouch and crawl on one button (tap = crouch/stand, hold = crawl/get up), optional separate crawl key
+- 🧪 Ctrl = crouch (hold, or toggle option), C = crawl on/off; crawling is slow (0.6 m/s) and very quiet
 - 🧪 Crawling: torso + thigh + shin body laid along the crawled path; fits vents, follows bends without
   cutting corners, can't back legs-first into walls, can't turn round in narrow ducts
 - 🧪 Smooth stance transitions (stand ↔ crouch ↔ crawl), never instant
@@ -81,7 +81,7 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - ⬜ Main entrance · Car park exit · Loading bay · Emergency exit · Rooftop · Service tunnel · Restricted staff exit · Hidden route
 - ⬜ Shared early progression, distinct final sequences, alternative solutions, no softlocks
 
-## Part 8 — Creature model & animation
+## Part 8 — Creature (Elliot) model & animation
 - ⬜ Tall thin pale distorted humanoid, dark pupil-less eyes
 - ⬜ Idle, still, look around, walk, fast walk, jerky moves, investigate, search, turn, chase start, run, lose sight
 - ⬜ Inspect hiding places, open cupboards/lockers, bang on doors, object interactions, enter/leave areas
@@ -89,7 +89,7 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - ⬜ Root motion, foot placement, head/upper-body tracking, blending
 - ⬜ Player character animations from Mixamo incl. **walk/run/crouch/crawl backwards**
 
-## Part 9 — Creature AI
+## Part 9 — Creature (Elliot) AI
 - ⬜ Wander (starts in car park, unaware), investigate, search, hunt — any order
 - ⬜ Vision (FOV, distance, line of sight, light level; sees well in darkness)
 - ⬜ Hearing via NoiseBus with uncertainty/echo confusion

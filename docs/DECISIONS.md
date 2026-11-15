@@ -1,4 +1,9 @@
-# Technical decisions
+# AFTER HOURS — technical decisions
+
+## Names
+- Game: **AFTER HOURS**. Code namespace `AfterHours`, folder `Assets/AfterHours`, editor menu "After Hours".
+- The creature is called **Elliot** internally (class names, docs). Never shown to the player.
+
 
 ## Engine: Unity 6 (any 6.x), built for Windows, macOS, Linux
 - Best realistic indoor lighting available to a small team, mature physics (PhysX), navigation meshes,
@@ -32,8 +37,8 @@
   Because the legs follow the actual crawled path, they go round vent bends without cutting the corner.
   Backing up extends the path behind the feet; that space is checked first, so you cannot back into a wall
   or spin round in a duct (back out or reach a junction); the head can still turn ±75° to look around.
-- **One crouch/crawl button.** Tap = crouch/stand, hold (0.35 s, adjustable) = crawl/get up. An optional
-  dedicated crawl key can be assigned. All gameplay keys are rebindable; overrides live in settings.json.
+- **Stance keys:** Ctrl = crouch (hold, or toggle in Settings), C = crawl on/off. All gameplay keys are
+  rebindable; overrides live in settings.json.
 - **Heavy objects** are dynamic rigidbodies driven by velocity towards each grabbing player's target pose
   (averaged; speed grows with helpers). They collide normally and can jam, which releases the grip.
 - **Moving ground**: platforms report their per-frame movement and riders are carried by it inside the same

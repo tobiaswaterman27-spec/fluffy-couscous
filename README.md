@@ -1,7 +1,7 @@
-# Mall Horror (working title)
+# AFTER HOURS
 
 First-person psychological / survival horror. You wake up alone in an enormous shopping centre at
-11:30 PM. Something is hunting you. Single-player and LAN co-op (up to 4). Unity 6, for Windows, macOS and Linux.
+11:30 PM. Something is hunting you. (Behind the scenes, the creature is called **Elliot**.) Single-player and LAN co-op (up to 4). Unity 6, for Windows, macOS and Linux.
 
 - Feature checklist (what is done / not done): [`docs/CHECKLIST.md`](docs/CHECKLIST.md)
 - Technical decisions and why: [`docs/DECISIONS.md`](docs/DECISIONS.md)
@@ -17,8 +17,8 @@ You do this once. It takes about 10 minutes plus Unity's first import.
 2. Click **New project** (top right).
 3. Pick the template called **Universal 3D** (it may also be shown as "3D (URP)"). If it shows a
    download icon, click **Download template** first.
-4. **Project name:** `MallHorrorGame`
-5. **Location:** your home folder (so the project ends up at `~/MallHorrorGame`).
+4. **Project name:** `AfterHoursGame`
+5. **Location:** your home folder (so the project ends up at `~/AfterHoursGame`).
 6. Untick "Connect to Unity Cloud" / "Use Unity Version Control" if shown.
 7. Click **Create project** and wait for Unity to open. **Then close Unity.**
 
@@ -26,7 +26,7 @@ You do this once. It takes about 10 minutes plus Unity's first import.
 Open a terminal and run these one at a time:
 
 ```bash
-cd ~/MallHorrorGame
+cd ~/AfterHoursGame
 ```
 
 ```bash
@@ -45,18 +45,18 @@ git fetch origin
 git checkout -b claude/beautiful-bell-stspz3 --track origin/claude/beautiful-bell-stspz3
 ```
 
-This adds the `Assets/MallHorror` folder, `docs/` and this README into your project.
+This adds the `Assets/AfterHours` folder, `docs/` and this README into your project.
 (If git asks for a username/password and the repo is private, run `gh auth login` first, or ask Claude.)
 
 ### 3. Open the project and set it up
-1. Open Unity Hub and open **MallHorrorGame**. Wait for it to finish importing.
+1. Open Unity Hub and open **AfterHoursGame**. Wait for it to finish importing.
 2. Check the **Input System** package is installed: top menu **Window > Package Manager**, choose
    **In Project** on the left, look for **Input System**. If it is missing: choose **Unity Registry**,
    search `Input System`, click **Install**, and click **Yes** when asked to restart.
 3. Top menu **Edit > Project Settings > Player > Other Settings > Active Input Handling** must be
    **Input System Package (New)** or **Both**.
-4. Top menu **Mall Horror > 1 - Set Up Project** and click OK.
-5. Top menu **Mall Horror > 2 - Build Movement Test Scene** (click **Don't Save** if asked about
+4. Top menu **After Hours > 1 - Set Up Project** and click OK.
+5. Top menu **After Hours > 2 - Build Movement Test Scene** (click **Don't Save** if asked about
    the sample scene) and click OK.
 
 ### 4. Play
@@ -69,7 +69,7 @@ Press the **Play** button (▶, top centre). Click inside the **Game** view to c
 Close nothing; just run this in a terminal, then click back into Unity (it reloads automatically):
 
 ```bash
-cd ~/MallHorrorGame && git pull
+cd ~/AfterHoursGame && git pull
 ```
 
 If a part says to rebuild the test scene, run the menu item again.
@@ -91,8 +91,8 @@ All controls can be changed: **Esc > Controls**, click a binding, press the new 
 | Move (S = walk backwards) | WASD / arrows | Left stick |
 | Look | Mouse | Right stick |
 | Sprint (works backwards too, slower) | Left Shift | Left stick click |
-| Crouch / crawl: **tap** = crouch or stand, **hold** = crawl or get up | Left Ctrl or C | B / Circle |
-| Dedicated crawl toggle (optional) | unbound — assign in Controls | unbound |
+| Crouch (hold; can be set to toggle in Settings) | Left Ctrl | B / Circle |
+| Crawl on / off (slow and very quiet) | C | D-pad down |
 | Grab heavy object (hold), push / pull by walking | E | A / Cross |
 | Drop (used from Part 6) | G | X / Square |
 | Pause, settings, key rebinding | Esc | Start |
