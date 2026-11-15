@@ -16,6 +16,23 @@ namespace AfterHours.Audio
         [Tooltip("0 = masks nothing, 1 = loud machinery that hides footsteps nearby.")]
         [Range(0f, 1f)] public float maskingLevel = 0.2f;
 
+        static readonly System.Collections.Generic.List<AmbientSound> all = new System.Collections.Generic.List<AmbientSound>();
+        public static System.Collections.Generic.IReadOnlyList<AmbientSound> All => all;
+        void OnEnable() => all.Add(this);
+        void OnDisable() => all.Remove(this);
+
+        /// <summary>How much background noise there is at a point (0 = silent, 1 = loud machinery).</summary>
+        public static float MaskingAt(Vector3 p)
+        {
+            float m = 0f;
+            foreach (AmbientSound a in all)
+            {
+                float d = Vector3.Distance(a.transform.position, p);
+                if (d < a.maxDistance) m = Mathf.Max(m, a.maskingLevel * (1f - d / a.maxDistance));
+            }
+            return m;
+        }
+
         void Start()
         {
             AudioSource s = GetComponent<AudioSource>();

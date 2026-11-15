@@ -126,6 +126,11 @@ namespace AfterHours.EditorTools
                 int merged = MeshCombiner.Combine(mall, Group("Combined Meshes", null));
                 Debug.Log("[AfterHours] Mall built. Merged visual meshes: " + merged);
 
+                Progress("Elliot's navigation map (slow)", 0.9f);
+                NavigationBaker.Bake(new Bounds(new Vector3(-30f, 6f, 0f), new Vector3(340f, 34f, 270f)));
+                // Elliot starts in the car park, wandering, unaware anyone is in the building.
+                ElliotFactory.CreateWithAI(null, new Vector3(30f, MallLayout.CarParkY + 0.05f, 70f), 180f);
+
                 new GameObject("Noise Debug Gizmos").AddComponent<NoiseDebugGizmos>();
                 DevLocation start = MallLayout.DevLocations[0];
                 GameObject player = PlayerFactory.CreatePlayer(start.position, start.yaw);

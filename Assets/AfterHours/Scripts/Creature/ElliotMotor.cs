@@ -26,6 +26,15 @@ namespace AfterHours.Creature
         public float cornerLoss = 0.06f;
         public float gravity = -20f;
 
+        [Header("Body height")]
+        public float standHeight = 2.55f;
+        public float hunchHeight = 1.95f;
+        public float crawlHeight = 0.9f;
+        public float pushForce = 900f;
+
+        /// <summary>0 = upright, 1 = hunched right down (ducking under door frames and low ceilings).</summary>
+        public float Hunch { get; private set; }
+
         public ElliotGait Gait { get; private set; } = ElliotGait.Idle;
         public Vector3 Velocity => velocity;
         public float Speed => new Vector3(velocity.x, 0f, velocity.z).magnitude;
@@ -81,10 +90,56 @@ namespace AfterHours.Creature
             velocity = Vector3.zero;
         }
 
+        int blockMask;
+
+        void Start()
+        {
+            blockMask = GameLayers.CharacterBlockingMask;
+            foreach (int l in new[] { GameLayers.CreatureLayer, GameLayers.PlayerLayer, GameLayers.PropLayer })
+            {
+                if (l >= 0) blockMask &= ~(1 << l);
+            }
+        }
+
+        bool Clear(Vector3 at, float height)
+        {
+            float r = controller.radius - 0.02f;
+            Vector3 a = at + Vector3.up * (r + 0.1f), b = at + Vector3.up * (height - r);
+            return !Physics.CheckCapsule(a, b, r, blockMask, QueryTriggerInteraction.Ignore);
+        }
+
+        void UpdateHeight(float dt)
+        {
+            float target;
+            if (Gait == ElliotGait.Crawl) target = crawlHeight;
+            else
+            {
+                Vector3 ahead = transform.position + transform.forward * 0.7f;
+                bool roomHere = Clear(transform.position, standHeight);
+                bool roomAhead = Clear(ahead, standHeight);
+                Hunch = Mathf.MoveTowards(Hunch, roomHere && roomAhead ? 0f : 1f, dt * 2.5f);
+                target = Mathf.Lerp(standHeight, hunchHeight, Hunch);
+            }
+            float h = controller.height;
+            float next = Mathf.MoveTowards(h, target, dt * 2f);
+            if (next > h && !Clear(transform.position, next)) next = h; // never stand up into something
+            controller.height = next;
+            controller.center = new Vector3(0f, next * 0.5f, 0f);
+        }
+
+        void OnControllerColliderHit(ControllerColliderHit hit)
+        {
+            Rigidbody rb = hit.collider.attachedRigidbody;
+            if (rb == null || rb.isKinematic || hit.moveDirection.y < -0.3f) return;
+            Vector3 dir = new Vector3(hit.moveDirection.x, 0f, hit.moveDirection.z).normalized;
+            rb.AddForceAtPosition(dir * pushForce * Mathf.Clamp01(Speed / 2f + 0.3f), hit.point, ForceMode.Force);
+        }
+
         void Update()
         {
             float dt = Time.deltaTime;
             if (dt <= 0f) return;
+            UpdateHeight(dt);
             bool frozen = Time.time < frozenUntil;
             float maxSpeed = frozen ? 0f : MaxSpeedFor(Gait) * desiredSpeedFactor;
             Vector3 desired = desiredDirection * maxSpeed;

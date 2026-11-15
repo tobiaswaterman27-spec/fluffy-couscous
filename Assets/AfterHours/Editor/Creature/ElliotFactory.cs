@@ -93,6 +93,29 @@ namespace AfterHours.EditorTools
             return root;
         }
 
+        /// <summary>Elliot with its full AI (senses, memory, brain, path finding).</summary>
+        public static GameObject CreateWithAI(Transform parent, Vector3 position, float yaw, string name = "Elliot")
+        {
+            GameObject root = Create(parent, position, yaw, name);
+            var agent = root.AddComponent<UnityEngine.AI.NavMeshAgent>();
+            agent.radius = 0.35f;
+            agent.height = 1.9f;
+            agent.speed = 6f;
+            agent.angularSpeed = 0f;
+            agent.acceleration = 8f;
+            agent.stoppingDistance = 0.3f;
+            ElliotSenses senses = root.AddComponent<ElliotSenses>();
+            senses.animator = root.GetComponent<ElliotAnimator>();
+            ElliotMemory memory = root.AddComponent<ElliotMemory>();
+            ElliotBrain brain = root.AddComponent<ElliotBrain>();
+            brain.motor = root.GetComponent<ElliotMotor>();
+            brain.animator = senses.animator;
+            brain.senses = senses;
+            brain.memory = memory;
+            brain.audioOut = root.GetComponent<ElliotAudio>();
+            return root;
+        }
+
         static Material Mat(string name, Color c, float smooth)
         {
             return EditorBuild.Material(MatFolder, name, c, smooth);

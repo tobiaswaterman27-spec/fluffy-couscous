@@ -193,11 +193,12 @@ namespace AfterHours.Creature
             // ---------------- pelvis ----------------
             float bob = Mathf.Abs(Mathf.Sin(phase * Mathf.PI * 2f)) * Mathf.Lerp(0.04f, 0.1f, runW) * moveW;
             float breathe = Mathf.Sin(Time.time * 1.6f) * 0.012f * (1f - stillW);
-            float hipH = Mathf.Lerp(hipHeight - Mathf.Lerp(0f, 0.14f, runW), 0.6f, crawlW) - bob + breathe;
+            float hunch = motor.Hunch;
+            float hipH = Mathf.Lerp(hipHeight - Mathf.Lerp(0f, 0.14f, runW) - 0.22f * hunch, 0.6f, crawlW) - bob + breathe;
             float legReach = thigh + shin + ankle - 0.02f;
             float footY = Mathf.Min(footPos[0].y, footPos[1].y);
             hipH = Mathf.Min(hipH, footY - root.y + legReach);
-            float lean = Mathf.Lerp(Mathf.Lerp(4f, 26f, runW), 72f, crawlW);
+            float lean = Mathf.Lerp(Mathf.Lerp(4f, 26f, runW) + 30f * hunch, 72f, crawlW);
             float twist = Mathf.Sin(phase * Mathf.PI * 2f) * Mathf.Lerp(4f, 9f, runW) * moveW;
             Quaternion yaw = Quaternion.LookRotation(fwd);
             Vector3 pelvisPos = root + up * hipH;

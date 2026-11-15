@@ -23,6 +23,17 @@ namespace AfterHours.Player
         PlayerInventory inventory;
         IPlayerInputSource input;
 
+        static readonly System.Collections.Generic.List<PlayerController> all = new System.Collections.Generic.List<PlayerController>();
+        /// <summary>Every player in the scene (used by Elliot's senses).</summary>
+        public static System.Collections.Generic.IReadOnlyList<PlayerController> All => all;
+
+        /// <summary>True while hidden in a hiding place (Part 11).</summary>
+        public bool IsHidden { get; set; }
+        public Vector3 EyePosition => look != null && look.playerCamera != null ? look.playerCamera.transform.position : transform.position + Vector3.up * 1.6f;
+
+        void OnEnable() { if (!all.Contains(this)) all.Add(this); }
+        void OnDisable() => all.Remove(this);
+
         public PlayerMotor Motor => motor;
         public PlayerLook Look => look;
 
