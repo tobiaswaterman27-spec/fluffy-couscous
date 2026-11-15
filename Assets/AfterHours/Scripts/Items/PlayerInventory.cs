@@ -72,6 +72,14 @@ namespace AfterHours.Items
             if (isThrow) NoiseBus.Emit(new NoiseEvent(eye, 1.5f, NoiseKind.Interaction, gameObject));
         }
 
+        /// <summary>Hands the held item over (to a socket / mechanism) without dropping it.</summary>
+        public ItemPickup TakeHeld()
+        {
+            ItemPickup item = Held;
+            Held = null;
+            return item;
+        }
+
         /// <summary>Drops whatever is held where you stand (used when caught / reset).</summary>
         public void DropAtFeet()
         {

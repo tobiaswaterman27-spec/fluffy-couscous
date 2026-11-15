@@ -19,5 +19,7 @@ namespace AfterHours.World
         public bool startsLocked;
         public string lockId = "";
         [TextArea] public string note = "";
+        [Tooltip("The working door built for this slot (set by the mall builder).")]
+        public AfterHours.Interaction.Door built;
     }
 }

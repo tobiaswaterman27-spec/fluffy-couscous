@@ -173,7 +173,7 @@ namespace AfterHours.EditorTools
             var root = new GameObject("Vent opening");
             root.transform.SetParent(parent, false);
             root.transform.position = centre;
-            root.transform.rotation = Quaternion.LookRotation(outward);
+            root.transform.rotation = Quaternion.LookRotation(outward, Mathf.Abs(outward.y) > 0.9f ? Vector3.forward : Vector3.up);
             BoxCollider trigger = root.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
             trigger.size = new Vector3(size.x, size.y, 0.3f);

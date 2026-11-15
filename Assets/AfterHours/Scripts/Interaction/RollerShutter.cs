@@ -93,6 +93,45 @@ namespace AfterHours.Interaction
             noiseTimer = 0f;
         }
 
+        // ---------------- motor (powered shutters, puzzle outputs) ----------------
+
+        float motorSpeed;
+        GameObject motorActor;
+
+        /// <summary>Raises the shutter all the way with its motor: slow, steady and very loud.</summary>
+        public void MotorRaise(float speed, GameObject actor)
+        {
+            locked = false;
+            jammed = false;
+            motorSpeed = speed;
+            motorActor = actor;
+        }
+
+        public void ResetToStart()
+        {
+            motorSpeed = 0f;
+            raised = startOpen * travel;
+            panel.localPosition = closedLocal + Vector3.up * raised;
+        }
+
+        void Update()
+        {
+            if (motorSpeed <= 0f) return;
+            raised = Mathf.Min(travel, raised + motorSpeed * Time.deltaTime);
+            panel.localPosition = closedLocal + Vector3.up * raised;
+            noiseTimer -= Time.deltaTime;
+            if (noiseTimer <= 0f)
+            {
+                noiseTimer = 0.55f;
+                InteractionFx.Play(ProceduralSounds.Sfx.ShutterRoll, panel.position, 1f, 26f, motorActor, NoiseKind.Machinery);
+            }
+            if (raised >= travel)
+            {
+                motorSpeed = 0f;
+                InteractionFx.Play(ProceduralSounds.Sfx.ShutterStop, panel.position, 1f, 18f, motorActor, NoiseKind.Machinery);
+            }
+        }
+
         bool Obstructed(float nextRaised)
         {
             Collider c = panel.GetComponent<Collider>();

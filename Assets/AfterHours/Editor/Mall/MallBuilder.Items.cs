@@ -36,9 +36,9 @@ namespace AfterHours.EditorTools
             Room(MallFloor.Ground, 1, 1, true, "pry_bar", "door_actuator");                                          // Loading bay
             Room(MallFloor.Ground, 1, 1, false, "machine_part", "metal_can");                                        // Goods in
             Room(MallFloor.Level1, 1, 1, true, "mech_handle", "gear");                                               // Plant room
-            Room(MallFloor.Level1, 1, -1, true, "key_security", "security_token", "lift_key", "key_exit");          // Mall management
-            Room(MallFloor.Level1, 1, -1, false, "card_restricted");                                                 // Records office
-            Room(MallFloor.Level1, -1, -1, false, "key_plantroom", "wire_cutters");                                  // Maintenance L1
+            Room(MallFloor.Level1, 1, -1, true, "key_security", "security_token", "lift_key", "key_exit", "key_shop");          // Mall management
+            Room(MallFloor.Level1, 1, -1, false, "lock_dial");                                                       // Records office
+            Room(MallFloor.Level1, -1, -1, false, "key_plantroom", "wire_cutters", "card_restricted");               // Maintenance L1
             Room(MallFloor.Level2, -1, 1, false, "key_maintenance", "old_phone");                                    // Staff canteen
             Room(MallFloor.Level2, -1, -1, true, "fuse", "fuse");                                                    // Switch room
             Room(MallFloor.Level2, -1, -1, false, "valve_wheel");                                                    // Water tanks

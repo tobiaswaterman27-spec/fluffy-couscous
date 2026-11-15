@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Events;
 using AfterHours.Audio;
+using AfterHours.Puzzles;
 
 namespace AfterHours.Interaction
 {
@@ -8,8 +9,13 @@ namespace AfterHours.Interaction
     /// A switch, lever or breaker. The moving part rotates between off/on angles; state changes fire an event
     /// (power circuits, machinery and puzzles connect to it in Parts 7 and 12).
     /// </summary>
-    public class PhysicalSwitch : Interactable
+    public class PhysicalSwitch : Interactable, IPuzzleInput, IResettable
     {
+        public bool Satisfied => isOn;
+        public GameObject LastActor { get; private set; }
+        public event System.Action Changed;
+        bool startOn;
+        void Awake() => startOn = isOn;
         public Transform handle;
         public Vector3 offEuler = new Vector3(-35f, 0f, 0f);
         public Vector3 onEuler = new Vector3(35f, 0f, 0f);
@@ -48,7 +54,17 @@ namespace AfterHours.Interaction
                 anim = 0f;
             }
             InteractionFx.Play(ProceduralSounds.Sfx.Click, transform.position, 0.6f, noiseRadius, actor);
+            LastActor = actor;
             onChanged.Invoke(isOn);
+            Changed?.Invoke();
+        }
+
+        public void ResetState()
+        {
+            isOn = startOn;
+            anim = 1f;
+            if (handle != null) handle.localRotation = Quaternion.Euler(isOn ? onEuler : offEuler);
+            Changed?.Invoke();
         }
 
         void Update()

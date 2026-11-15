@@ -59,8 +59,10 @@ namespace AfterHours.EditorTools
                 if (slot.kind == DoorKind.Staff || slot.kind == DoorKind.Storage || slot.kind == DoorKind.Maintenance) faulty |= h % 9 == 0;
                 bool squeaky = h % 5 == 0;
 
-                InteractiveFactory.HingedDoor(parent, "Door (" + slot.kind + ")", p, axis, slot.width, slot.height, leafMat, surface, metal,
+                if (!string.IsNullOrEmpty(slot.lockId)) lockId = slot.lockId;
+                Door door = InteractiveFactory.HingedDoor(parent, "Door (" + slot.kind + ")", p, axis, slot.width, slot.height, leafMat, surface, metal,
                     slot.kind, weight, slot.startsLocked, slot.startsLocked ? lockId : "", squeaky, faulty, forceable);
+                slot.built = door;
                 n++;
             }
             Debug.Log("[AfterHours] Doors built: " + n);
@@ -121,7 +123,8 @@ namespace AfterHours.EditorTools
             float x = 26f;
             for (int i = 0; i < lockers && x < 32.2f; i++, x += 0.64f)
             {
-                InteractiveFactory.Locker(parent, new Vector3(sx * x, y, sz * zAbs), facing, metal, plantMat, metal);
+                bool lockedLocker = room.label.Contains("Locker") && i == 2;
+                InteractiveFactory.Locker(parent, new Vector3(sx * x, y, sz * zAbs), facing, metal, plantMat, metal, lockedLocker);
             }
             if (lockers > 0) x += 0.3f;
             for (int i = 0; i < cupboards && x < 32f; i++, x += 1.14f)

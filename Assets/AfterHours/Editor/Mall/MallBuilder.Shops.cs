@@ -80,16 +80,16 @@ namespace AfterHours.EditorTools
                 corridorDoors.Add((MallLayout.CoreDoorU0, MallLayout.CoreDoorU1, DoorHeight));
                 corridorDoors.Add((MallLayout.RoomBDoorU0, MallLayout.RoomBDoorU1, DoorHeight));
                 MallLayout.QuadrantRoom rb = MallLayout.QuadrantRoomB(f, qx, qz);
-                CorridorDoorSign(parent, w, side, y, MallLayout.CoreDoorU0, MallLayout.CoreDoorU1, "STAIRS", DoorKind.Stairwell, false);
+                CorridorDoorSign(parent, w, side, y, MallLayout.CoreDoorU0, MallLayout.CoreDoorU1, "STAIRS", DoorKind.Stairwell, "");
                 CorridorDoorSign(parent, w, side, y, MallLayout.RoomBDoorU0, MallLayout.RoomBDoorU1, rb.label.ToUpperInvariant(),
-                    rb.type == FacilityType.Toilets ? DoorKind.Toilet : DoorKind.Restricted, rb.restricted);
+                    rb.type == FacilityType.Toilets ? DoorKind.Toilet : DoorKind.Restricted, rb.lockId);
             }
             else
             {
                 corridorDoors.Add((MallLayout.RoomADoorU0, MallLayout.RoomADoorU1, DoorHeight));
                 MallLayout.QuadrantRoom ra = MallLayout.QuadrantRoomA(f, qx, qz);
                 CorridorDoorSign(parent, w, side, y, MallLayout.RoomADoorU0, MallLayout.RoomADoorU1, ra.label.ToUpperInvariant(),
-                    ra.type == FacilityType.Toilets ? DoorKind.Toilet : DoorKind.Restricted, ra.restricted);
+                    ra.type == FacilityType.Toilets ? DoorKind.Toilet : DoorKind.Restricted, ra.lockId);
             }
             float end = MallLayout.AnchorEndFor(f, w);
             WingWallU("Corridor outer wall", parent, w, y, MallLayout.OuterWall, end, corridorV, 0.3f, corridorDoors, wallService, SurfaceType.Concrete);
@@ -110,11 +110,12 @@ namespace AfterHours.EditorTools
             }
         }
 
-        static void CorridorDoorSign(Transform parent, WingId w, int side, float y, float u0, float u1, string label, DoorKind kind, bool locked)
+        static void CorridorDoorSign(Transform parent, WingId w, int side, float y, float u0, float u1, string label, DoorKind kind, string lockId)
         {
             float mid = (u0 + u1) * 0.5f;
             Vector3 view = MallLayout.WingRight(w) * side; // standing in the corridor, looking at the outer wall
-            DoorMarker(parent, label, MallLayout.WingPoint(w, mid, side * MallLayout.CorridorOuter, y), kind, u1 - u0, DoorHeight, locked, "Corridor door");
+            bool locked = !string.IsNullOrEmpty(lockId);
+            DoorMarker(parent, label, MallLayout.WingPoint(w, mid, side * MallLayout.CorridorOuter, y), kind, u1 - u0, DoorHeight, locked, "Corridor door", lockId);
             Sign(parent, label, MallLayout.WingPoint(w, mid, side * (MallLayout.CorridorOuter - 0.03f), y + 2.45f), view, 1.6f, 0.03f);
         }
 

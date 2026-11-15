@@ -77,7 +77,8 @@ namespace AfterHours.EditorTools
             BoxMinMax("Service tunnel wall", parent, new Vector3(tunnelEnd, y, tz1), new Vector3(-H - 0.3f, -1f, tz1 + 0.3f), concrete, SurfaceType.Concrete);
             WallSpan("Service tunnel end", parent, new Vector3(tunnelEnd - 0.15f, 0f, tz0), new Vector3(tunnelEnd - 0.15f, 0f, tz1), 0.3f, y, -1f,
                 new List<Opening> { new Opening(0.9f, 2.1f, DoorHeight) }, concrete, SurfaceType.Concrete);
-            DoorMarker(parent, "Service tunnel end door", new Vector3(tunnelEnd, y, -18.5f), DoorKind.Maintenance, 1.2f, DoorHeight, true, "Sealed door at the end of the service tunnel");
+            DoorMarker(parent, "Service tunnel end door", new Vector3(tunnelEnd, y, -18.5f), DoorKind.Maintenance, 1.2f, DoorHeight, true,
+                "Pressure door at the end of the service tunnel (escape route 6): opened by its valve wheel", "tunnel_door");
             for (float x = -110f; x > tunnelEnd; x -= 16f) PointLight(parent, new Vector3(x, -1.3f, -18.5f), 8f, 0.35f, WarmWhite, false);
             DoorMarker(parent, "Service tunnel gate", new Vector3(-H, y, -18.5f), DoorKind.Maintenance, 3f, 3f, true, "Gate from the car park into the service tunnel");
 

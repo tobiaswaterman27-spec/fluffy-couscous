@@ -566,7 +566,12 @@ namespace AfterHours.World.Layout
             public string label;
             public FurnishStyle style;
             public bool restricted;
+            /// <summary>Key / card that opens this room's corridor door ("" = unlocked).</summary>
+            public string lockId;
         }
+
+        // Progression (see docs/PROGRESSION.md): card_staff -> card_maintenance / key_maintenance ->
+        // key_plantroom / card_restricted -> key_security -> key_loading. No room holds its own key.
 
         /// <summary>Room A: the L-shaped room around the stair core (door from the East/West wing corridor).</summary>
         public static QuadrantRoom QuadrantRoomA(MallFloor f, int sx, int sz)
@@ -574,20 +579,20 @@ namespace AfterHours.World.Layout
             switch (f)
             {
                 case MallFloor.Ground:
-                    if (sx > 0 && sz > 0) return Room(FacilityType.LoadingBay, "Loading Bay", FurnishStyle.Storage, true);
-                    if (sx < 0 && sz > 0) return Room(FacilityType.Security, "Security Office", FurnishStyle.Office, true);
-                    if (sx > 0) return Room(FacilityType.Toilets, "Toilets", FurnishStyle.Toilets, false);
-                    return Room(FacilityType.Electrical, "Electrical Room", FurnishStyle.Plant, true);
+                    if (sx > 0 && sz > 0) return Room(FacilityType.LoadingBay, "Loading Bay", FurnishStyle.Storage, true, "key_loading");
+                    if (sx < 0 && sz > 0) return Room(FacilityType.Security, "Security Office", FurnishStyle.Office, true, "key_security");
+                    if (sx > 0) return Room(FacilityType.Toilets, "Toilets", FurnishStyle.Toilets, false, "");
+                    return Room(FacilityType.Electrical, "Electrical Room", FurnishStyle.Plant, true, "card_maintenance");
                 case MallFloor.Level1:
-                    if (sx > 0 && sz > 0) return Room(FacilityType.PlantRoom, "Plant Room", FurnishStyle.Plant, true);
-                    if (sx < 0 && sz > 0) return Room(FacilityType.Toilets, "Toilets", FurnishStyle.Toilets, false);
-                    if (sx > 0) return Room(FacilityType.Management, "Mall Management", FurnishStyle.Office, true);
-                    return Room(FacilityType.Storage, "Storage", FurnishStyle.Storage, true);
+                    if (sx > 0 && sz > 0) return Room(FacilityType.PlantRoom, "Plant Room", FurnishStyle.Plant, true, "key_plantroom");
+                    if (sx < 0 && sz > 0) return Room(FacilityType.Toilets, "Toilets", FurnishStyle.Toilets, false, "");
+                    if (sx > 0) return Room(FacilityType.Management, "Mall Management", FurnishStyle.Office, true, "card_restricted");
+                    return Room(FacilityType.Storage, "Storage", FurnishStyle.Storage, true, "key_storage");
                 default:
-                    if (sx > 0 && sz > 0) return Room(FacilityType.PlantRoom, "Air Handling Plant", FurnishStyle.Plant, true);
-                    if (sx < 0 && sz > 0) return Room(FacilityType.Storage, "Storage", FurnishStyle.Storage, true);
-                    if (sx > 0) return Room(FacilityType.Toilets, "Toilets", FurnishStyle.Toilets, false);
-                    return Room(FacilityType.Electrical, "Switch Room", FurnishStyle.Plant, true);
+                    if (sx > 0 && sz > 0) return Room(FacilityType.PlantRoom, "Air Handling Plant", FurnishStyle.Plant, true, "key_plantroom");
+                    if (sx < 0 && sz > 0) return Room(FacilityType.Storage, "Storage", FurnishStyle.Storage, true, "key_storage");
+                    if (sx > 0) return Room(FacilityType.Toilets, "Toilets", FurnishStyle.Toilets, false, "");
+                    return Room(FacilityType.Electrical, "Switch Room", FurnishStyle.Plant, true, "card_maintenance");
             }
         }
 
@@ -597,26 +602,26 @@ namespace AfterHours.World.Layout
             switch (f)
             {
                 case MallFloor.Ground:
-                    if (sx > 0 && sz > 0) return Room(FacilityType.Storage, "Goods In", FurnishStyle.Storage, true);
-                    if (sx < 0 && sz > 0) return Room(FacilityType.StaffOnly, "Staff Room & Lockers", FurnishStyle.Office, true);
-                    if (sx > 0) return Room(FacilityType.Restricted, "Staff Exit Lobby", FurnishStyle.None, true);
-                    return Room(FacilityType.Maintenance, "Maintenance Workshop", FurnishStyle.Storage, true);
+                    if (sx > 0 && sz > 0) return Room(FacilityType.Storage, "Goods In", FurnishStyle.Storage, true, "key_loading");
+                    if (sx < 0 && sz > 0) return Room(FacilityType.StaffOnly, "Staff Room & Lockers", FurnishStyle.Office, true, "card_staff");
+                    if (sx > 0) return Room(FacilityType.Restricted, "Staff Exit Lobby", FurnishStyle.None, true, "card_restricted");
+                    return Room(FacilityType.Maintenance, "Maintenance Workshop", FurnishStyle.Storage, true, "card_staff");
                 case MallFloor.Level1:
-                    if (sx > 0 && sz > 0) return Room(FacilityType.Storage, "Storage", FurnishStyle.Storage, true);
-                    if (sx < 0 && sz > 0) return Room(FacilityType.Storage, "Stock Room", FurnishStyle.Storage, true);
-                    if (sx > 0) return Room(FacilityType.Restricted, "Records Office", FurnishStyle.Office, true);
-                    return Room(FacilityType.Maintenance, "Maintenance", FurnishStyle.Storage, true);
+                    if (sx > 0 && sz > 0) return Room(FacilityType.Storage, "Storage", FurnishStyle.Storage, true, "key_storage");
+                    if (sx < 0 && sz > 0) return Room(FacilityType.Storage, "Stock Room", FurnishStyle.Storage, true, "key_storage");
+                    if (sx > 0) return Room(FacilityType.Restricted, "Records Office", FurnishStyle.Office, true, "card_restricted");
+                    return Room(FacilityType.Maintenance, "Maintenance", FurnishStyle.Storage, true, "card_maintenance");
                 default:
-                    if (sx > 0 && sz > 0) return Room(FacilityType.RoofAccess, "Roof Access Plant", FurnishStyle.Plant, true);
-                    if (sx < 0 && sz > 0) return Room(FacilityType.StaffOnly, "Staff Canteen", FurnishStyle.Food, true);
-                    if (sx > 0) return Room(FacilityType.Storage, "Storage", FurnishStyle.Storage, true);
-                    return Room(FacilityType.PlantRoom, "Water Tanks", FurnishStyle.Plant, true);
+                    if (sx > 0 && sz > 0) return Room(FacilityType.RoofAccess, "Roof Access Plant", FurnishStyle.Plant, true, "card_restricted");
+                    if (sx < 0 && sz > 0) return Room(FacilityType.StaffOnly, "Staff Canteen", FurnishStyle.Food, true, "card_staff");
+                    if (sx > 0) return Room(FacilityType.Storage, "Storage", FurnishStyle.Storage, true, "key_storage");
+                    return Room(FacilityType.PlantRoom, "Water Tanks", FurnishStyle.Plant, true, "key_plantroom");
             }
         }
 
-        static QuadrantRoom Room(FacilityType t, string label, FurnishStyle s, bool restricted)
+        static QuadrantRoom Room(FacilityType t, string label, FurnishStyle s, bool restricted, string lockId)
         {
-            return new QuadrantRoom { type = t, label = label, style = s, restricted = restricted };
+            return new QuadrantRoom { type = t, label = label, style = s, restricted = restricted, lockId = lockId };
         }
 
         public static AreaRect QuadrantRoomARect(int sx, int sz) => new AreaRect(OuterWall, OuterWall, QuadrantOuter, QuadrantDivider).Mirrored(sx, sz);

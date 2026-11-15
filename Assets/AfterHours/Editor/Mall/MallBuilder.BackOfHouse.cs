@@ -70,7 +70,7 @@ namespace AfterHours.EditorTools
                     CoreT, y0, y1, outer, wallService, SurfaceType.Concrete);
                 if (roofLevel)
                 {
-                    DoorMarker(g, "Roof door", CoreP(sx, sz, CoreW, y0, 1.2f), DoorKind.Restricted, 1.2f, DoorHeight, true, "Roof access door");
+                    DoorMarker(g, "Roof door", CoreP(sx, sz, CoreW, y0, 1.2f), DoorKind.Restricted, 1.2f, DoorHeight, true, "Roof access door (escape route 5)", "key_roof");
                 }
 
                 // Landing at this level.
@@ -124,7 +124,8 @@ namespace AfterHours.EditorTools
             // Divider between room A and room B, with a connecting door.
             WallSpan("Room divider", g, new Vector3(sx * o, 0f, sz * d), new Vector3(sx * (q - 0.3f), 0f, sz * d), 0.2f, y, y + MallLayout.WallTop,
                 new List<Opening> { new Opening(39.4f - o, 40.6f - o, DoorHeight) }, wallService, SurfaceType.Concrete);
-            DoorMarker(g, "Room A-B door", new Vector3(sx * 40f, y, sz * d), DoorKind.Staff, 1.2f, DoorHeight, false, "");
+            DoorMarker(g, "Room A-B door", new Vector3(sx * 40f, y, sz * d), DoorKind.Staff, 1.2f, DoorHeight, true,
+                "Internal door between back-of-house rooms: sealed (no key), so locked rooms can't be bypassed", "sealed");
 
             // Exterior walls.
             var eastOpenings = new List<Opening>();
@@ -151,7 +152,7 @@ namespace AfterHours.EditorTools
             }
             if (staffExit)
             {
-                DoorMarker(g, "Staff exit", new Vector3(sx * 40f, y, sz * q), DoorKind.Fire, 1.2f, DoorHeight, true, "Restricted staff exit (escape route 7)");
+                DoorMarker(g, "Staff exit", new Vector3(sx * 40f, y, sz * q), DoorKind.Fire, 1.2f, DoorHeight, true, "Restricted staff exit (escape route 7)", "staff_exit");
             }
 
             // Rooms.
@@ -193,8 +194,11 @@ namespace AfterHours.EditorTools
         // Anchor stores at the end of every wing
         // =====================================================================
 
+        static readonly List<Transform> MainEntrancePanels = new List<Transform>();
+
         static void BuildAnchors(Transform parent)
         {
+            MainEntrancePanels.Clear();
             foreach (MallUnit a in MallLayout.Units)
             {
                 if (!a.isAnchor) continue;
@@ -256,7 +260,8 @@ namespace AfterHours.EditorTools
                 for (int i = 0; i < 4; i++)
                 {
                     float v0 = -6f + i * 3f;
-                    GameObject door = WingBox("Main entrance glass door", g, w, end - 0.2f, end - 0.1f, v0 + 0.05f, v0 + 2.95f, y, y + 3f, darkGlass, SurfaceType.Glass);
+                    GameObject door = WingBox("Main entrance glass door", g, w, end - 0.2f, end - 0.1f, v0 + 0.05f, v0 + 2.95f, y, y + 3f, darkGlass, SurfaceType.Glass, false);
+                    MainEntrancePanels.Add(door.transform);
                     if (i == 1) Slot(door, DoorKind.Glass, 12f, 3f, true, "Main entrance doors (escape route 1): locked, outside is black");
                 }
                 WingBox("Entrance mat", g, w, end - 4f, end - 0.3f, -6f, 6f, y, y + 0.02f, floorCarpet, SurfaceType.Carpet);
@@ -400,7 +405,6 @@ namespace AfterHours.EditorTools
                 new List<(float, float, float)> { (122.6f, 123.6f, 2f) }, wallPaint, SurfaceType.Concrete);
             DoorMarker(g, "Hidden door", MallLayout.WingPoint(w, 123.1f, 15.6f, y), DoorKind.Hidden, 1f, 2f, false,
                 "Unmarked door behind screen 3, painted like the wall (escape route 8)");
-            WingBox("Disused passage debris", g, w, 110f, 111.2f, 16.2f, 17.4f, y, y + 0.8f, propMat, SurfaceType.Wood);
             PointLight(g, MallLayout.WingPoint(w, 116f, 17.5f, y + 3f), 6f, 0.12f, WarmWhite, false);
 
             foreach (var s in screens)

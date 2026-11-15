@@ -101,6 +101,8 @@ namespace AfterHours.EditorTools
                 BuildDoors(Group("Doors", mall));
                 Progress("Items", 0.57f);
                 BuildItems(Group("Items", mall));
+                Progress("Escape routes (puzzles)", 0.58f);
+                BuildEscapeRoutes(Group("Escape Route Puzzles", mall));
                 Progress("Detail: concourses", 0.58f);
                 DressConcourses(Group("Concourses", details));
                 Progress("Detail: shop interiors", 0.61f);
@@ -542,12 +544,13 @@ namespace AfterHours.EditorTools
         }
 
         /// <summary>Marker object at a doorway (centre of the opening at floor level).</summary>
-        static GameObject DoorMarker(Transform parent, string name, Vector3 floorCentre, DoorKind kind, float width, float height, bool locked, string note)
+        static GameObject DoorMarker(Transform parent, string name, Vector3 floorCentre, DoorKind kind, float width, float height, bool locked, string note, string lockId = "")
         {
             var go = new GameObject("Door: " + name);
             go.transform.SetParent(parent, false);
             go.transform.localPosition = floorCentre;
             Slot(go, kind, width, height, locked, note);
+            go.GetComponent<DoorSlot>().lockId = lockId ?? "";
             return go;
         }
     }
