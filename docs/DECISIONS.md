@@ -11,10 +11,12 @@
 - The editor runs on the developer's Linux PC and can produce Windows, macOS and Linux builds.
 - Chromebook / browser play is **not** a target (agreed). Code is kept platform-neutral in case.
 
-## Renderer: decided before Part 4
-- Parts 1–3 are renderer-independent (editor tools pick URP, HDRP or built-in shaders automatically).
-- HDRP if the PC has a capable dedicated GPU; otherwise URP with baked lighting, SSAO, decals and post-processing.
-  Pending: output of `lspci | grep -i vga` from the developer's PC.
+## Renderer: URP (decided)
+- Developer PC: Linux, AMD Ryzen 7040 "Phoenix" integrated graphics (Radeon 760M/780M class). HDRP would be too heavy.
+- URP with: baked lightmaps + light probes (most mall lights baked), only a handful of realtime lights near the
+  player (flicker, interaction), SSAO, decals, screen-space reflections where affordable, post-processing (grain,
+  grading, auto-exposure), LODs and occlusion culling. Target ~60 fps on this iGPU at 1080p with medium settings.
+- The editor may run with OpenGL on this machine; the GPU Resident Drawer is disabled (unsupported there).
 
 ## How visual quality is achieved without a person modelling everything
 - Lighting/post-processing configured by editor scripts (IES-shaped fluorescents, AO, reflections, baked GI,
