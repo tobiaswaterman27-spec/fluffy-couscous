@@ -37,8 +37,10 @@
   Because the legs follow the actual crawled path, they go round vent bends without cutting the corner.
   Backing up extends the path behind the feet; that space is checked first, so you cannot back into a wall
   or spin round in a duct (back out or reach a junction); the head can still turn ±75° to look around.
-- **Stance keys:** Ctrl = crouch (hold, or toggle in Settings), C = crawl on/off. All gameplay keys are
-  rebindable; overrides live in settings.json.
+- **Hold controls (developer's choice):** double-tap a movement direction and keep holding it to sprint
+  (detected on the Move action's direction, so it survives key rebinding and works with a stick flick);
+  hold Shift = crouch; hold Ctrl = crawl. Releasing never forces you up into geometry. All gameplay keys
+  are rebindable; overrides live in settings.json.
 - **Heavy objects** are dynamic rigidbodies driven by velocity towards each grabbing player's target pose
   (averaged; speed grows with helpers). They collide normally and can jam, which releases the grip.
 - **Moving ground**: platforms report their per-frame movement and riders are carried by it inside the same

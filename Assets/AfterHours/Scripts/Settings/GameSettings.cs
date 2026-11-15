@@ -15,8 +15,6 @@ namespace AfterHours.Settings
         public float mouseSensitivity = 0.12f;   // degrees per mouse pixel
         public float gamepadSensitivity = 180f;  // degrees per second at full stick
         public bool invertY = false;
-        [Tooltip("Off = hold Ctrl to crouch. On = press Ctrl to crouch, press again to stand.")]
-        public bool crouchToggle = false;
         [Tooltip("Custom key bindings (Input System override JSON). Empty = defaults.")]
         public string bindingOverrides = "";
 

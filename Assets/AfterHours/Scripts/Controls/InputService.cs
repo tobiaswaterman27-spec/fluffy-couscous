@@ -27,9 +27,9 @@ namespace AfterHours.Controls
         public InputAction Look { get; private set; }
         public InputAction LookStick { get; private set; }
         public InputAction Sprint { get; private set; }
-        /// <summary>Crouch (hold, or toggle if set in Settings).</summary>
+        /// <summary>Hold to crouch.</summary>
         public InputAction Crouch { get; private set; }
-        /// <summary>Crawl on/off.</summary>
+        /// <summary>Hold to crawl.</summary>
         public InputAction Crawl { get; private set; }
         public InputAction Interact { get; private set; }
         public InputAction Drop { get; private set; }
@@ -128,10 +128,12 @@ namespace AfterHours.Controls
             LookStick.expectedControlType = "Vector2";
             LookStick.AddBinding("<Gamepad>/rightStick", groups: GamepadGroup);
 
-            Sprint = Button("Sprint", "<Keyboard>/leftShift", "<Gamepad>/leftStickPress");
+            // Sprint is normally a double-tap of a movement key (see LocalPlayerInput).
+            // This optional hold-to-sprint key is unbound on keyboard by default.
+            Sprint = Button("Sprint", "", "<Gamepad>/leftStickPress");
 
-            Crouch = Button("Crouch", "<Keyboard>/leftCtrl", "<Gamepad>/buttonEast");
-            Crawl = Button("Crawl", "<Keyboard>/c", "<Gamepad>/dpad/down");
+            Crouch = Button("Crouch", "<Keyboard>/leftShift", "<Gamepad>/buttonEast");
+            Crawl = Button("Crawl", "<Keyboard>/leftCtrl", "<Gamepad>/rightShoulder");
 
             Interact = Button("Interact", "<Keyboard>/e", "<Gamepad>/buttonSouth");
             Drop = Button("Drop", "<Keyboard>/g", "<Gamepad>/buttonWest");

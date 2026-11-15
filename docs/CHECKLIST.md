@@ -22,7 +22,8 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - 🧪 Sharp turns at speed reduce momentum slightly
 - 🧪 Backwards movement: walk, run, crouch and crawl backwards (slower, shorter strides)
 - 🧪 Crouching: real collider shrink, very quiet, can't stand up under low ceilings
-- 🧪 Ctrl = crouch (hold, or toggle option), C = crawl on/off; crawling is slow (0.6 m/s) and very quiet
+- 🧪 Hold controls: double-tap + hold a move key = sprint, hold Shift = crouch, hold Ctrl = crawl;
+  releasing without room keeps you low; crawling is slow (0.6 m/s) and very quiet; reduced crawl camera sway
 - 🧪 Crawling: torso + thigh + shin body laid along the crawled path; fits vents, follows bends without
   cutting corners, can't back legs-first into walls, can't turn round in narrow ducts
 - 🧪 Smooth stance transitions (stand ↔ crouch ↔ crawl), never instant

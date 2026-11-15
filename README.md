@@ -84,15 +84,17 @@ If a part says to rebuild the test scene, run the menu item again.
 
 ## Controls (development build)
 
+Crouch, crawl and sprint are all **hold** controls. If you let go where there is no room to rise (vent, low ceiling), you stay low until there is.
+
 All controls can be changed: **Esc > Controls**, click a binding, press the new key. Saved automatically.
 
 | Action | Keyboard / mouse | Gamepad |
 |---|---|---|
 | Move (S = walk backwards) | WASD / arrows | Left stick |
 | Look | Mouse | Right stick |
-| Sprint (works backwards too, slower) | Left Shift | Left stick click |
-| Crouch (hold; can be set to toggle in Settings) | Left Ctrl | B / Circle |
-| Crawl on / off (slow and very quiet) | C | D-pad down |
+| Sprint: **double-tap a move key and keep holding it** (any direction; backwards is slower) | e.g. W, W (hold) | Hold left stick click, or flick stick twice |
+| Crouch (hold) | Left Shift | Hold B / Circle |
+| Crawl (hold; slow and very quiet) | Left Ctrl | Hold RB / R1 |
 | Grab heavy object (hold), push / pull by walking | E | A / Cross |
 | Drop (used from Part 6) | G | X / Square |
 | Pause, settings, key rebinding | Esc | Start |

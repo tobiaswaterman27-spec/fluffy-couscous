@@ -26,8 +26,8 @@ namespace AfterHours.Player
         public float walkBob = 0.035f;
         public float sprintBob = 0.065f;
         public float crouchBob = 0.022f;
-        public float crawlBob = 0.03f;
-        public float crawlRoll = 2.2f;
+        public float crawlBob = 0.014f;
+        public float crawlRoll = 0.9f;
         public float sprintFovBoost = 6f;
 
         [Header("Debug third-person view (F5)")]

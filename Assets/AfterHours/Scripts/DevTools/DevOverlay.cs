@@ -84,8 +84,8 @@ namespace AfterHours.DevTools
                 string help =
                     "<b>CONTROLS</b>\n" +
                     "WASD move (S = backwards)   Mouse look\n" +
-                    "Shift sprint (also backwards)\n" +
-                    "Ctrl crouch (hold)   C crawl (on/off)\n" +
+                    "Double-tap + hold a move key = sprint (also backwards)\n" +
+                    "Hold Shift = crouch   Hold Ctrl = crawl\n" +
                     "Hold E on a heavy object = push / pull it\n" +
                     "Esc pause, settings & key rebinding   F3 info   F5 see your body";
                 GUI.Box(new Rect(10, 195, 470, 125), GUIContent.none);

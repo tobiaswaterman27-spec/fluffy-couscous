@@ -114,7 +114,6 @@ namespace AfterHours.UI
             GUILayout.Label($"Master volume: {s.masterVolume * 100f:0}%");
             s.masterVolume = GUILayout.HorizontalSlider(s.masterVolume, 0f, 1f);
             s.invertY = GUILayout.Toggle(s.invertY, " Invert look Y");
-            s.crouchToggle = GUILayout.Toggle(s.crouchToggle, " Crouch is a toggle (off = hold Ctrl)");
             s.headBob = GUILayout.Toggle(s.headBob, " Head bob");
             s.vSync = GUILayout.Toggle(s.vSync, " V-Sync");
             if (GUI.changed) service.ApplyRuntime();
