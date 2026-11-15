@@ -14,7 +14,7 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - 🧪 Dev pause/settings menu, dev info panel (F3), debug body view (F5)
 - 🧪 Key rebinding for every gameplay action (keyboard/mouse and gamepad separately), saved, reset to defaults
 - 🧪 One-click test scene builder
-- ⬜ Renderer choice (URP vs HDRP) — waiting on GPU info, needed before Part 4
+- ✅ Renderer choice: URP (integrated AMD graphics)
 
 ## Part 2 — Player movement & physics
 - 🧪 Walking with smooth acceleration/deceleration
@@ -62,7 +62,7 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - 🧪 Windows to outside: none visible; entrance glass is black
 - 🧪 Review Shots tool (20 fixed views → PNG) and F12 in-game screenshots
 - 🧪 Dev teleport menu (Esc > Teleport) for testing the large building
-- ⬜ Vent network inside the ceiling voids → Part 5 (covers) / Part 11 (crawl network)
+- 🧪 Vent network: built in Part 11 as low ducts beside the service corridors (you can crawl in from floor level)
 
 ## Part 4 — Environment art & atmosphere
 - 🧪 Procedural PBR textures (colour + normal + metal/AO/smoothness): porcelain tiles, terrazzo, ceiling tiles,
@@ -91,7 +91,7 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
   "5 - Bake Lighting" (+ occlusion culling) and "6 - Undo Baked Lighting"
 - 🧪 Ambient sound: fluorescent hum, ventilation, plant machinery, car park fans, fountain water; reverb zones per space
 - 🧪 Performance: tens of thousands of objects merged into a few thousand meshes; colliders preserved
-- ⬜ Real recorded audio (Part 10), TextMeshPro signage and higher-quality fonts (polish)
+- 🔨 Real recorded audio, TextMeshPro signage and higher-quality fonts (procedural audio and legacy text in place; can be swapped later)
 
 ## Part 5 — Interaction & physics
 - 🧪 Look-at interaction prompt (small), hold-to-interact, range + line-of-sight checks
@@ -170,5 +170,5 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 - 🧪 Cooperative heavy-object moving (grips sent to the host; more helpers = faster)
 
 ## Part 18 — Polish & final testing
-- ⬜ Full test matrix (1–4 players, all routes, saves, disconnects, performance)
-- ⬜ Windows, macOS and Linux builds
+- 🧪 Test plan (docs/TESTING.md) and automatic mall check (After Hours > 7 - Check Mall)
+- 🧪 Windows, macOS and Linux builds (After Hours > 8 - Make Game Builds)

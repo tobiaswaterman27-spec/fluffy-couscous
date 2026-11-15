@@ -77,6 +77,12 @@ Press the **Play** button (▶, top centre). Click inside the **Game** view to c
    When it finishes, press Play again: that is the real look.
 4. To go back to preview lighting: **After Hours > 6 - Undo Baked Lighting**.
 
+### Checking and building
+- **After Hours > 7 - Check Mall** inspects the built mall and lists anything missing.
+- **After Hours > 8 - Make Game Builds** makes a stand-alone game for Linux, Windows or macOS (in the `Builds`
+  folder). Each needs its Build Support module: Unity Hub > Installs > gear icon > Add modules.
+- The full test plan is in `docs/TESTING.md`.
+
 ### 7. Playing the whole game (Part 13)
 After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the camera drifts through the dark atrium).
 - **New game**: you wake up on the atrium floor at 11:30 PM.

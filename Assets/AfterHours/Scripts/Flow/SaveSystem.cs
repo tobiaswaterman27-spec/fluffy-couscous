@@ -74,7 +74,9 @@ namespace AfterHours.Flow
 
         void Register<T>() where T : Component
         {
-            foreach (T c in FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None)) Add(c, KeyFor(c));
+            T[] found = FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            System.Array.Sort(found, (a, b) => string.CompareOrdinal(AfterHours.Net.NetWorld.HierarchyPath(a.transform), AfterHours.Net.NetWorld.HierarchyPath(b.transform)));
+            foreach (T c in found) Add(c, KeyFor(c));
         }
 
         void Add(Component c, string key)

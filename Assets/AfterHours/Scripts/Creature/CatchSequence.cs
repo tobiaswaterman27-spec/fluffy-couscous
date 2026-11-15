@@ -254,7 +254,7 @@ namespace AfterHours.Creature
             if (u > ResetT + 0.2f) black = 1f - Ease(ResetT + 0.2f, EndT, u);
             float wantListener = u >= StillT && u < ScreamT ? 0.2f : u > BlackT ? 0.3f : 1f;
             listener = Mathf.MoveTowards(listener, wantListener, dt * 4f);
-            if (local) AudioListener.volume = listener;
+            if (local) AudioListener.volume = listener * SettingsService.CurrentOrDefault.masterVolume;
 
             if (u >= EndT) Finish();
         }
@@ -590,7 +590,7 @@ namespace AfterHours.Creature
         void Finish()
         {
             if (!released) ResetRun();
-            if (local) AudioListener.volume = 1f;
+            if (local) AudioListener.volume = SettingsService.CurrentOrDefault.masterVolume;
             if (anim != null && anim.Puppet == pose) anim.Puppet = null;
             active.Remove(this);
             Destroy(gameObject);

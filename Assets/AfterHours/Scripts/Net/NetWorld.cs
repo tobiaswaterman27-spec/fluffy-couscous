@@ -34,18 +34,32 @@ namespace AfterHours.Net
         {
             byKey.Clear();
             keys.Clear();
-            foreach (Interactable i in UnityEngine.Object.FindObjectsByType<Interactable>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (Interactable i in Sorted(UnityEngine.Object.FindObjectsByType<Interactable>(FindObjectsInactive.Include, FindObjectsSortMode.None)))
                 Add(i, i is ItemPickup ip && !string.IsNullOrEmpty(ip.instanceId) ? "Item:" + ip.instanceId : KeyFor(i));
-            foreach (HeavyMovable h in UnityEngine.Object.FindObjectsByType<HeavyMovable>(FindObjectsInactive.Include, FindObjectsSortMode.None)) Add(h, KeyFor(h));
-            foreach (LiftController l in UnityEngine.Object.FindObjectsByType<LiftController>(FindObjectsInactive.Include, FindObjectsSortMode.None)) Add(l, KeyFor(l));
-            foreach (Escalator e in UnityEngine.Object.FindObjectsByType<Escalator>(FindObjectsInactive.Include, FindObjectsSortMode.None)) Add(e, KeyFor(e));
-            foreach (EscapeTrigger t in UnityEngine.Object.FindObjectsByType<EscapeTrigger>(FindObjectsInactive.Include, FindObjectsSortMode.None)) Add(t, KeyFor(t));
+            foreach (HeavyMovable h in Sorted(UnityEngine.Object.FindObjectsByType<HeavyMovable>(FindObjectsInactive.Include, FindObjectsSortMode.None))) Add(h, KeyFor(h));
+            foreach (LiftController l in Sorted(UnityEngine.Object.FindObjectsByType<LiftController>(FindObjectsInactive.Include, FindObjectsSortMode.None))) Add(l, KeyFor(l));
+            foreach (Escalator e in Sorted(UnityEngine.Object.FindObjectsByType<Escalator>(FindObjectsInactive.Include, FindObjectsSortMode.None))) Add(e, KeyFor(e));
+            foreach (EscapeTrigger t in Sorted(UnityEngine.Object.FindObjectsByType<EscapeTrigger>(FindObjectsInactive.Include, FindObjectsSortMode.None))) Add(t, KeyFor(t));
         }
 
         static string KeyFor(Component c)
         {
             Vector3 p = c.transform.position;
             return c.GetType().Name + "@" + Mathf.RoundToInt(p.x * 10f) + "," + Mathf.RoundToInt(p.y * 10f) + "," + Mathf.RoundToInt(p.z * 10f) + ":" + c.name;
+        }
+
+        /// <summary>Same order on every machine: by place in the scene hierarchy.</summary>
+        public static string HierarchyPath(Transform t)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (Transform x = t; x != null; x = x.parent) sb.Insert(0, "/" + x.GetSiblingIndex().ToString("D5"));
+            return sb.ToString();
+        }
+
+        static T[] Sorted<T>(T[] items) where T : Component
+        {
+            System.Array.Sort(items, (a, b) => string.CompareOrdinal(HierarchyPath(a.transform), HierarchyPath(b.transform)));
+            return items;
         }
 
         void Add(Component c, string key)
