@@ -192,7 +192,7 @@ namespace AfterHours.Interaction
         /// <summary>Loud banging (Elliot hammering on a door it cannot open).</summary>
         public void Bang(GameObject actor)
         {
-            InteractionFx.Play(ProceduralSounds.Sfx.Slam, HandlePosition, 1f, 24f, actor, NoiseKind.Door);
+            InteractionFx.Play(ProceduralSounds.Sfx.Bang, HandlePosition, 1f, 24f, actor, NoiseKind.Door);
         }
 
         /// <summary>Breaks a locked door open (if this door can be forced).</summary>
@@ -200,7 +200,8 @@ namespace AfterHours.Interaction
         {
             if (!forceable) { Bang(actor); return false; }
             locked = false;
-            InteractionFx.Play(ProceduralSounds.Sfx.Slam, HandlePosition, 1f, 30f, actor, NoiseKind.Door);
+            InteractionFx.Play(ProceduralSounds.Sfx.Bang, HandlePosition, 1f, 30f, actor, NoiseKind.Door);
+            InteractionFx.Play(ProceduralSounds.Sfx.Slam, HandlePosition, 1f, 0f, actor, NoiseKind.Door);
             return Open(fromPosition, 2.2f, actor);
         }
 

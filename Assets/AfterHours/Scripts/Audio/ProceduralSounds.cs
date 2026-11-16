@@ -218,7 +218,7 @@ namespace AfterHours.Audio
         public enum Sfx
         {
             Latch, Creak, Slam, Rattle, ShutterRoll, ShutterStop, DrawerSlide, MetalClank, Click, Unlock, Bump, Crunch, Tear, Splatter, Thud, Gasp,
-            Handle, Pickup, Chime, BreakerOn, BreakerOff, TubeStart, GlassBreak, Bell, Beep, PhoneRing, LiftDoors
+            Handle, Pickup, Chime, BreakerOn, BreakerOff, TubeStart, GlassBreak, Bell, Beep, PhoneRing, LiftDoors, Bang
         }
 
         /// <summary>One-shot interaction sounds (doors, shutters, drawers, switches...). A few variations each.</summary>

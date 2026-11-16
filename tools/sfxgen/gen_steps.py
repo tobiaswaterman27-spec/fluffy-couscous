@@ -2,20 +2,21 @@
 import numpy as np
 from dsp import *
 
-#           floor material, size, how much it rings, extra
+# How each floor answers a foot: the colour and length of the contact noise, how heavy it sounds,
+# and (only for metal) a short, low, damped boom - never a pitched ring.
 SURF = {
-    "tile":      dict(mat="ceramic", size=1.0, ring=0.5, sole=0.5, grit=0.05),
-    "concrete":  dict(mat="concrete", size=1.0, ring=0.6, sole=0.6, grit=0.35),
-    "carpet":    dict(mat="body", size=1.5, ring=0.0, sole=0.25, grit=0.0, fibre=1.0),
-    "metal":     dict(mat="steel", size=1.6, ring=0.4, sole=0.55, grit=0.08, damp=0.2),
-    "ventmetal": dict(mat="sheet", size=0.8, ring=0.8, sole=0.5, grit=0.03, damp=0.25),
-    "wood":      dict(mat="wood", size=1.0, ring=0.7, sole=0.55, grit=0.05),
-    "glass":     dict(mat="glass", size=1.2, ring=0.35, sole=0.5, grit=0.03),
+    "tile":      dict(band=(700, 7000), decay=0.006, thump=0.6, sole=1.0, grit=0.15),
+    "concrete":  dict(band=(350, 4500), decay=0.009, thump=0.8, sole=0.9, grit=0.45),
+    "carpet":    dict(band=(120, 1400), decay=0.022, thump=0.9, sole=0.6, grit=0.0),
+    "metal":     dict(band=(300, 3500), decay=0.012, thump=0.7, sole=0.9, grit=0.1, boom=(110, 420, 0.07, 0.5)),
+    "ventmetal": dict(band=(250, 2600), decay=0.014, thump=0.6, sole=0.8, grit=0.05, boom=(80, 300, 0.14, 0.8)),
+    "wood":      dict(band=(200, 3500), decay=0.011, thump=0.9, sole=0.9, grit=0.08, knock=1),
+    "glass":     dict(band=(1200, 8000), decay=0.005, thump=0.4, sole=0.9, grit=0.05),
 }
 MODES = {
-    "walk":  dict(gap=(0.07, 0.11), level=0.8, hard=0.45, toe=0.55),
-    "run":   dict(gap=(0.03, 0.055), level=1.0, hard=0.6, toe=0.75),
-    "sneak": dict(gap=(0.13, 0.2), level=0.4, hard=0.25, toe=0.8),
+    "walk":  dict(gap=(0.07, 0.11), level=0.8, toe=0.55),
+    "run":   dict(gap=(0.03, 0.055), level=1.0, toe=0.75),
+    "sneak": dict(gap=(0.13, 0.2), level=0.4, toe=0.8),
 }
 
 
@@ -32,42 +33,45 @@ def scuff(rng, dur, band=(400, 3000), level=0.1):
     return bp(pink(dur, rng), *band) * env_adsr(n, dur * 0.2, dur * 0.3, 0.5, dur * 0.4) * level
 
 
-def contact(s, rng, hard, level):
-    dur = 0.5 if s["mat"] in ("sheet", "steel") else 0.3
+def contact(s, rng, level, sharp=1.0):
+    dur = 0.35
     x = silence(dur)
-    place(x, thump(rng, rng.uniform(70, 110), 0.12, 0.9), 0)
-    if s["ring"] > 0:
-        place(x, strike_object(rng, s["mat"], s["size"] * rng.uniform(0.85, 1.15), hard, s["ring"], dur, damp=s.get("damp", 1.0)), 0)
-    # the sole itself: a short, dull slap
-    place(x, bp(pink(0.03, rng), 300, 2500) * env_exp(int(0.03 * SR), 0.006, 0.0005) * s["sole"], 0)
-    if s.get("fibre"):
-        place(x, lp(pink(0.12, rng), 1800) * env_exp(int(0.12 * SR), 0.03, 0.004) * 0.35, 0)
+    place(x, thump(rng, rng.uniform(70, 105), 0.11, s["thump"]), 0)
+    d = s["decay"] / sharp * rng.uniform(0.8, 1.2)
+    n = int(0.08 * SR)
+    lo, hi = s["band"]
+    slap = bp(pink(0.08, rng), lo * rng.uniform(0.9, 1.1), hi * rng.uniform(0.9, 1.1)) * env_exp(n, d, 0.0004)
+    place(x, slap * s["sole"] * 1.6, 0)
+    if s.get("knock"):  # boards: a short hollow knock
+        kn = bp(pink(0.06, rng), 180, 700) * env_exp(int(0.06 * SR), 0.018, 0.0005)
+        place(x, kn * 1.0, 0)
+    if s.get("boom"):
+        lo2, hi2, dk, lvl = s["boom"]
+        f = np.sort(rng.uniform(lo2, hi2, 6))
+        boom = fade(modal_ir(0.35, f, np.full(6, dk) * rng.uniform(0.7, 1.2, 6), np.linspace(1, 0.4, 6)), 0.0, 0.05)
+        exc = excitation(rng, 0.4, 0.004)
+        boom = signal.fftconvolve(exc, boom)[: len(boom)].astype(np.float32)
+        boom /= np.abs(boom).max() + 1e-9
+        place(x, boom * lvl, 0)
     if s["grit"] > 0:
-        # a few grains of dust and sand crushed under the shoe
         for _ in range(rng.integers(4, 14)):
             gd = rng.uniform(0.003, 0.008)
-            g = bp(pink(gd, rng), 1500, 5500) * env_exp(int(gd * SR), gd / 3, 0.0002)
-            place(x, g * rng.uniform(0.3, 1.0) * s["grit"] * 1.5, rng.uniform(0.0, 0.07))
+            g = bp(pink(gd, rng), 1500, 5000) * env_exp(int(gd * SR), gd / 3, 0.0002)
+            place(x, g * rng.uniform(0.3, 1.0) * s["grit"], rng.uniform(0.0, 0.07))
     return x * level
 
 
 def footstep(name, mode, rng):
     s, m = SURF[name], MODES[mode]
-    dur = 0.6 if s["mat"] in ("sheet", "steel") else 0.4
+    dur = 0.55
     x = silence(dur)
-    place(x, contact(s, rng, m["hard"] * rng.uniform(0.85, 1.1), m["level"]), 0)
+    place(x, contact(s, rng, m["level"], 1.3 if mode == "run" else 1.0), 0)
     gap = rng.uniform(*m["gap"])
-    place(x, contact(s, rng, m["hard"] * 0.8, m["level"] * m["toe"] * rng.uniform(0.7, 1.0)), gap)
-    place(x, scuff(rng, rng.uniform(0.04, 0.09), (500, 3500), 0.08 * m["level"]), gap * 0.3)
-    if name in ("tile", "wood") and mode == "run" and rng.random() < 0.35:
-        # rubber sole squeak
-        t = t_axis(0.06)
-        f = rng.uniform(1100, 1900) * (1 + 0.2 * np.sin(2 * np.pi * 30 * t))
-        sq = formants(np.sin(2 * np.pi * np.cumsum(f) / SR).astype(np.float32), [1500, 3000], 4) * env_adsr(len(t), 0.01, 0.02, 0.5, 0.02) * 0.12
-        place(x, sq, gap + 0.005)
-    x = soften(x, 8000)
-    x = reverb(x, 0.35, 0.3, 0.07, 0.3, rng)
-    return fade(x[: int(dur * SR)], 0.0005, 0.05)
+    place(x, contact(s, rng, m["level"] * m["toe"] * rng.uniform(0.7, 1.0), 1.1), gap)
+    place(x, scuff(rng, rng.uniform(0.04, 0.09), (400, 2500), 0.06 * m["level"]), gap * 0.3)
+    x = soften(x, 6500)
+    x = reverb(x, 0.55, 0.45, 0.12, 0.25, rng)
+    return fade(x[: int(dur * SR)], 0.0005, 0.08)
 
 
 def creak(dur, rng, level):
@@ -86,9 +90,8 @@ def crawl(name, rng):
     s = SURF[name]
     dur = 0.65
     x = silence(dur)
-    hand = contact(s, rng, 0.2, 0.35)
-    place(x, hand, 0.0)
-    place(x, contact(s, rng, 0.3, 0.45), rng.uniform(0.18, 0.28))  # knee
+    place(x, contact(s, rng, 0.3, 0.7), 0.0)                        # hand
+    place(x, contact(s, rng, 0.4, 0.6), rng.uniform(0.18, 0.28))   # knee
     # clothes and the knee sliding
     place(x, lp(pink(0.4, rng), 2200) * env_adsr(int(0.4 * SR), 0.1, 0.1, 0.6, 0.15) * 0.18, 0.04)
     place(x, scuff(rng, 0.25, (250, 2500), 0.12), 0.2)
@@ -101,8 +104,8 @@ def landing(name, rng):
     dur = 0.8
     x = silence(dur)
     place(x, thump(rng, 60, 0.25, 1.4), 0)
-    place(x, contact(s, rng, 0.7, 1.0), 0)
-    place(x, contact(s, rng, 0.5, 0.7), rng.uniform(0.02, 0.05))
+    place(x, contact(s, rng, 1.0, 1.2), 0)
+    place(x, contact(s, rng, 0.7, 1.0), rng.uniform(0.02, 0.05))
     place(x, lp(pink(0.2, rng), 1500) * env_exp(int(0.2 * SR), 0.05) * 0.3, 0.01)  # clothes
     return fade(reverb(soften(x, 8000), 0.5, 0.4, 0.1, 0.3, rng)[: int(dur * SR)], 0.0005, 0.08)
 
@@ -115,16 +118,16 @@ def elliot_step(kind, rng):
     smack = bp(pink(0.05, rng), 250, 2200) * env_exp(int(0.05 * SR), 0.01, 0.0004) * 1.2
     place(x, smack, 0.003)
     if kind == "metal":
-        place(x, strike_object(rng, "sheet", 1.4, 0.35, 0.8, 0.7, damp=0.35), 0)
+        place(x, contact(SURF["ventmetal"], rng, 1.0, 0.7), 0)
     elif kind == "hard":
-        place(x, strike_object(rng, "concrete", 1.3, 0.3, 0.4, 0.3), 0)
+        place(x, contact(SURF["concrete"], rng, 0.6, 0.7), 0)
         if rng.random() < 0.6:
             for k in range(rng.integers(1, 4)):  # nails
                 nd = 0.006
                 place(x, bp(pink(nd, rng), 2000, 6000) * env_exp(int(nd * SR), 0.0015, 0.0001) * 0.35, 0.02 + k * rng.uniform(0.012, 0.03))
-    # wet, sticky lift-off
-    peel_at = rng.uniform(0.18, 0.28)
-    place(x, gurgle(0.08, rng, 120, 500, 1600, 0.25), peel_at)
+    # sticky skin peeling off the floor
+    pd = 0.05
+    place(x, bp(pink(pd, rng), 900, 4000) * env_adsr(int(pd * SR), 0.004, 0.01, 0.4, 0.03) * 0.18, rng.uniform(0.18, 0.28))
     x = reverb(soften(x, 7500), 0.7, 0.5, 0.12, 0.3, rng)
     return fade(x[: int(dur * SR)], 0.0005, 0.08)
 

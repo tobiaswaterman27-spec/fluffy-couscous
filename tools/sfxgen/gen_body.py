@@ -10,7 +10,7 @@ VOWELS = {"a": [780, 1200, 2600], "ae": [700, 1700, 2500], "o": [520, 880, 2500]
           "uh": [600, 1150, 2450], "throat": [450, 1250, 3100]}
 
 
-def airflow(dur, rng, shape, q=2.5, top=4200):
+def airflow(dur, rng, shape, q=2.5, top=3000):
     """Breath air: soft pink noise resonating in the mouth or nose, with the fizz rolled off."""
     a = hp(lp(pink(dur, rng), top, 2), 120)
     g = [1.0, 0.6, 0.25]
@@ -24,7 +24,7 @@ def breath(rng, din, dout, level=1.0, mode="calm", voiced=0.0, f0=140, shaky=0.0
     shape_in = NOSE if mode == "calm" else MOUTH_IN
     shape_out = NOSE if mode == "calm" else MOUTH_OUT
     jit = lambda sh: [f * rng.uniform(0.92, 1.08) for f in sh]
-    inh = airflow(din, rng, jit(shape_in)) * env_adsr(nin, din * 0.75, din * 0.1, 0.9, din * 0.12) * 0.55
+    inh = airflow(din, rng, jit(shape_in)) * env_adsr(nin, din * 0.75, din * 0.1, 0.9, din * 0.12) * 0.4
     if shaky > 0:
         t = t_axis(din)
         inh *= (1 - shaky + shaky * (0.5 + 0.5 * np.sin(2 * np.pi * rng.uniform(7, 11) * t))).astype(np.float32)
@@ -50,11 +50,20 @@ def breath_loop(rng, seconds, rate, level, mode, voiced=0.0, f0=140, jitter=0.15
             sm = bp(pink(0.03, rng), 600, 3000) * env_exp(int(0.03 * SR), 0.006) * 0.15
             place(x, sm, t + cyc * 0.95)
         t += cyc
-    x = soften(x[: int(seconds * SR)], 5000)
-    return loopify(reverb(x, 0.3, 0.2, 0.05, 0.3, rng)[: int(seconds * SR)], 0.4)
+    x = lp(x[: int(seconds * SR)], 2600, 4)
+    return loopify(reverb(x, 0.3, 0.2, 0.05, 0.2, rng)[: int(seconds * SR)], 0.4)
 
 
 # ------------------------------------------------------------------ Elliot
+
+def rasp(dur, rng, rate=(28, 42), level=1.0, shape=(380, 950, 2100)):
+    """A rattling throat: air dragged past something loose - pulsing, dry, raw. No bubbles."""
+    t = t_axis(dur)
+    r = rng.uniform(*rate) * (1 + 0.2 * np.sin(2 * np.pi * rng.uniform(1, 3) * t))
+    pulse = (0.35 + 0.65 * np.abs(np.sin(np.pi * np.cumsum(r) / SR)) ** 3).astype(np.float32)
+    a = airflow(dur, rng, list(shape), 3.5, 2600)
+    return a * pulse * level
+
 
 def elliot_breath(rng, hunting):
     """Huge, slow, wet. Liquid rattles in its throat on every inhale; a fry-croak under the exhale."""
@@ -66,8 +75,7 @@ def elliot_breath(rng, hunting):
         cyc = 60 / rate * rng.uniform(0.85, 1.2)
         din, dout = cyc * 0.4, cyc * 0.5
         ni, no = int(din * SR), int(dout * SR)
-        inh = airflow(din, rng, [350, 900, 2000], 3, 3000) * env_adsr(ni, din * 0.7, din * 0.1, 0.9, din * 0.15) * 0.5
-        inh += gurgle(din, rng, 70 if hunting else 45, 150, 650, 0.5) * env_adsr(ni, din * 0.3, din * 0.3, 0.8, din * 0.3)
+        inh = rasp(din, rng, (30, 45) if hunting else (22, 32), 0.8) * env_adsr(ni, din * 0.7, din * 0.1, 0.9, din * 0.15)
         fry_f0 = 34 + 8 * rng.random()
         exh = voice(dout, fry_f0, rng, [(0, VOWELS["o"]), (1, VOWELS["uh"])], 0.15, 0.6, 0.2, 0.0, 0.9, 3)
         exh *= env_adsr(no, dout * 0.15, dout * 0.3, 0.6, dout * 0.5) * (1.0 if hunting else 0.7)
@@ -89,10 +97,8 @@ def elliot_groan(rng):
     f0 = (78 + 10 * np.sin(2 * np.pi * 0.4 * t)) * np.linspace(1.0, 0.72, n) * (1 + 0.04 * np.sin(2 * np.pi * 5.5 * t))
     v = voice(dur, f0, rng, [(0, VOWELS["o"]), (0.5, VOWELS["uh"]), (1, VOWELS["throat"])], 0.07, 0.4, 0.45, 0.6, 0.25, 4)
     v = sat(v * 1.2, 2.2)
-    v += gurgle(dur, rng, 35, 120, 500, 0.6)
+    v += rasp(dur, rng, (20, 30), 0.25)
     v *= env_adsr(n, 0.3, 0.4, 0.8, 0.6)
-    # it ends in a wet catch, like something swallowed
-    place(v, gurgle(0.35, rng, 90, 200, 800, 0.9), dur - 0.4)
     return fade(reverb(soften(v, 5000), 1.0, 0.6, 0.18, 0.25, rng), 0.02, 0.3)
 
 
@@ -130,7 +136,7 @@ def elliot_scream(rng):
     # the inhale: a wet, sucking rattle
     ni = int(pre * SR)
     inh = airflow(pre, rng, [400, 1100, 2400], 3, 3500) * env_adsr(ni, pre * 0.8, 0.02, 1.0, 0.03)
-    inh += gurgle(pre, rng, 120, 200, 900, 0.7)
+    inh += rasp(pre, rng, (35, 50), 0.8)
     place(x, inh * 0.8, 0)
     n = int(dur * SR)
     t = t_axis(dur)
@@ -162,7 +168,6 @@ def elliot_sniff(rng):
         d = rng.uniform(0.08, 0.14)
         s = airflow(d, rng, NOSE, 3, 3000) * env_adsr(int(d * SR), d * 0.3, d * 0.3, 0.6, d * 0.3) * 1.2
         place(x, s * rng.uniform(0.6, 1.0), k * rng.uniform(0.14, 0.22))
-    place(x, gurgle(0.2, rng, 60, 150, 500, 0.3), rng.uniform(0.5, 0.9))
     return fade(reverb(soften(x, 4500), 0.5, 0.3, 0.12, 0.3, rng), 0.002, 0.1)
 
 
@@ -176,13 +181,22 @@ def elliot_twitch(rng):
 
 # ------------------------------------------------------------------ gore
 
+def squelch(dur, rng, level=1.0):
+    """Wet flesh: low, thick noise that pulses irregularly - no bubbles."""
+    n = int(dur * SR)
+    t = t_axis(dur)
+    am = (0.4 + 0.6 * np.abs(np.sin(2 * np.pi * rng.uniform(5, 11) * t + rng.uniform(0, 6))) ** 2).astype(np.float32)
+    return lp(bp(pink(dur, rng), 120, 1600), 1400) * am * env_adsr(n, 0.01, dur * 0.3, 0.5, dur * 0.5) * level
+
+
 def crunch(rng):
     dur = 0.9
     x = silence(dur)
-    for k in range(rng.integers(12, 25)):  # bone and cartilage giving way
-        c = strike_object(rng, "wood", rng.uniform(0.3, 0.7), rng.uniform(0.6, 1.0), 1.0, 0.05, damp=0.3)
-        place(x, c * rng.uniform(0.3, 1.0), rng.uniform(0, 0.4) ** 1.4)
-    place(x, gurgle(0.6, rng, 80, 120, 600, 0.7), 0.02)          # wet
+    for k in range(rng.integers(12, 25)):  # bone and cartilage giving way: dry, short cracks
+        cd = rng.uniform(0.004, 0.012)
+        c = bp(pink(cd, rng), rng.uniform(600, 1500), rng.uniform(3000, 6000)) * env_exp(int(cd * SR), cd / 4, 0.0001)
+        place(x, c * rng.uniform(0.4, 1.0) * 2, rng.uniform(0, 0.4) ** 1.4)
+    place(x, squelch(0.6, rng, 0.8), 0.02)                        # wet
     place(x, lp(pink(0.4, rng), 700) * env_exp(int(0.4 * SR), 0.1) * 0.6, 0)  # squelch
     t = t_axis(0.3)
     place(x, (np.sin(2 * np.pi * 55 * t) * np.exp(-t / 0.07)).astype(np.float32) * 0.8, 0)
@@ -196,16 +210,21 @@ def tear(rng):
     rate = 16 + 35 * (t / dur)
     am = (0.5 + 0.5 * np.sign(np.sin(2 * np.pi * np.cumsum(rate) / SR))).astype(np.float32)
     x = bp(pink(dur, rng), 250, 3500) * (0.3 + 0.7 * am) * env_adsr(n, 0.05, 0.2, 0.8, 0.2)
-    x += gurgle(dur, rng, 60, 150, 700, 0.5)
+    # fibres snapping as it goes
+    for k in range(rng.integers(15, 35)):
+        cd = rng.uniform(0.002, 0.006)
+        place(x, bp(pink(cd, rng), 800, 5000) * env_exp(int(cd * SR), cd / 3, 0.0001) * rng.uniform(0.3, 0.9), rng.uniform(0, dur * 0.9))
+    x += squelch(dur, rng, 0.5)
     return fade(reverb(soften(x, 6000), 0.35, 0.2, 0.1, 0.3, rng), 0.002, 0.08)
 
 
 def splatter(rng):
     dur = 0.9
     x = lp(pink(dur, rng), 1500) * env_exp(int(dur * SR), 0.05, 0.001) * 0.7
-    for k in range(rng.integers(20, 40)):
+    for k in range(rng.integers(20, 40)):  # drops landing
         at = rng.uniform(0.02, 0.7)
-        place(x, bubble(rng, rng.uniform(400, 1400), 0.02) * rng.uniform(0.1, 0.4) * (1 - at), at)
+        dd = rng.uniform(0.006, 0.015)
+        place(x, lp(bp(pink(dd, rng), 300, 2500), 2000) * env_exp(int(dd * SR), dd / 3, 0.0002) * rng.uniform(0.2, 0.6) * (1 - at), at)
     return fade(reverb(soften(x, 6000), 0.4, 0.3, 0.1, 0.3, rng), 0.0005, 0.1)
 
 
@@ -254,17 +273,24 @@ def heartbeat(rng):
 def exhale(rng):
     dur = 1.1
     n = int(dur * SR)
-    x = airflow(dur, rng, MOUTH_OUT, 2.5, 4000) * env_adsr(n, 0.04, 0.3, 0.5, 0.6)
-    return fade(soften(x, 4500), 0.003, 0.1)
+    x = airflow(dur, rng, MOUTH_OUT, 2.5, 3000) * env_adsr(n, 0.04, 0.3, 0.5, 0.6)
+    return fade(lp(x, 2800, 4), 0.003, 0.1)
 
 
 def whimper(rng):
-    dur = 0.9
-    n = int(dur * SR)
-    t = t_axis(dur)
-    v = voice(dur, 290 + 50 * np.sin(2 * np.pi * 2.3 * t), rng, [(0, VOWELS["u"]), (1, VOWELS["uh"])], 0.06, 0.3, 0.5, 0.0, 0.3, 6)
-    v *= env_adsr(n, 0.08, 0.2, 0.6, 0.3) * 0.25
-    return fade(soften(v, 5000), 0.003, 0.1)
+    """A suppressed whimper: two or three broken little 'hn' sounds through the nose, shaking, mostly breath."""
+    x = silence(1.4)
+    t0 = 0.0
+    for k in range(rng.integers(2, 4)):
+        d = rng.uniform(0.18, 0.32)
+        n = int(d * SR)
+        t = t_axis(d)
+        f0 = rng.uniform(330, 420) * (1.08 - 0.18 * t / d) * (1 + 0.03 * np.sin(2 * np.pi * 9 * t))
+        v = voice(d, f0, rng, [(0, NOSE), (1, VOWELS["u"])], 0.05, 0.4, 0.4, 0.0, 0.0, 7) * 0.06
+        air = airflow(d, rng, NOSE, 3, 2500) * 0.35
+        place(x, (v + air) * env_adsr(n, 0.02, d * 0.3, 0.6, d * 0.5), t0)
+        t0 += d + rng.uniform(0.08, 0.2)
+    return fade(lp(x, 3000, 4), 0.003, 0.1)
 
 
 def render(out, rng):
@@ -273,7 +299,6 @@ def render(out, rng):
     for i in range(5):
         out(f"creature/elliot_clicks_{i}", elliot_clicks(rng))
         out(f"creature/elliot_twitch_{i}", elliot_twitch(rng))
-        out(f"creature/elliot_gurgle_{i}", elliot_gurgle(rng))
     for i in range(4):
         out(f"creature/elliot_growl_{i}", elliot_groan(rng))
         out(f"creature/elliot_scream_{i}", elliot_scream(rng))

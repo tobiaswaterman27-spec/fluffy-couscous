@@ -13,7 +13,14 @@ def main(only=None):
     rng = np.random.default_rng(20031130)
     count = [0]
 
+    keep = set()
+    kp = os.path.join(os.path.dirname(__file__), "keep.txt")
+    if os.path.exists(kp):
+        keep = {l.strip() for l in open(kp) if l.strip()}
+
     def out(name, x):
+        if name in keep:  # approved sounds: never overwritten
+            return
         from dsp import soften
         x = soften(x, 11000)  # nothing in the game needs more air than this; it reads as hiss
         path = os.path.join(OUT, name + ".wav")

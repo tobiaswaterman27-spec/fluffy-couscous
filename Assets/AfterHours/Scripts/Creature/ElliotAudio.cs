@@ -82,9 +82,9 @@ namespace AfterHours.Creature
             if (voiceTimer > 0f || voice == null) return;
             string key;
             float r = Random.value;
-            if (intensity > 0.7f) { key = r < 0.45f ? "elliot_growl" : r < 0.8f ? "elliot_gurgle" : "elliot_clicks"; voiceTimer = Random.Range(4f, 9f); }
-            else if (intensity > 0.2f) { key = r < 0.35f ? "elliot_sniff" : r < 0.6f ? "elliot_gurgle" : r < 0.8f ? "elliot_clicks" : "elliot_growl"; voiceTimer = Random.Range(5f, 10f); }
-            else { key = r < 0.35f ? "elliot_gurgle" : r < 0.6f ? "elliot_growl" : r < 0.85f ? "elliot_clicks" : "elliot_twitch"; voiceTimer = Random.Range(10f, 24f); }
+            if (intensity > 0.7f) { key = r < 0.65f ? "elliot_growl" : "elliot_clicks"; voiceTimer = Random.Range(4f, 9f); }
+            else if (intensity > 0.2f) { key = r < 0.4f ? "elliot_sniff" : r < 0.75f ? "elliot_clicks" : "elliot_growl"; voiceTimer = Random.Range(5f, 10f); }
+            else { key = r < 0.4f ? "elliot_growl" : r < 0.8f ? "elliot_clicks" : "elliot_twitch"; voiceTimer = Random.Range(10f, 24f); }
             AudioClip c = AudioLibrary.Get(key);
             if (c != null) voice.PlayOneShot(c, key == "elliot_twitch" ? 0.6f : 0.85f);
         }

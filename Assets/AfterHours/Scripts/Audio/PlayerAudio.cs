@@ -171,7 +171,8 @@ namespace AfterHours.Audio
     /// </summary>
     public class TensionMusic : MonoBehaviour
     {
-        AudioSource dread, chase, stings;
+        AudioSource dread, chase, stings, near;
+        float closeness;
         bool chased;
         float chaseHold;
         public static bool MenuMode;
@@ -184,6 +185,7 @@ namespace AfterHours.Audio
             if (pc != null && !pc.isLocallyControlled) { Destroy(this); return; }
             dread = Loop("music_dread", 0f);
             chase = Loop("music_chase", 0f);
+            near = Loop("music_near", 0f);
             menu = Loop("music_menu", 0f);
             stings = gameObject.AddComponent<AudioSource>();
             stings.spatialBlend = 0f;
@@ -208,11 +210,16 @@ namespace AfterHours.Audio
             AudioMix.Tick(dt);
             float musicVol = AfterHours.Settings.SettingsService.CurrentOrDefault.musicVolume;
             bool hunted = false;
+            float nearest = 999f;
             foreach (ElliotBrain b in FindObjectsByType<ElliotBrain>(FindObjectsSortMode.None))
             {
-                if (b == null || b.motor == null) continue;
-                if (b.motor.Gait == ElliotGait.Run && Vector3.Distance(b.transform.position, transform.position) < 45f) hunted = true;
+                if (b == null || b.motor == null || !b.gameObject.activeInHierarchy) continue;
+                float d = Vector3.Distance(b.transform.position, transform.position);
+                nearest = Mathf.Min(nearest, d);
+                if (b.motor.Gait == ElliotGait.Run && d < 45f) hunted = true;
             }
+            // How close the nearest one is: 0 far away (40 m+), 1 right on top of you (4 m).
+            closeness = Mathf.MoveTowards(closeness, Mathf.Clamp01(Mathf.InverseLerp(40f, 4f, nearest)), dt * 0.5f);
             if (hunted) chaseHold = 4f; else chaseHold -= dt;
             bool now = chaseHold > 0f && !MenuMode;
             if (now && !chased)
@@ -225,8 +232,10 @@ namespace AfterHours.Audio
             chased = now;
             if (Silent) musicVol = 0f;
             Fade(menu, MenuMode ? 0.5f * musicVol : 0f, dt, 0.3f);
-            Fade(dread, MenuMode ? 0f : (chased ? 0.05f : 0.16f) * musicVol * (1f - AudioMix.Duck), dt, 0.3f);
-            Fade(chase, chased ? 0.6f * musicVol : 0f, dt, chased ? 0.5f : 0.15f);
+            Fade(dread, MenuMode ? 0f : (chased ? 0.05f : 0.16f * (1f - 0.6f * closeness)) * musicVol * (1f - AudioMix.Duck), dt, 0.3f);
+            // The chase music swells as it closes in; the thin, trembling layer creeps in whenever it's near.
+            Fade(chase, chased ? Mathf.Lerp(0.3f, 0.75f, closeness) * musicVol : 0f, dt, chased ? 0.6f : 0.15f);
+            Fade(near, MenuMode ? 0f : closeness * (chased ? 0.25f : 0.45f) * musicVol, dt, 0.2f);
         }
 
         void Sting(string key, float vol)
@@ -284,7 +293,7 @@ namespace AfterHours.Audio
             }
             else
             {
-                AudioClip g = AudioLibrary.Get(Random.value < 0.5f ? "elliot_growl" : "elliot_gurgle");
+                AudioClip g = AudioLibrary.Get("elliot_growl");
                 if (g != null) AudioPool.PlayAt(g, p + Vector3.up * 2f, 0.45f, Random.Range(0.85f, 0.95f), 70f);
             }
         }
