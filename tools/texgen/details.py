@@ -1,0 +1,169 @@
+"""More textures for the detail pass: shelf stock, cardboard, Elliot's skin, litter / prints / cobwebs, dust."""
+import os
+import numpy as np
+from PIL import Image
+import generate as g
+from generate import fnoise, cracks, blur, smoothstep, save_set, save_decal, col, coords, blob, aniso, band, OUT
+
+
+def products(name, seed, palette, box_like=False):
+    """Rows of product fronts on a shelf: packs of different widths, colours, a label band, a glint."""
+    n = 1024
+    rng = np.random.default_rng(seed)
+    alb = np.zeros((n, n, 3))
+    height = np.zeros((n, n))
+    smooth = np.full((n, n), 0.35)
+    x, y = coords(n)
+    rows = 3
+    rh = n // rows
+    for r in range(rows):
+        y0 = r * rh
+        cx = 0
+        while cx < n:
+            w = int(rng.integers(40, 120) if not box_like else rng.integers(90, 220))
+            h = int(rh * rng.uniform(0.55, 0.92))
+            c = np.array(palette[rng.integers(len(palette))]) / 255.0 * rng.uniform(0.8, 1.1)
+            x1 = min(n, cx + w - 4)
+            top = y0 + rh - h
+            alb[top:y0 + rh, cx:x1] = c
+            height[top:y0 + rh, cx:x1] = 1.0
+            # label band and fake text lines
+            lb = top + int(h * rng.uniform(0.25, 0.5))
+            lh = int(h * rng.uniform(0.15, 0.3))
+            lc = np.array([0.92, 0.9, 0.85]) if rng.random() < 0.6 else c * 0.4
+            alb[lb:lb + lh, cx + 4:x1 - 4] = lc
+            for k in range(rng.integers(1, 4)):
+                ly = lb + 4 + k * 7
+                if ly + 3 < lb + lh:
+                    alb[ly:ly + 3, cx + 8:cx + 8 + int((x1 - cx - 16) * rng.uniform(0.3, 0.9))] = c * 0.3
+            smooth[top:y0 + rh, cx:x1] = 0.6 if not box_like else 0.25
+            cx += w
+        # shadow under the shelf above
+        alb[y0:y0 + 18] *= np.linspace(0.15, 1, 18)[:, None, None]
+    alb *= (0.85 + 0.15 * fnoise(n, 2.0, seed + 1))[..., None]
+    alb = np.clip(alb + 0.04 * (height[..., None] == 0), 0, 1)
+    save_set(name, alb, blur(height, 0.0015), 3.0, smooth)
+
+
+def cardboard():
+    n = 512
+    x, y = coords(n)
+    base = col([150, 112, 72])
+    v = 0.85 + 0.15 * fnoise(n, 2.0, 501)
+    alb = base * v[..., None]
+    corr = 0.5 + 0.5 * np.sin(y / n * 2 * np.pi * 40)
+    tape = (np.abs(y - n * 0.5) < 26).astype(float)
+    alb = alb * (1 - tape[..., None]) + col([170, 140, 95]) * tape[..., None]
+    stain = blob(n, 503, 0.2, 0.5) * 0.25
+    alb *= (1 - stain[..., None])
+    save_set("cardboard", alb, corr * 0.3 + tape * 0.2, 1.5, 0.2 + 0.4 * tape)
+
+
+def skin():
+    """Elliot: bloodless, grey-yellow, blotched; dark veins under thin skin; wet, uneven sheen."""
+    n = 1024
+    x, y = coords(n)
+    base = col([196, 192, 176])
+    mott = fnoise(n, 2.4, 601)
+    blotch = blob(n, 602, 0.45, 0.8, 1.6) * 0.0 + smoothstep(0.55, 0.8, fnoise(n, 2.0, 603))
+    alb = base * (0.8 + 0.25 * mott)[..., None]
+    alb = alb * (1 - blotch[..., None] * 0.18) + col([150, 140, 150]) * blotch[..., None] * 0.18
+    veins = blur(cracks(n, 14, 604, (0.2, 0.6), (0.6, 1.6), 0.6), 0.0012)
+    veins = np.clip(veins * 1.6, 0, 1)
+    alb = alb * (1 - veins[..., None] * 0.75) + col([60, 70, 105]) * veins[..., None] * 0.75
+    pores = (np.random.default_rng(605).random((n, n)) < 0.02).astype(float)
+    pores = blur(pores, 0.0008)
+    height = mott * 0.3 - pores * 0.8 - veins * 0.3
+    wet = 0.45 + 0.35 * fnoise(n, 2.0, 606)
+    save_set("skin_pale", alb, height, 2.0, wet)
+
+
+def decal_tex():
+    n = 512
+    x, y = coords(n)
+    rng = np.random.default_rng(700)
+    # litter: scraps of paper, a receipt, a sweet wrapper, a bottle cap
+    a = np.zeros((n, n)); rgb = np.ones((n, n, 3)) * col([225, 222, 210])
+    for _ in range(9):
+        cx, cy = rng.random(2) * n * 0.8 + n * 0.1
+        w, h = rng.uniform(15, 60), rng.uniform(10, 45)
+        ang = rng.uniform(0, np.pi)
+        dx, dy = x - cx, y - cy
+        u = dx * np.cos(ang) + dy * np.sin(ang); v = -dx * np.sin(ang) + dy * np.cos(ang)
+        edge = fnoise(n, 2.0, int(rng.integers(1e6))) * 6
+        m = ((np.abs(u) < w + edge) & (np.abs(v) < h + edge)).astype(float)
+        c = [col([230, 228, 215]), col([200, 40, 40]), col([40, 90, 170]), col([240, 200, 60])][rng.integers(4)]
+        rgb = rgb * (1 - m[..., None]) + c * m[..., None]
+        a = np.maximum(a, m * 0.95)
+    rgb *= (0.8 + 0.2 * fnoise(n, 2.0, 701))[..., None]
+    save_decal("litter", rgb, a)
+    # leaflet: a glossy printed flyer, slightly crumpled
+    a = ((np.abs(x - n / 2) < 150) & (np.abs(y - n / 2) < 210)).astype(float)
+    rgb = np.ones((n, n, 3)) * col([240, 238, 230])
+    rgb[(np.abs(x - n / 2) < 140) & (y > n / 2 - 200) & (y < n / 2 - 40)] = col([190, 40, 50])
+    for k in range(8):
+        yy = n / 2 + k * 18
+        rgb[(np.abs(x - n / 2) < 120) & (np.abs(y - yy) < 4)] = col([60, 60, 60])
+    rgb *= (0.85 + 0.15 * fnoise(n, 1.8, 702))[..., None]
+    save_decal("leaflet", rgb, a * 0.97)
+    # dusty shoe prints walking up the texture
+    a = np.zeros((n, n))
+    for k in range(6):
+        cx = n / 2 + (40 if k % 2 else -40); cy = n - 60 - k * 80
+        sole = (((x - cx) / 28) ** 2 + ((y - cy) / 55) ** 2 < 1) | (((x - cx) / 24) ** 2 + ((y - cy - 70) / 22) ** 2 < 1)
+        tread = 0.6 + 0.4 * (np.sin(y / 4) > 0)
+        a = np.maximum(a, sole * tread * 0.55)
+    save_decal("prints_shoe", np.ones((n, n, 3)) * col([70, 60, 50]), blur(a, 0.002) * (0.7 + 0.3 * fnoise(n, 2.0, 703)))
+    # long narrow bare prints with long toes (something walked here barefoot, through something dark)
+    a = np.zeros((n, n))
+    for k in range(4):
+        cx = n / 2 + (55 if k % 2 else -55); cy = n - 90 - k * 120
+        heel = ((x - cx) / 20) ** 2 + ((y - cy) / 30) ** 2 < 1
+        arch = (np.abs(x - cx - 6) < 10) & (y < cy) & (y > cy - 80)
+        ball = ((x - cx) / 26) ** 2 + ((y - cy + 95) / 22) ** 2 < 1
+        foot = heel | arch | ball
+        for t in range(5):
+            tx = cx - 24 + t * 12; ty = cy - 125 - (t % 3) * 6
+            foot |= ((x - tx) / 4.5) ** 2 + ((y - ty) / 16) ** 2 < 1
+        a = np.maximum(a, foot.astype(float) * 0.8)
+    save_decal("prints_bare", np.ones((n, n, 3)) * col([45, 25, 20]), blur(a, 0.0015) * (0.6 + 0.4 * fnoise(n, 2.0, 704)))
+    # cobweb in a corner: radial threads and sagging spirals
+    cx, cy = 0, 0
+    r = np.sqrt((x - cx) ** 2 + (y - cy) ** 2); th = np.arctan2(y - cy, x - cx)
+    radial = np.zeros((n, n))
+    for k in range(9):
+        ang = k / 8 * np.pi / 2
+        radial = np.maximum(radial, smoothstep(2.0, 0.0, np.abs((th - ang) * r)))
+    spiral = smoothstep(1.6, 0.0, np.abs(((r + 6 * np.sin(th * 9)) % 34) - 17) - 15)
+    web = np.maximum(radial, spiral * smoothstep(n * 0.95, n * 0.2, r)) * smoothstep(n, n * 0.6, r)
+    save_decal("cobweb", np.ones((n, n, 3)) * col([210, 210, 205]), web * 0.55)
+    # a smeared handprint (for glass)
+    a = np.zeros((n, n))
+    palm = ((x - n / 2) / 70) ** 2 + ((y - n / 2 - 40) / 80) ** 2 < 1
+    a = palm.astype(float)
+    for k, (dx, ln) in enumerate([(-60, 110), (-22, 150), (18, 155), (55, 130), (95, 80)]):
+        fx = n / 2 + dx; top = n / 2 - 40 - ln
+        finger = (np.abs(x - fx - (y - n / 2) * (0.25 if k == 4 else 0.02)) < 14) & (y > top) & (y < n / 2)
+        a = np.maximum(a, finger.astype(float))
+    smear = np.zeros((n, n))
+    for s in range(1, 30):
+        smear = np.maximum(smear, np.roll(a, s * 4, axis=0) * (1 - s / 30) * 0.5)
+    a = np.maximum(a * 0.7, smear)
+    save_decal("handprint", np.ones((n, n, 3)) * col([60, 55, 50]), blur(a, 0.007) * (0.6 + 0.4 * fnoise(n, 2.0, 705)))
+    # dust mote: a soft dot for particles
+    m = 64
+    xx, yy = np.mgrid[0:m, 0:m]
+    d = np.sqrt((xx - m / 2 + 0.5) ** 2 + (yy - m / 2 + 0.5) ** 2) / (m / 2)
+    dot = np.clip(1 - d, 0, 1) ** 2.2
+    img = np.stack([np.ones((m, m))] * 3 + [dot], -1)
+    Image.fromarray((img * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "decal_dust_mote.png"))
+
+
+if __name__ == "__main__":
+    products("products_grocery", 801, [(200, 40, 40), (240, 200, 60), (40, 120, 60), (230, 120, 30), (40, 80, 160), (240, 240, 230), (120, 60, 30), (160, 30, 90)])
+    products("products_beauty", 802, [(240, 220, 225), (180, 140, 200), (60, 60, 70), (220, 230, 240), (230, 180, 160), (120, 190, 200), (250, 250, 250)])
+    products("products_boxes", 803, [(40, 40, 45), (220, 220, 225), (30, 70, 140), (180, 30, 30), (90, 90, 95), (240, 240, 240)], box_like=True)
+    cardboard()
+    skin()
+    decal_tex()
+    print("done")

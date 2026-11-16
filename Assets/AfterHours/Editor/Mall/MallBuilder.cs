@@ -95,6 +95,8 @@ namespace AfterHours.EditorTools
                 DressWalls(Group("Walls", details));
                 Progress("Detail: floors (stains, scuffs, gum, cracks...)", 0.5f);
                 DressFloors(Group("Floors", details));
+                Progress("Detail: litter, cardboard, trolleys, cobwebs, footprints", 0.545f);
+                DressClutter(Group("Clutter", details));
                 Progress("Detail: door frames and exit signs", 0.55f);
                 DressDoorways(Group("Doorways", details));
                 Progress("Power: switchboard, circuit areas, emergency lights", 0.553f);
@@ -173,6 +175,7 @@ namespace AfterHours.EditorTools
         static void CreateMaterials()
         {
             ArtLibrary.Reset();
+            PrepareClutterMaterials();
             Color w = Color.white;
             floorTile = ArtLibrary.Surface("Floor_Porcelain", "floor_tile", 1.2f, w, 1f, 1f);
             terrazzoMat = ArtLibrary.Surface("Floor_Terrazzo", "terrazzo", 2f, w, 1f, 0.6f);

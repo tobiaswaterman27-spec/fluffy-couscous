@@ -12,7 +12,12 @@ namespace AfterHours.EditorTools
 
         public static GameObject Create(Transform parent, Vector3 position, float yaw, string name = "Elliot")
         {
-            Material skin = Mat("Elliot_Skin", new Color(0.72f, 0.72f, 0.70f), 0.45f);
+            // Textured skin: grey-yellow, blotched, veined, unevenly wet (tools/texgen/details.py).
+            Material skin = ArtLibrary.Surface("Elliot_Skin", "skin_pale", 0.4f, new Color(0.95f, 0.95f, 0.93f), 1f, 1.2f);
+            skin.SetTextureScale("_BaseMap", new Vector2(2f, 3f));
+            if (skin.HasProperty("_BumpMap")) skin.SetTextureScale("_BumpMap", new Vector2(2f, 3f));
+            Material nail = Mat("Elliot_Nail", new Color(0.18f, 0.16f, 0.13f), 0.7f);
+            Material shadowSkin = Mat("Elliot_Hollow", new Color(0.45f, 0.43f, 0.42f), 0.35f);
             Material eye = Mat("Elliot_Eye", new Color(0.01f, 0.01f, 0.012f), 0.97f);
             Material mouth = Mat("Elliot_Mouth", new Color(0.06f, 0.02f, 0.02f), 0.8f);
 
@@ -55,6 +60,24 @@ namespace AfterHours.EditorTools
             anim.spine = Joint(rig, "Spine");
             Part(anim.spine, PrimitiveType.Capsule, new Vector3(0f, 0.3f, 0f), new Vector3(0.24f, 0.36f, 0.15f), skin);
             Part(anim.spine, PrimitiveType.Sphere, new Vector3(0f, 0.5f, 0.01f), new Vector3(0.36f, 0.26f, 0.19f), skin); // narrow ribcage
+            // Emaciated: every rib, the knobs of the spine, collarbones, hip bones showing through.
+            for (int i = 0; i < 6; i++)
+            {
+                for (int sd = -1; sd <= 1; sd += 2)
+                {
+                    float yy = 0.37f + i * 0.045f, half = 0.11f - i * 0.004f;
+                    Part(anim.spine, PrimitiveType.Capsule, new Vector3(sd * 0.075f, yy, 0.075f - Mathf.Abs(i - 2.5f) * 0.004f),
+                        new Vector3(0.016f, half, 0.016f), skin, new Vector3(0f, sd * -28f, 90f + sd * 8f));
+                }
+            }
+            for (int i = 0; i < 9; i++)
+                Part(anim.spine, PrimitiveType.Sphere, new Vector3(0f, 0.08f + i * 0.065f, -0.078f), new Vector3(0.032f, 0.028f, 0.03f), skin);
+            for (int sd = -1; sd <= 1; sd += 2)
+            {
+                Part(anim.spine, PrimitiveType.Capsule, new Vector3(sd * 0.09f, 0.63f, 0.05f), new Vector3(0.018f, 0.09f, 0.018f), skin, new Vector3(0f, 0f, sd * 80f));
+                Part(anim.pelvis, PrimitiveType.Sphere, new Vector3(sd * 0.11f, 0.03f, 0.06f), new Vector3(0.06f, 0.05f, 0.04f), skin);
+                Part(anim.spine, PrimitiveType.Sphere, new Vector3(sd * 0.06f, 0.3f, 0.06f), new Vector3(0.08f, 0.12f, 0.03f), shadowSkin); // sunken belly sides
+            }
             anim.neck = Joint(rig, "Neck");
             Part(anim.neck, PrimitiveType.Capsule, new Vector3(0f, 0.1f, 0f), new Vector3(0.07f, 0.13f, 0.07f), skin);
             anim.head = Joint(rig, "Head");
@@ -62,6 +85,12 @@ namespace AfterHours.EditorTools
             Part(anim.head, PrimitiveType.Sphere, new Vector3(-0.046f, 0.205f, 0.095f), new Vector3(0.052f, 0.06f, 0.03f), eye);  // eyes: dark, no pupils,
             Part(anim.head, PrimitiveType.Sphere, new Vector3(0.048f, 0.19f, 0.096f), new Vector3(0.05f, 0.064f, 0.03f), eye);   // one set lower
             Part(anim.head, PrimitiveType.Cube, new Vector3(0f, 0.07f, 0.104f), new Vector3(0.09f, 0.008f, 0.01f), mouth);         // too-wide mouth slit
+            Part(anim.head, PrimitiveType.Sphere, new Vector3(0f, 0.245f, 0.085f), new Vector3(0.17f, 0.045f, 0.07f), skin);     // heavy brow
+            for (int sd = -1; sd <= 1; sd += 2)
+            {
+                Part(anim.head, PrimitiveType.Sphere, new Vector3(sd * 0.07f, 0.15f, 0.085f), new Vector3(0.05f, 0.032f, 0.04f), skin);       // cheekbones
+                Part(anim.head, PrimitiveType.Sphere, new Vector3(sd * 0.075f, 0.12f, 0.06f), new Vector3(0.04f, 0.05f, 0.04f), shadowSkin);  // hollow cheeks
+            }
             anim.jaw = Joint(anim.head, "Jaw", new Vector3(0f, 0.075f, 0.02f));
             Part(anim.jaw, PrimitiveType.Sphere, new Vector3(0f, -0.04f, 0.04f), new Vector3(0.14f, 0.08f, 0.15f), skin);
             Part(anim.jaw, PrimitiveType.Cube, new Vector3(0f, -0.005f, 0.07f), new Vector3(0.08f, 0.012f, 0.06f), mouth);
@@ -97,12 +126,24 @@ namespace AfterHours.EditorTools
                     float x = -0.027f + f * 0.018f;
                     Part(hand, PrimitiveType.Capsule, new Vector3(x, -0.2f + (f == 0 || f == 3 ? 0.02f : 0f), 0f), new Vector3(0.012f, 0.085f, 0.012f), skin);
                 }
+                Part(fa, PrimitiveType.Sphere, Vector3.zero, new Vector3(0.075f, 0.08f, 0.075f), skin);          // bony elbow
+                Part(hand, PrimitiveType.Sphere, new Vector3(0f, -0.005f, 0f), new Vector3(0.06f, 0.05f, 0.035f), skin); // wrist knob
+                for (int f = 0; f < 4; f++)
+                {
+                    float x = -0.027f + f * 0.018f;
+                    float tip = -0.29f + (f == 0 || f == 3 ? 0.02f : 0f);
+                    Part(hand, PrimitiveType.Sphere, new Vector3(x, -0.15f + (f == 0 || f == 3 ? 0.02f : 0f), 0f), new Vector3(0.016f, 0.018f, 0.016f), skin); // knuckles
+                    Part(hand, PrimitiveType.Capsule, new Vector3(x, tip, 0.002f), new Vector3(0.009f, 0.025f, 0.007f), nail);  // long dark nails
+                }
                 Transform th = Joint(rig, "Thigh" + side);
                 Part(th, PrimitiveType.Capsule, new Vector3(0f, -0.34f, 0f), new Vector3(0.1f, 0.36f, 0.1f), skin);
                 Transform sh = Joint(rig, "Shin" + side);
                 Part(sh, PrimitiveType.Capsule, new Vector3(0f, -0.33f, 0f), new Vector3(0.08f, 0.35f, 0.08f), skin);
+                Part(sh, PrimitiveType.Sphere, Vector3.zero, new Vector3(0.095f, 0.1f, 0.1f), skin);           // knee
                 Transform ft = Joint(rig, "Foot" + side);
                 Part(ft, PrimitiveType.Cube, new Vector3(0f, -0.03f, 0.08f), new Vector3(0.08f, 0.05f, 0.27f), skin);
+                for (int toe = 0; toe < 4; toe++)  // long toes
+                    Part(ft, PrimitiveType.Capsule, new Vector3(-0.027f + toe * 0.018f, -0.045f, 0.24f), new Vector3(0.014f, 0.035f, 0.014f), skin, new Vector3(90f, 0f, 0f));
                 if (s < 0) { anim.upperArmL = ua; anim.foreArmL = fa; anim.handL = hand; anim.thighL = th; anim.shinL = sh; anim.footL = ft; }
                 else { anim.upperArmR = ua; anim.foreArmR = fa; anim.handR = hand; anim.thighR = th; anim.shinR = sh; anim.footR = ft; }
             }

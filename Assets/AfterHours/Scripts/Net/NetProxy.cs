@@ -45,7 +45,14 @@ namespace AfterHours.Net
             go.name = "Player " + id + " (" + name + ")";
             PlayerController pc = go.GetComponent<PlayerController>();
             pc.isLocallyControlled = false;
-            foreach (Camera c in go.GetComponentsInChildren<Camera>(true)) Destroy(c.gameObject.GetComponent<EyeAdaptation>());
+            foreach (Camera c in go.GetComponentsInChildren<Camera>(true))
+            {
+                // Remove what depends on the camera first (immediately), then the camera itself.
+                EyeAdaptation ea = c.GetComponent<EyeAdaptation>();
+                if (ea != null) DestroyImmediate(ea);
+                DustMotes dm = c.GetComponent<DustMotes>();
+                if (dm != null) DestroyImmediate(dm);
+            }
             foreach (AudioListener l in go.GetComponentsInChildren<AudioListener>(true)) Destroy(l);
             foreach (Camera c in go.GetComponentsInChildren<Camera>(true)) Destroy(c);
             LocalPlayerInput input = go.GetComponent<LocalPlayerInput>();

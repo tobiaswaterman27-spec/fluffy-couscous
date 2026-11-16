@@ -61,6 +61,7 @@ namespace AfterHours.EditorTools
             // Default volumes plus the power-cut areas (on the trigger-zone layer, so they never block rays).
             camData.volumeLayerMask = 1 | (GameLayers.TriggerZoneLayer >= 0 ? 1 << GameLayers.TriggerZoneLayer : 0);
             camGo.AddComponent<EyeAdaptation>();
+            camGo.AddComponent<DustMotes>().material = DustMaterial();
             int bodyLayer = GameLayers.LocalBodyLayer;
             if (bodyLayer >= 0) cam.cullingMask &= ~(1 << bodyLayer);
 
@@ -114,6 +115,32 @@ namespace AfterHours.EditorTools
         {
             EditorBuild.EnsureFolder(EditorBuild.Root + "/Prefabs");
             PrefabUtility.SaveAsPrefabAssetAndConnect(player, PrefabPath, InteractionMode.AutomatedAction);
+        }
+
+        /// <summary>Soft additive specks for the dust in the air.</summary>
+        static Material DustMaterial()
+        {
+            const string path = EditorBuild.Root + "/Materials/Dev/Dust_Mote.mat";
+            EditorBuild.EnsureFolder(EditorBuild.Root + "/Materials/Dev");
+            Material m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            Shader sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            if (m == null)
+            {
+                m = new Material(sh != null ? sh : Shader.Find("Sprites/Default"));
+                AssetDatabase.CreateAsset(m, path);
+            }
+            Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(EditorBuild.Root + "/Textures/Generated/decal_dust_mote.png");
+            if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
+            m.mainTexture = tex;
+            if (m.HasProperty("_Surface")) m.SetFloat("_Surface", 1f);
+            if (m.HasProperty("_Blend")) m.SetFloat("_Blend", 2f);
+            m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One);
+            m.SetInt("_ZWrite", 0);
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            EditorUtility.SetDirty(m);
+            return m;
         }
 
         static GameObject MakeDebugCapsule(string name, Transform parent, Material mat)

@@ -20,7 +20,7 @@ namespace AfterHours.EditorTools
             switch (style)
             {
                 case FurnishStyle.Shelving:
-                    Rows(g, area, y, 2.4f, 0.6f, 1.9f, 2.3f, 1.3f, metal, SurfaceType.Metal, keepClear);
+                    Rows(g, area, y, 2.4f, 0.6f, 1.9f, 2.3f, 1.3f, metal, SurfaceType.Metal, keepClear, seed % 2 == 0 ? stockBeauty : stockBoxes, seed);
                     break;
                 case FurnishStyle.Rails:
                     Rows(g, area, y, 1.8f, 0.5f, 1.4f, 2.0f, 1.5f, railMat, SurfaceType.Metal, keepClear);
@@ -32,7 +32,7 @@ namespace AfterHours.EditorTools
                     PlaceGrid(g, area, y, 1.8f, 1.2f, 1.0f, 3.8f, accent, SurfaceType.Wood, keepClear, null);
                     break;
                 case FurnishStyle.Supermarket:
-                    Rows(g, area, y, 8f, 1.0f, 1.8f, 3.0f, 2.2f, metal, SurfaceType.Metal, keepClear);
+                    Rows(g, area, y, 8f, 1.0f, 1.8f, 3.0f, 2.2f, metal, SurfaceType.Metal, keepClear, stockGrocery, seed);
                     break;
                 case FurnishStyle.Food:
                     PlaceGrid(g, area, y, 0.9f, 0.9f, 0.75f, 2.9f, woodMat, SurfaceType.Wood, keepClear, (centre) => Chairs(g, centre, y));
@@ -48,7 +48,7 @@ namespace AfterHours.EditorTools
                     PlaceGrid(g, area, y, 2.4f, 1.6f, 2.2f, 4.6f, plantMat, SurfaceType.Metal, keepClear, null);
                     break;
                 case FurnishStyle.Storage:
-                    Rows(g, area, y, 3f, 0.8f, 2.2f, 2.5f, 1.4f, metal, SurfaceType.Metal, keepClear);
+                    Rows(g, area, y, 3f, 0.8f, 2.2f, 2.5f, 1.4f, metal, SurfaceType.Metal, keepClear, cardboardMat, seed);
                     Crates(g, area, y, keepClear, seed);
                     break;
                 case FurnishStyle.Toilets:
@@ -73,7 +73,7 @@ namespace AfterHours.EditorTools
 
         /// <summary>Long fixtures in rows along the room's longer axis, with aisles between them.</summary>
         static void Rows(Transform g, AreaRect area, float y, float length, float width, float height, float rowSpacing, float gap,
-                         Material m, SurfaceType s, List<AreaRect> keepClear)
+                         Material m, SurfaceType s, List<AreaRect> keepClear, Material stock = null, int seed = 0)
         {
             bool alongX = area.Width >= area.Depth;
             float longMin = alongX ? area.minX : area.minZ, longMax = alongX ? area.maxX : area.maxZ;
@@ -89,6 +89,7 @@ namespace AfterHours.EditorTools
                         : new AreaRect(c - width * 0.5f, l, c + width * 0.5f, l + length);
                     if (Blocked(r, keepClear)) continue;
                     BoxRect("Fixture", g, r, y, y + height, m, s);
+                    if (stock != null) Stock(g, r, y, height, stock, seed++);
                 }
             }
         }
