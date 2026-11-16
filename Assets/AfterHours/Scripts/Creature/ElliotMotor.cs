@@ -16,7 +16,7 @@ namespace AfterHours.Creature
         public float walkSpeed = 1.35f;
         public float fastWalkSpeed = 2.3f;
         public float runSpeed = 5.9f;
-        public float crawlSpeed = 1.1f;
+        public float crawlSpeed = 3.4f;     // top speed scuttling through a duct (it creeps at a fraction of this)
         public float acceleration = 3.2f;
         public float runAcceleration = 5f;
         public float deceleration = 6f;

@@ -168,7 +168,7 @@ namespace AfterHours.Creature
             actionW = Mathf.MoveTowards(actionW, action != ElliotAction.None ? 1f : 0f, dt / 0.25f);
 
             // ---------------- gait phase (distance travelled) ----------------
-            float stride = Mathf.Lerp(Mathf.Lerp(1.0f, 2.7f, runW), 0.75f, crawlW);
+            float stride = Mathf.Lerp(Mathf.Lerp(1.0f, 2.7f, runW), Mathf.Lerp(0.7f, 1.05f, Mathf.Clamp01(speed / 3.4f)), crawlW);
             float phaseSpeed = speed / stride;
             // Occasional hitch: it stalls mid-step, then lurches to catch up (jerky, unnatural).
             hitchTimer -= dt;
@@ -195,7 +195,7 @@ namespace AfterHours.Creature
 
             // ---------------- feet ----------------
             float swingFrac = Mathf.Lerp(0.38f, 0.55f, runW);
-            float lift = Mathf.Lerp(0.1f, 0.32f, runW);
+            float lift = Mathf.Lerp(Mathf.Lerp(0.1f, 0.32f, runW), 0.2f, crawlW);   // spider-like high steps when crawling
             Vector3 vel = new Vector3(motor.Velocity.x, 0f, motor.Velocity.z);
             for (int i = 0; i < 2; i++)
             {
@@ -208,7 +208,7 @@ namespace AfterHours.Creature
                     swinging[i] = true;
                     footFrom[i] = footPos[i];
                     Vector3 lead = speed > 0.1f ? vel.normalized * (stride * 0.5f) : Vector3.zero;
-                    footTo[i] = Ground(root + right * (hipHalfWidth * side * Mathf.Lerp(1f, 1.4f, crawlW)) + lead - fwd * (crawlW * 0.5f));
+                    footTo[i] = Ground(root + right * (hipHalfWidth * side * Mathf.Lerp(1f, 2.7f, crawlW)) + lead - fwd * (crawlW * 0.3f));
                 }
                 if (swinging[i])
                 {
@@ -227,21 +227,26 @@ namespace AfterHours.Creature
             float bob = Mathf.Abs(Mathf.Sin(phase * Mathf.PI * 2f)) * Mathf.Lerp(0.04f, 0.1f, runW) * moveW;
             float breathe = Mathf.Sin(Time.time * 1.6f) * 0.012f * (1f - stillW);
             float hunch = motor.Hunch;
-            float hipH = Mathf.Lerp(hipHeight - Mathf.Lerp(0f, 0.14f, runW) - 0.22f * hunch, 0.6f, crawlW) - bob + breathe;
+            float hipH = Mathf.Lerp(hipHeight - Mathf.Lerp(0f, 0.14f, runW) - 0.22f * hunch, 0.4f, crawlW) - bob * (1f - 0.6f * crawlW) + breathe;
             float legReach = thigh + shin + ankle - 0.02f;
             float footY = Mathf.Min(footPos[0].y, footPos[1].y);
             hipH = Mathf.Min(hipH, footY - root.y + legReach);
-            float lean = Mathf.Lerp(Mathf.Lerp(4f, 26f, runW) + 30f * hunch, 72f, crawlW);
-            float twist = Mathf.Sin(phase * Mathf.PI * 2f) * Mathf.Lerp(4f, 9f, runW) * moveW;
+            float lean = Mathf.Lerp(Mathf.Lerp(4f, 26f, runW) + 30f * hunch, 86f, crawlW);
+            float twist = Mathf.Sin(phase * Mathf.PI * 2f) * (Mathf.Lerp(4f, 9f, runW) + 7f * crawlW) * moveW;
+            // scuttling: a fast, insect-like shiver through the body
+            float skitter = crawlW * moveW * (Mathf.Sin(Time.time * 37f) * 1.5f + Mathf.Sin(Time.time * 23f) * 1f);
             Quaternion yaw = Quaternion.LookRotation(fwd);
             Vector3 pelvisPos = root + up * hipH;
-            Quaternion pelvisRot = yaw * Quaternion.Euler(lean * 0.35f, twist, 0f);
+            Quaternion pelvisRot = yaw * Quaternion.Euler(lean * Mathf.Lerp(0.35f, 0.85f, crawlW), twist, skitter);
             pelvis.SetPositionAndRotation(pelvisPos, pelvisRot);
 
             // ---------------- legs (IK) ----------------
             Vector3 knee = fwd + up * 0.2f;
-            Leg(thighL, shinL, footL, pelvisPos - right * hipHalfWidth, footPos[0] + up * ankle, knee, yaw);
-            Leg(thighR, shinR, footR, pelvisPos + right * hipHalfWidth, footPos[1] + up * ankle, knee, yaw);
+            // crawling, the knees point out and up like a spider's (the body hangs low between them)
+            Vector3 kneeL = Vector3.Lerp(knee, -right + up * 1.3f - fwd * 0.2f, crawlW);
+            Vector3 kneeR = Vector3.Lerp(knee, right + up * 1.3f - fwd * 0.2f, crawlW);
+            Leg(thighL, shinL, footL, pelvisPos - right * hipHalfWidth, footPos[0] + up * ankle, kneeL, yaw);
+            Leg(thighR, shinR, footR, pelvisPos + right * hipHalfWidth, footPos[1] + up * ankle, kneeR, yaw);
 
             // ---------------- spine, neck ----------------
             float actLean = 0f;
@@ -251,10 +256,10 @@ namespace AfterHours.Creature
             float bend = actLean * actionW;
             if (pp != null) bend = Mathf.Lerp(bend, pp.lean, pp.weight);
             bend += vp.arch * 30f * (1f - crawlW);
-            Quaternion spineRot = yaw * Quaternion.Euler(lean + bend, -twist * 1.4f, 0f);
+            Quaternion spineRot = yaw * Quaternion.Euler(lean + bend, -twist * 1.4f, -skitter * 1.5f);
             spine.SetPositionAndRotation(pelvisPos, spineRot);
             Vector3 chest = pelvisPos + spineRot * up * spineLength;
-            Quaternion neckRot = spineRot * Quaternion.Euler(-Mathf.Lerp(lean * 0.7f, 70f, crawlW) - vp.push * 25f, 0f, 0f);
+            Quaternion neckRot = spineRot * Quaternion.Euler(-Mathf.Lerp(lean * 0.7f, 38f, crawlW) - vp.push * 25f, 0f, 0f);
             neck.SetPositionAndRotation(chest, neckRot);
             Vector3 headBase = chest + neckRot * up * neckLength + fwd * (vp.push * 0.15f);
             if (pp != null) headBase += pp.headPush * pp.weight;
@@ -329,15 +334,15 @@ namespace AfterHours.Creature
                 {
                     handSwinging[i] = true;
                     handFrom[i] = handPlant[i];
-                    handTo[i] = Ground(chest + right * (shoulderHalfWidth * 1.3f * side) + fwd * 0.35f + (speed > 0.1f ? vel.normalized * stride * 0.5f : Vector3.zero));
+                    handTo[i] = Ground(chest + right * (shoulderHalfWidth * 2.4f * side) + fwd * 0.5f + (speed > 0.1f ? vel.normalized * stride * 0.5f : Vector3.zero));
                 }
                 if (handSwinging[i])
                 {
                     float t = Mathf.Clamp01(lp / 0.4f);
-                    handPlant[i] = Vector3.Lerp(handFrom[i], handTo[i], Mathf.SmoothStep(0f, 1f, t)) + up * Mathf.Sin(t * Mathf.PI) * 0.12f;
+                    handPlant[i] = Vector3.Lerp(handFrom[i], handTo[i], Mathf.SmoothStep(0f, 1f, t)) + up * Mathf.Sin(t * Mathf.PI) * 0.2f;
                     if (!inSwing || t >= 1f) { handSwinging[i] = false; handPlant[i] = handTo[i]; }
                 }
-                if (crawlW < 0.05f) handPlant[i] = Ground(chest + fwd * 0.6f + right * (shoulderHalfWidth * side));
+                if (crawlW < 0.05f) handPlant[i] = Ground(chest + fwd * 0.5f + right * (shoulderHalfWidth * 2.4f * side));
             }
             Vector3 handTargetL = Vector3.Lerp(hangL, handPlant[0] + up * 0.03f, crawlW);
             Vector3 handTargetR = Vector3.Lerp(hangR, handPlant[1] + up * 0.03f, crawlW);
@@ -396,12 +401,14 @@ namespace AfterHours.Creature
             }
 
             Vector3 elbowPole = -fwd + Vector3.down * 0.4f;
-            Arm(upperArmL, foreArmL, handL, shoulderL, handTargetL, elbowPole - right * 0.4f, yaw);
-            Arm(upperArmR, foreArmR, handR, shoulderR, handTargetR, elbowPole + right * 0.4f, yaw);
+            Vector3 poleL = Vector3.Lerp(elbowPole - right * 0.4f, -right + up * 1.1f - fwd * 0.3f, crawlW);
+            Vector3 poleR = Vector3.Lerp(elbowPole + right * 0.4f, right + up * 1.1f - fwd * 0.3f, crawlW);
+            Arm(upperArmL, foreArmL, handL, shoulderL, handTargetL, poleL, yaw);
+            Arm(upperArmR, foreArmR, handR, shoulderR, handTargetR, poleR, yaw);
 
             float grip = action == ElliotAction.Grab || action == ElliotAction.BangDoor || action == ElliotAction.PullOpen ? 0.8f * actionW : 0f;
             if (pp != null) grip = Mathf.Max(grip, 0.9f * pp.weight);
-            DriveDetails(grip - 0.25f * crawlW);
+            DriveDetails(grip + 0.35f * crawlW);   // crawling: claws dug in
         }
 
         // ------------------------------------------------------------------ voice-driven detail

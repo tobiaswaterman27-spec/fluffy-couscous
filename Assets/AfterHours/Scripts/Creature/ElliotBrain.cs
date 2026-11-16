@@ -868,7 +868,9 @@ namespace AfterHours.Creature
             }
             Vector3 dir = aim - transform.position;
             dir.y = 0f;
-            motor.Drive(dir.sqrMagnitude > 0.04f ? dir : Vector3.zero, ElliotGait.Crawl);
+            // creeps while searching the duct; scuttles flat out once someone is in there with it
+            bool prey = PlayerInDuctNear(transform.position, 14f) != null;
+            motor.Drive(dir.sqrMagnitude > 0.04f ? dir : Vector3.zero, ElliotGait.Crawl, prey ? 1f : 0.4f);
             motor.Face(null);
             animator.LookTarget = transform.position + transform.forward * 3f + Vector3.up * 0.4f;
         }
