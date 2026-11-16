@@ -533,7 +533,13 @@ namespace AfterHours.Creature
             if (Fire(1, LiftT + 0.1f, u)) Voice("elliot_snarl", 0.9f);
             if (Fire(15, ThrashT + 0.05f, u)) Voice("elliot_snarl", 1f);
             if (Fire(16, ThrashT + 0.7f, u)) Voice(rng.NextDouble() < 0.5 ? "elliot_roar" : "elliot_shriek", 1f);
-            if (Fire(17, FeedT + 0.15f, u)) Voice("elliot_snarl", 0.9f);
+            if (Fire(17, FeedT + 0.15f, u))
+            {
+                Voice("elliot_snarl", 0.9f);
+                // from now on he is covered in it: mouth, chin, chest, hands
+                ElliotBody body = anim != null ? anim.GetComponent<ElliotBody>() : null;
+                if (body != null) body.SetBloody(true);
+            }
             if (Fire(18, FeedT + 1.0f, u)) Voice(rng.NextDouble() < 0.6 ? "elliot_feed" : rng.NextDouble() < 0.5 ? "elliot_roar" : "elliot_snarl", 0.85f);
             if (Fire(19, FeedT + 1.6f, u)) Voice("elliot_scream", 0.7f);
             if (Fire(2, ScreamT, u))
@@ -595,7 +601,7 @@ namespace AfterHours.Creature
         {
             AudioClip c = AudioLibrary.Get(key);
             if (c == null) return;
-            if (anim != null && anim.audioOut != null && anim.audioOut.voice != null) anim.audioOut.voice.PlayOneShot(c, vol);
+            if (anim != null && anim.audioOut != null && anim.audioOut.voice != null) anim.audioOut.PlayVoice(c, vol);
             else AudioPool.PlayAt(c, Mouth, vol, 1f, 40f);
         }
 

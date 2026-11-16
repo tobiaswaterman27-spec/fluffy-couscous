@@ -13,6 +13,17 @@ namespace AfterHours.Creature
     {
         public AudioSource breathing;
         public AudioSource voice;
+
+        /// <summary>Moves his body in step with whatever take his voice is playing.</summary>
+        public readonly ElliotPerformer Performer = new ElliotPerformer();
+
+        /// <summary>Plays a voice clip and starts that take's movement track.</summary>
+        public void PlayVoice(AudioClip clip, float volume)
+        {
+            if (clip == null || voice == null) return;
+            voice.PlayOneShot(clip, volume);
+            Performer.Play(clip, voice.pitch);
+        }
         public float footstepVolume = 0.9f;
 
         static AudioClip breathClip, screamClip;
@@ -91,7 +102,7 @@ namespace AfterHours.Creature
                 AudioClip clip = AudioLibrary.Get(outburst);
                 if (clip != null)
                 {
-                    voice.PlayOneShot(clip, 1f);
+                    PlayVoice(clip, 1f);
                     voiceTimer = Mathf.Max(voiceTimer, clip.length + 1f);
                     NoiseBus.Emit(new NoiseEvent(transform.position, 40f, NoiseKind.Creature, gameObject));
                 }
@@ -104,7 +115,7 @@ namespace AfterHours.Creature
             else if (intensity > 0.2f) { key = Pick("elliot_sniff", 25, "elliot_huff", 20, "elliot_clicks", 20, "elliot_croak", 15, "elliot_growl", 10, "elliot_mutter", 10); voiceTimer = Random.Range(5f, 10f); }
             else { key = Pick("elliot_growl", 20, "elliot_croak", 20, "elliot_clicks", 25, "elliot_twitch", 15, "elliot_sniff", 20); voiceTimer = Random.Range(10f, 24f); }
             AudioClip c = AudioLibrary.Get(key);
-            if (c != null) { voice.PlayOneShot(c, key == "elliot_twitch" ? 0.6f : 0.85f); outburstTimer = Mathf.Max(outburstTimer, c.length + 2f); }
+            if (c != null) { PlayVoice(c, key == "elliot_twitch" ? 0.6f : 0.85f); outburstTimer = Mathf.Max(outburstTimer, c.length + 2f); }
         }
 
         /// <summary>Weighted random choice from (key, weight) pairs.</summary>
@@ -125,7 +136,7 @@ namespace AfterHours.Creature
         public void Spot()
         {
             AudioClip c = AudioLibrary.Get("elliot_spot");
-            if (c != null && voice != null) voice.PlayOneShot(c, 1f);
+            if (c != null) PlayVoice(c, 1f);
             voiceTimer = Random.Range(3f, 5f);
         }
 
@@ -133,7 +144,7 @@ namespace AfterHours.Creature
         public void Twitch()
         {
             AudioClip c = AudioLibrary.Get("elliot_twitch");
-            if (c != null && voice != null) voice.PlayOneShot(c, 0.5f);
+            if (c != null) PlayVoice(c, 0.5f);
         }
 
         public void Footstep(Vector3 position, SurfaceType surface, float weight)
@@ -150,7 +161,7 @@ namespace AfterHours.Creature
         public void Scream()
         {
             AudioClip s = AudioLibrary.Get("elliot_scream");
-            if (voice != null) voice.PlayOneShot(s != null ? s : screamClip, 1f);
+            PlayVoice(s != null ? s : screamClip, 1f);
             NoiseBus.Emit(new NoiseEvent(transform.position, 40f, NoiseKind.Creature, gameObject));
         }
 

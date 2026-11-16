@@ -12,15 +12,6 @@ namespace AfterHours.EditorTools
 
         public static GameObject Create(Transform parent, Vector3 position, float yaw, string name = "Elliot")
         {
-            // Textured skin: grey-yellow, blotched, veined, unevenly wet (tools/texgen/details.py).
-            Material skin = ArtLibrary.Surface("Elliot_Skin", "skin_pale", 0.4f, new Color(0.95f, 0.95f, 0.93f), 1f, 1.2f);
-            skin.SetTextureScale("_BaseMap", new Vector2(2f, 3f));
-            if (skin.HasProperty("_BumpMap")) skin.SetTextureScale("_BumpMap", new Vector2(2f, 3f));
-            Material nail = Mat("Elliot_Nail", new Color(0.18f, 0.16f, 0.13f), 0.7f);
-            Material shadowSkin = Mat("Elliot_Hollow", new Color(0.45f, 0.43f, 0.42f), 0.35f);
-            Material eye = Mat("Elliot_Eye", new Color(0.01f, 0.01f, 0.012f), 0.97f);
-            Material mouth = Mat("Elliot_Mouth", new Color(0.06f, 0.02f, 0.02f), 0.8f);
-
             var root = new GameObject(name);
             if (parent != null) root.transform.SetParent(parent, false);
             root.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
@@ -53,6 +44,27 @@ namespace AfterHours.EditorTools
             ElliotAnimator anim = root.AddComponent<ElliotAnimator>();
             anim.motor = motor;
             anim.audioOut = audio;
+
+            // His body: the sculpted, skinned model (tools/elliotgen) when it is there; the old primitive body if not.
+            TextAsset model = AssetDatabase.LoadAssetAtPath<TextAsset>(EditorBuild.Root + "/Models/Elliot/elliot_model.bytes");
+            if (model != null) SculptedBody(root, rig, anim, model);
+            else PrimitiveBody(rig, anim);
+
+            EditorBuild.SetLayerRecursive(root, GameLayers.CreatureLayer);
+            return root;
+        }
+
+        /// <summary>The original body made of primitives (used only if the sculpted model file is missing).</summary>
+        static void PrimitiveBody(Transform rig, ElliotAnimator anim)
+        {
+            // Textured skin: grey-yellow, blotched, veined, unevenly wet (tools/texgen/details.py).
+            Material skin = ArtLibrary.Surface("Elliot_Skin", "skin_pale", 0.4f, new Color(0.95f, 0.95f, 0.93f), 1f, 1.2f);
+            skin.SetTextureScale("_BaseMap", new Vector2(2f, 3f));
+            if (skin.HasProperty("_BumpMap")) skin.SetTextureScale("_BumpMap", new Vector2(2f, 3f));
+            Material nail = Mat("Elliot_Nail", new Color(0.18f, 0.16f, 0.13f), 0.7f);
+            Material shadowSkin = Mat("Elliot_Hollow", new Color(0.45f, 0.43f, 0.42f), 0.35f);
+            Material eye = Mat("Elliot_Eye", new Color(0.01f, 0.01f, 0.012f), 0.97f);
+            Material mouth = Mat("Elliot_Mouth", new Color(0.06f, 0.02f, 0.02f), 0.8f);
 
             // Joints. Limb meshes hang along -Y from their joint; spine / neck / head grow along +Y.
             anim.pelvis = Joint(rig, "Pelvis");
@@ -148,8 +160,81 @@ namespace AfterHours.EditorTools
                 else { anim.upperArmR = ua; anim.foreArmR = fa; anim.handR = hand; anim.thighR = th; anim.shinR = sh; anim.footR = ft; }
             }
 
-            EditorBuild.SetLayerRecursive(root, GameLayers.CreatureLayer);
-            return root;
+        }
+
+        /// <summary>
+        /// Joints placed in the model's rest pose, and the ElliotBody component that skins the sculpted mesh onto them
+        /// (it also adds the detail joints: lips, nostrils, brows, throat, chest, tongue, fingers, toes).
+        /// </summary>
+        static void SculptedBody(GameObject root, Transform rig, ElliotAnimator anim, TextAsset model)
+        {
+            ElliotBody.BoneDef[] defs = ElliotBody.ReadBones(model.bytes);
+            var made = new System.Collections.Generic.Dictionary<string, Transform>();
+            foreach (ElliotBody.BoneDef d in defs)
+            {
+                bool main = d.parent < 0 || d.name == "Jaw";
+                if (!main) continue;
+                Transform t = new GameObject(d.name).transform;
+                if (d.parent < 0)
+                {
+                    t.SetParent(rig, false);
+                    t.localPosition = d.pos;
+                    t.localRotation = d.rot;
+                }
+                else
+                {
+                    ElliotBody.BoneDef p = defs[d.parent];
+                    t.SetParent(made[p.name], false);
+                    Quaternion inv = Quaternion.Inverse(p.rot);
+                    t.localPosition = inv * (d.pos - p.pos);
+                    t.localRotation = inv * d.rot;
+                }
+                made[d.name] = t;
+            }
+            Transform J(string n) => made.TryGetValue(n, out Transform t) ? t : null;
+            anim.pelvis = J("Pelvis"); anim.spine = J("Spine"); anim.neck = J("Neck"); anim.head = J("Head"); anim.jaw = J("Jaw");
+            anim.upperArmL = J("UpperArmL"); anim.foreArmL = J("ForeArmL"); anim.handL = J("HandL");
+            anim.upperArmR = J("UpperArmR"); anim.foreArmR = J("ForeArmR"); anim.handR = J("HandR");
+            anim.thighL = J("ThighL"); anim.shinL = J("ShinL"); anim.footL = J("FootL");
+            anim.thighR = J("ThighR"); anim.shinR = J("ShinR"); anim.footR = J("FootR");
+
+            Texture2D normal = Tex("elliot_body_N.png");
+            ElliotBody body = root.AddComponent<ElliotBody>();
+            body.model = model;
+            body.rig = rig;
+            body.skin = SkinMaterial("Elliot_Skin", Tex("elliot_body_A.jpg"), normal, Tex("elliot_body_M.png"));
+            body.bloodySkin = SkinMaterial("Elliot_SkinBloody", Tex("elliot_bodyblood_A.jpg"), normal, Tex("elliot_bodyblood_M.png"));
+            body.mouthParts = SkinMaterial("Elliot_MouthParts", Tex("elliot_mouth_A.png"), null, Tex("elliot_mouth_M.png"));
+            body.Build();
+        }
+
+        static Texture2D Tex(string file) => AssetDatabase.LoadAssetAtPath<Texture2D>(EditorBuild.Root + "/Textures/Creature/" + file);
+
+        /// <summary>URP Lit with the baked colour, normal and mask (G = cavity occlusion, A = wetness / smoothness).</summary>
+        static Material SkinMaterial(string name, Texture2D albedo, Texture2D normal, Texture2D mask)
+        {
+            EditorBuild.EnsureFolder(MatFolder);
+            string path = MatFolder + "/" + name + ".mat";
+            Shader sh = Shader.Find("Universal Render Pipeline/Lit");
+            Material m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (m == null) { m = new Material(sh); AssetDatabase.CreateAsset(m, path); }
+            else if (sh != null && m.shader != sh) m.shader = sh;
+            m.SetColor("_BaseColor", Color.white);
+            if (albedo != null) { m.SetTexture("_BaseMap", albedo); if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", albedo); }
+            if (normal != null) { m.SetTexture("_BumpMap", normal); m.SetFloat("_BumpScale", 1f); m.EnableKeyword("_NORMALMAP"); }
+            else m.DisableKeyword("_NORMALMAP");
+            if (mask != null)
+            {
+                m.SetTexture("_MetallicGlossMap", mask); m.EnableKeyword("_METALLICSPECGLOSSMAP");
+                m.SetTexture("_OcclusionMap", mask); m.EnableKeyword("_OCCLUSIONMAP");
+                m.SetFloat("_OcclusionStrength", 1f);
+                m.SetFloat("_Smoothness", 1f);
+                m.SetFloat("_SmoothnessTextureChannel", 0f);
+            }
+            m.SetFloat("_Metallic", 0f);
+            m.enableInstancing = false;
+            EditorUtility.SetDirty(m);
+            return m;
         }
 
         /// <summary>Elliot with its full AI (senses, memory, brain, path finding).</summary>

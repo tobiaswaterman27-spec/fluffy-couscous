@@ -26,6 +26,17 @@ namespace AfterHours.Creature
         public ElliotMotor motor;
         public ElliotAudio audioOut;
 
+        // Detail joints from the sculpted body (ElliotBody): driven by his voice. Found by name when the body exists.
+        Transform chestJ, throatJ, lipJ, noseL, noseR, browL, browR, tongueJ;
+        readonly Transform[,] fingerJ = new Transform[2, 15];   // per side: 4 fingers x 3 joints, then the thumb's 2
+        readonly Quaternion[,] fingerRest = new Quaternion[2, 15];
+        Vector3 lipRest, noseLRest, noseRRest, browLRest, browRRest, throatRest, tongueRest;
+        Quaternion tongueRot;
+        bool detailReady;
+        VoicePose vp;
+        /// <summary>What his voice is doing to his body this frame (for other systems, e.g. network or debug).</summary>
+        public VoicePose Voice => vp;
+
         [Header("Proportions (metres)")]
         public float hipHeight = 1.32f;
         public float thigh = 0.68f, shin = 0.66f, ankle = 0.06f;
@@ -52,7 +63,7 @@ namespace AfterHours.Creature
         public PuppetPose Puppet { get; set; }
 
         /// <summary>Roughly where the mouth is (for bites, blood, camera framing).</summary>
-        public Vector3 MouthPosition => head != null ? head.position + head.up * 0.12f + head.forward * 0.13f : transform.position + Vector3.up * 2.2f;
+        public Vector3 MouthPosition => head != null ? head.position + head.up * 0.075f + head.forward * 0.1f : transform.position + Vector3.up * 2.2f;
         public ElliotAction CurrentAction => action;
         public Vector3 ActionTarget => actionTarget;
         public float ActionRemaining => Mathf.Max(0f, actionDuration - actionTime);
@@ -140,6 +151,7 @@ namespace AfterHours.Creature
             if (motor == null || pelvis == null) return;
             if (!initialised) Init();
             float dt = Mathf.Max(Time.deltaTime, 0.0001f);
+            SampleVoice(dt);
             ElliotGait gait = motor.Gait;
             float speed = motor.Speed;
             Vector3 fwd = transform.forward, right = transform.right, up = Vector3.up;
@@ -238,12 +250,13 @@ namespace AfterHours.Creature
             PuppetPose pp = Puppet != null && Puppet.weight > 0.001f ? Puppet : null;
             float bend = actLean * actionW;
             if (pp != null) bend = Mathf.Lerp(bend, pp.lean, pp.weight);
+            bend += vp.arch * 30f * (1f - crawlW);
             Quaternion spineRot = yaw * Quaternion.Euler(lean + bend, -twist * 1.4f, 0f);
             spine.SetPositionAndRotation(pelvisPos, spineRot);
             Vector3 chest = pelvisPos + spineRot * up * spineLength;
-            Quaternion neckRot = spineRot * Quaternion.Euler(-Mathf.Lerp(lean * 0.7f, 70f, crawlW), 0f, 0f);
+            Quaternion neckRot = spineRot * Quaternion.Euler(-Mathf.Lerp(lean * 0.7f, 70f, crawlW) - vp.push * 25f, 0f, 0f);
             neck.SetPositionAndRotation(chest, neckRot);
-            Vector3 headBase = chest + neckRot * up * neckLength;
+            Vector3 headBase = chest + neckRot * up * neckLength + fwd * (vp.push * 0.15f);
             if (pp != null) headBase += pp.headPush * pp.weight;
 
             // ---------------- head (turns far too far; twitches) ----------------
@@ -282,17 +295,21 @@ namespace AfterHours.Creature
                 float sh = pp.headShake * pp.weight;
                 tw += new Vector3(Mathf.Sin(Time.time * 31f) * sh * 0.3f, Mathf.Sin(Time.time * 23f) * sh, Mathf.Sin(Time.time * 37f + 1f) * sh * 0.6f);
             }
-            Quaternion headRot = yaw * Quaternion.Euler(headPitch + tw.x - crawlW * 10f, headYaw + tw.y, headRoll + tw.z);
+            // his voice: the head throws back on a shriek, drops to feed, jerks with each snarl, trembles when he screams
+            float sk = vp.shake, tt = Time.time;
+            Vector3 vh = new Vector3(vp.headPitch * 40f + Mathf.Sin(tt * 31f) * 6f * sk, vp.headYaw * 40f + Mathf.Sin(tt * 23f) * 9f * sk, vp.headRoll * 40f + Mathf.Sin(tt * 37f + 1f) * 6f * sk);
+            Quaternion headRot = yaw * Quaternion.Euler(headPitch + tw.x - crawlW * 10f + vh.x, headYaw + tw.y + vh.y, headRoll + tw.z + vh.z);
             head.SetPositionAndRotation(headBase, headRot);
 
             float jawWant = action == ElliotAction.Scream ? 38f : action == ElliotAction.Grab ? 20f : (Mathf.Sin(Time.time * 1.6f) * 0.5f + 0.5f) * 3f;
             if (pp != null && pp.jaw >= 0f) jawWant = Mathf.Lerp(jawWant, pp.jaw, pp.weight);
+            jawWant += vp.jaw * 42f * (pp != null ? 1f - 0.5f * pp.weight : 1f);
             jawOpen = Mathf.Lerp(jawOpen, jawWant, 1f - Mathf.Exp(-(pp != null ? 30f : 12f) * dt));
             if (jaw != null) jaw.localRotation = Quaternion.Euler(jawOpen, 0f, 0f);
 
             // ---------------- arms ----------------
-            Vector3 shoulderL = chest + spineRot * (Vector3.left * shoulderHalfWidth) - spineRot * up * 0.04f;
-            Vector3 shoulderR = chest + spineRot * (Vector3.right * shoulderHalfWidth) - spineRot * up * 0.04f;
+            Vector3 shoulderL = chest + spineRot * (Vector3.left * shoulderHalfWidth) - spineRot * up * 0.04f + up * (vp.shoulders * 0.07f);
+            Vector3 shoulderR = chest + spineRot * (Vector3.right * shoulderHalfWidth) - spineRot * up * 0.04f + up * (vp.shoulders * 0.07f);
             float armReach = upperArm + foreArm;
 
             // Upright: long arms hanging and swinging against the legs (wide and loose when running).
@@ -324,6 +341,19 @@ namespace AfterHours.Creature
             }
             Vector3 handTargetL = Vector3.Lerp(hangL, handPlant[0] + up * 0.03f, crawlW);
             Vector3 handTargetR = Vector3.Lerp(hangR, handPlant[1] + up * 0.03f, crawlW);
+
+            // A scream flings the arms out, claws spread (not while crawling - the hands are feet then).
+            float fling = Mathf.Clamp01(vp.arms) * (1f - crawlW);
+            if (fling > 0.001f)
+            {
+                handTargetL = Vector3.Lerp(handTargetL, shoulderL + (yaw * new Vector3(-0.82f, -0.32f, 0.5f)).normalized * armReach * 0.93f, fling);
+                handTargetR = Vector3.Lerp(handTargetR, shoulderR + (yaw * new Vector3(0.82f, -0.32f, 0.5f)).normalized * armReach * 0.93f, fling);
+            }
+            if (sk > 0.001f)
+            {
+                handTargetL += (right * Mathf.Sin(tt * 29f) + up * Mathf.Sin(tt * 21f)) * (0.012f * sk);
+                handTargetR += (right * Mathf.Sin(tt * 29f + 1f) + up * Mathf.Sin(tt * 21f + 1f)) * (0.012f * sk);
+            }
 
             // Actions take over the arms.
             if (actionW > 0.001f)
@@ -368,6 +398,100 @@ namespace AfterHours.Creature
             Vector3 elbowPole = -fwd + Vector3.down * 0.4f;
             Arm(upperArmL, foreArmL, handL, shoulderL, handTargetL, elbowPole - right * 0.4f, yaw);
             Arm(upperArmR, foreArmR, handR, shoulderR, handTargetR, elbowPole + right * 0.4f, yaw);
+
+            float grip = action == ElliotAction.Grab || action == ElliotAction.BangDoor || action == ElliotAction.PullOpen ? 0.8f * actionW : 0f;
+            if (pp != null) grip = Mathf.Max(grip, 0.9f * pp.weight);
+            DriveDetails(grip - 0.25f * crawlW);
+        }
+
+        // ------------------------------------------------------------------ voice-driven detail
+        static float Ease(float a, float b, float k) => a + (b - a) * k;
+
+        void SampleVoice(float dt)
+        {
+            VoicePose want = default;
+            if (audioOut != null) want = audioOut.Performer.Sample(audioOut.breathing);
+            else want.chest = Mathf.Sin(Time.time * 1.6f) * 0.35f;
+            float k = 1f - Mathf.Exp(-40f * dt);
+            vp.jaw = Ease(vp.jaw, want.jaw, k); vp.lip = Ease(vp.lip, want.lip, k); vp.nose = Ease(vp.nose, want.nose, k);
+            vp.brow = Ease(vp.brow, want.brow, k); vp.throat = Ease(vp.throat, want.throat, k); vp.chest = Ease(vp.chest, want.chest, k);
+            vp.tongue = Ease(vp.tongue, want.tongue, k); vp.headPitch = Ease(vp.headPitch, want.headPitch, k); vp.headYaw = Ease(vp.headYaw, want.headYaw, k);
+            vp.headRoll = Ease(vp.headRoll, want.headRoll, k); vp.push = Ease(vp.push, want.push, k); vp.arch = Ease(vp.arch, want.arch, k);
+            vp.shoulders = Ease(vp.shoulders, want.shoulders, k); vp.arms = Ease(vp.arms, want.arms, k); vp.curl = Ease(vp.curl, want.curl, k);
+            vp.splay = Ease(vp.splay, want.splay, k); vp.shake = Ease(vp.shake, want.shake, k);
+        }
+
+        static Transform FindDeep(Transform t, string name)
+        {
+            if (t.name == name) return t;
+            for (int i = 0; i < t.childCount; i++)
+            {
+                Transform f = FindDeep(t.GetChild(i), name);
+                if (f != null) return f;
+            }
+            return null;
+        }
+
+        void FindDetails()
+        {
+            if (detailReady) return;
+            chestJ = FindDeep(transform, "Chest");
+            if (chestJ == null) return;   // primitive body: nothing to drive
+            throatJ = FindDeep(transform, "Throat"); lipJ = FindDeep(transform, "LipUpper"); tongueJ = FindDeep(transform, "Tongue");
+            noseL = FindDeep(transform, "NostrilL"); noseR = FindDeep(transform, "NostrilR");
+            browL = FindDeep(transform, "BrowL"); browR = FindDeep(transform, "BrowR");
+            if (throatJ == null || lipJ == null || tongueJ == null || noseL == null || noseR == null || browL == null || browR == null) return;
+            throatRest = throatJ.localPosition; lipRest = lipJ.localPosition; tongueRest = tongueJ.localPosition; tongueRot = tongueJ.localRotation;
+            noseLRest = noseL.localPosition; noseRRest = noseR.localPosition; browLRest = browL.localPosition; browRRest = browR.localPosition;
+            for (int s = 0; s < 2; s++)
+            {
+                string side = s == 0 ? "L" : "R";
+                for (int f = 0; f < 4; f++)
+                    for (int j = 0; j < 3; j++)
+                        fingerJ[s, f * 3 + j] = FindDeep(transform, "Finger" + side + f + "_" + (j + 1));
+                fingerJ[s, 12] = FindDeep(transform, "Thumb" + side + "_1");
+                fingerJ[s, 13] = FindDeep(transform, "Thumb" + side + "_2");
+                for (int i = 0; i < 14; i++) if (fingerJ[s, i] != null) fingerRest[s, i] = fingerJ[s, i].localRotation;
+            }
+            detailReady = true;
+        }
+
+        /// <summary>Lips, nostrils, brows, throat, chest, tongue and fingers. grip: extra finger curl from what the hands are doing.</summary>
+        void DriveDetails(float grip)
+        {
+            FindDetails();
+            if (!detailReady) return;
+            lipJ.localPosition = lipRest + new Vector3(0f, vp.lip * 0.0065f, -vp.lip * 0.0015f);
+            float n = Mathf.Clamp01(vp.nose);
+            Vector3 ns = new Vector3(1f + 0.7f * n, 1f + 0.3f * n, 1f + 0.2f * n);
+            noseL.localScale = ns; noseR.localScale = ns;
+            noseL.localPosition = noseLRest + new Vector3(-0.0013f * n, 0f, 0f);
+            noseR.localPosition = noseRRest + new Vector3(0.0013f * n, 0f, 0f);
+            browL.localPosition = browLRest + new Vector3(0.002f * vp.brow, -0.0045f * vp.brow, 0.001f * Mathf.Max(0f, vp.brow));
+            browR.localPosition = browRRest + new Vector3(-0.002f * vp.brow, -0.0045f * vp.brow, 0.001f * Mathf.Max(0f, vp.brow));
+            throatJ.localPosition = throatRest + new Vector3(0f, vp.throat * 0.003f, vp.throat * 0.005f);
+            chestJ.localScale = new Vector3(1f + 0.03f * vp.chest, 1f + 0.012f * vp.chest, 1f + 0.06f * vp.chest);
+            tongueJ.localPosition = tongueRest + new Vector3(0f, 0f, vp.tongue * 0.045f);
+            tongueJ.localRotation = tongueRot * Quaternion.Euler(-8f * vp.tongue, 0f, 0f);
+            float curl = Mathf.Clamp(0.15f + vp.curl - vp.splay * 0.5f + grip, -0.3f, 1f);
+            for (int s = 0; s < 2; s++)
+            {
+                float sign = s == 0 ? -1f : 1f;
+                for (int f = 0; f < 4; f++)
+                    for (int j = 0; j < 3; j++)
+                    {
+                        Transform t = fingerJ[s, f * 3 + j];
+                        if (t == null) continue;
+                        float amt = (j == 0 ? 55f : j == 1 ? 70f : 50f) * curl;
+                        float spread = j == 0 ? (f - 1.5f) * vp.splay * 9f * -sign : 0f;
+                        t.localRotation = fingerRest[s, f * 3 + j] * Quaternion.Euler(-amt, 0f, spread);
+                    }
+                for (int j = 0; j < 2; j++)
+                {
+                    Transform t = fingerJ[s, 12 + j];
+                    if (t != null) t.localRotation = fingerRest[s, 12 + j] * Quaternion.Euler(-30f * curl, 0f, 0f);
+                }
+            }
         }
 
         static Vector3 Flat(Vector3 v) => new Vector3(v.x, 0f, v.z);

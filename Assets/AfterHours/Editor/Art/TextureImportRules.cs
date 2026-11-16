@@ -28,7 +28,8 @@ namespace AfterHours.EditorTools
             TextureImporterType type = file.EndsWith("_N") ? TextureImporterType.NormalMap : TextureImporterType.Default;
             bool srgb = !file.EndsWith("_N") && !file.EndsWith("_M");
             bool decal = file.StartsWith("decal_");
-            TextureWrapMode wrap = decal ? TextureWrapMode.Clamp : TextureWrapMode.Repeat;
+            bool creature = file.StartsWith("elliot_");   // Elliot's baked skin: a UV atlas, full resolution
+            TextureWrapMode wrap = decal || creature ? TextureWrapMode.Clamp : TextureWrapMode.Repeat;
 
             if (ti.textureType != type) { ti.textureType = type; changed = true; }
             if (ti.sRGBTexture != srgb) { ti.sRGBTexture = srgb; changed = true; }
@@ -36,7 +37,8 @@ namespace AfterHours.EditorTools
             if (ti.alphaIsTransparency != decal) { ti.alphaIsTransparency = decal; changed = true; }
             if (!ti.mipmapEnabled) { ti.mipmapEnabled = true; changed = true; }
             if (ti.anisoLevel != 8) { ti.anisoLevel = 8; changed = true; }
-            if (ti.maxTextureSize != 1024) { ti.maxTextureSize = 1024; changed = true; }
+            int max = creature ? 2048 : 1024;
+            if (ti.maxTextureSize != max) { ti.maxTextureSize = max; changed = true; }
             return changed;
         }
 
