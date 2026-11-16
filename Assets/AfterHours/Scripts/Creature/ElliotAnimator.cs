@@ -237,6 +237,29 @@ namespace AfterHours.Creature
             float skitter = crawlW * moveW * (Mathf.Sin(Time.time * 37f) * 1.5f + Mathf.Sin(Time.time * 23f) * 1f);
             Quaternion yaw = Quaternion.LookRotation(fwd);
             Vector3 pelvisPos = root + up * hipH;
+
+            // ---------------- the kill: the whole body goes for the victim, not just the neck ----------------
+            float actLean = 0f;
+            if (action == ElliotAction.InspectLow) actLean = 45f;
+            else if (action == ElliotAction.Scream) actLean = 12f;
+            PuppetPose pp = Puppet != null && Puppet.weight > 0.001f ? Puppet : null;
+            float bend = actLean * actionW;
+            if (pp != null) bend = Mathf.Lerp(bend, pp.lean, pp.weight);
+            bend += vp.arch * 30f * (1f - crawlW);
+            Vector3 reachT = Vector3.zero;
+            if (pp != null)
+            {
+                // where the head has to get to decides the rest: the hips step in when it's out of reach,
+                // the knees bend when it's low, and the spine curls over to get there
+                Quaternion sr0 = yaw * Quaternion.Euler(lean + bend, 0f, 0f);
+                Vector3 h0 = pelvisPos + sr0 * up * spineLength + (sr0 * Quaternion.Euler(-lean * 0.7f, 0f, 0f)) * up * neckLength;
+                reachT = h0 + pp.headPush * pp.weight;
+                float span = spineLength + neckLength;
+                pelvisPos.y -= Mathf.Clamp(pelvisPos.y - root.y - (reachT.y - root.y + 0.15f), 0f, 0.6f) * pp.weight;
+                Vector3 flat = reachT - pelvisPos; flat.y = 0f;
+                float dist = Vector3.Distance(pelvisPos, reachT);
+                if (dist > span * 0.96f && flat.sqrMagnitude > 1e-4f) pelvisPos += flat.normalized * (Mathf.Min(dist - span * 0.96f, 0.8f) * pp.weight);
+            }
             Quaternion pelvisRot = yaw * Quaternion.Euler(lean * Mathf.Lerp(0.35f, 0.85f, crawlW), twist, skitter);
             pelvis.SetPositionAndRotation(pelvisPos, pelvisRot);
 
@@ -249,20 +272,19 @@ namespace AfterHours.Creature
             Leg(thighR, shinR, footR, pelvisPos + right * hipHalfWidth, footPos[1] + up * ankle, kneeR, yaw);
 
             // ---------------- spine, neck ----------------
-            float actLean = 0f;
-            if (action == ElliotAction.InspectLow) actLean = 45f;
-            else if (action == ElliotAction.Scream) actLean = 12f;
-            PuppetPose pp = Puppet != null && Puppet.weight > 0.001f ? Puppet : null;
-            float bend = actLean * actionW;
-            if (pp != null) bend = Mathf.Lerp(bend, pp.lean, pp.weight);
-            bend += vp.arch * 30f * (1f - crawlW);
             Quaternion spineRot = yaw * Quaternion.Euler(lean + bend, -twist * 1.4f, -skitter * 1.5f);
+            Quaternion neckRot = spineRot * Quaternion.Euler(-Mathf.Lerp(lean * 0.7f, 38f, crawlW) - vp.push * 25f, 0f, 0f);
+            if (pp != null)
+            {
+                // spine + neck as a two-bone chain from the hips to where the head must be; the back hunches up as it bends
+                Vector3 mid = SolveIK(pelvisPos, reachT, spineLength, neckLength, up - fwd * 0.4f, out Vector3 end);
+                spineRot = Quaternion.Slerp(spineRot, Aim(mid - pelvisPos, fwd), pp.weight);
+                neckRot = Quaternion.Slerp(neckRot, Aim(end - mid, fwd), pp.weight);
+            }
             spine.SetPositionAndRotation(pelvisPos, spineRot);
             Vector3 chest = pelvisPos + spineRot * up * spineLength;
-            Quaternion neckRot = spineRot * Quaternion.Euler(-Mathf.Lerp(lean * 0.7f, 38f, crawlW) - vp.push * 25f, 0f, 0f);
             neck.SetPositionAndRotation(chest, neckRot);
-            Vector3 headBase = chest + neckRot * up * neckLength + fwd * (vp.push * 0.15f);
-            if (pp != null) headBase += pp.headPush * pp.weight;
+            Vector3 headBase = chest + neckRot * up * neckLength + fwd * (vp.push * 0.15f * (pp != null ? 1f - pp.weight : 1f));
 
             // ---------------- head (turns far too far; twitches) ----------------
             float wantYaw = 0f, wantPitch = 0f;
@@ -502,6 +524,15 @@ namespace AfterHours.Creature
         }
 
         static Vector3 Flat(Vector3 v) => new Vector3(v.x, 0f, v.z);
+
+        /// <summary>A rotation whose local +Y points along dir, facing forward as far as it can.</summary>
+        static Quaternion Aim(Vector3 dir, Vector3 forward)
+        {
+            dir.Normalize();
+            Vector3 f = Vector3.ProjectOnPlane(forward, dir);
+            if (f.sqrMagnitude < 1e-4f) f = Vector3.ProjectOnPlane(Vector3.down, dir);
+            return Quaternion.LookRotation(f.normalized, dir);
+        }
 
         void Leg(Transform upper, Transform lower, Transform foot, Vector3 hip, Vector3 ankleTarget, Vector3 pole, Quaternion yaw)
         {
