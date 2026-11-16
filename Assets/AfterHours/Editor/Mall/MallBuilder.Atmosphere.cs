@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
+using AfterHours.World;
 using AfterHours.World.Layout;
 
 namespace AfterHours.EditorTools
@@ -55,6 +57,32 @@ namespace AfterHours.EditorTools
                     float length = (top - 0.2f) / Mathf.Max(0.2f, -dir.y);
                     Shaft(g, start, dir, length, 2.2f, beam);
                 }
+            }
+        }
+
+        /// <summary>Leaks: water dripping from the car park ceiling and a couple of service corridors into puddles.</summary>
+        static void BuildDrips(Transform parent)
+        {
+            Transform g = Group("Leaks", parent);
+            Material drop = AdditiveMaterial("Water_Drop", "decal_dust_mote.png", new Color(0.7f, 0.78f, 0.85f, 0.5f));
+            var spots = new List<(Vector3 floor, float height)>
+            {
+                (new Vector3(12f, MallLayout.CarParkY, -18f), 3.5f), (new Vector3(-44f, MallLayout.CarParkY, -60f), 3.5f),
+                (new Vector3(66f, MallLayout.CarParkY, 34f), 3.5f), (new Vector3(-20f, MallLayout.CarParkY, 30f), 3.5f),
+                (new Vector3(30f, MallLayout.CarParkY, 62f), 3.5f), (new Vector3(-80f, MallLayout.CarParkY, -10f), 3.5f),
+                (new Vector3(-74f, MallLayout.CarParkY, 82f), 1.9f), (new Vector3(84f, MallLayout.CarParkY, -76f), 3.5f),
+                (MallLayout.WingPoint(WingId.North, 64f, 17.6f, 0f), 4.4f), (MallLayout.WingPoint(WingId.West, 82f, -17.4f, 6f), 4.4f),
+            };
+            foreach (var (floor, height) in spots)
+            {
+                var go = new GameObject("Drip");
+                go.transform.SetParent(g, false);
+                go.transform.position = floor + Vector3.up * height;
+                AfterHours.World.Drip d = go.AddComponent<AfterHours.World.Drip>();
+                d.dropMaterial = drop;
+                d.height = height;
+                DecalQuad(g, floor + Vector3.up * 0.015f, Vector3.up, Rand(0.9f, 1.6f), Rand(0.9f, 1.6f), Rand(0f, 360f), decalPuddle);
+                DecalQuad(g, floor + Vector3.up * (height - 0.02f), Vector3.down, 0.9f, 0.9f, Rand(0f, 360f), decalWater);
             }
         }
 

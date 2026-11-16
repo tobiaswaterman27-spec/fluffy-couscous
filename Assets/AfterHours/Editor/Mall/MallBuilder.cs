@@ -123,6 +123,7 @@ namespace AfterHours.EditorTools
 
                 Progress("Atmosphere: light shafts", 0.715f);
                 BuildAtmosphere(mall);
+                BuildDrips(mall);
                 Progress("Ambient sound", 0.72f);
                 BuildAmbience(mall);
 

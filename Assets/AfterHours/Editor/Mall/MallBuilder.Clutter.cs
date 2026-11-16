@@ -187,6 +187,11 @@ namespace AfterHours.EditorTools
                 else if (roll < 0.7) DecalQuad(g, p + Vector3.up * 0.013f, Vector3.up, 0.9f, 1.6f, R(0f, 360f), decalPrintsShoe);
             }
             FootprintTrail(g, new Vector3(30f, cp, 66f), new Vector3(-13f, cp, 9f), rng);
+            // A few cars left overnight (staff, a breakdown, someone who never came back for theirs).
+            var carSpots = new[] { (new Vector3(-21.2f, cp, 18.6f), 0f), (new Vector3(-26f, cp, 18.6f), 180f), (new Vector3(42.8f, cp, -45.4f), 0f),
+                                   (new Vector3(-61.6f, cp, -13.4f), 180f), (new Vector3(5.2f, cp, 61.4f), 0f), (new Vector3(78f, cp, 29.4f), 180f) };
+            for (int c = 0; c < carSpots.Length; c++)
+                if (Free(carSpots[c].Item1, 1.2f)) ParkedCar(g, carSpots[c].Item1, carSpots[c].Item2 + R(-4f, 4f), c);
             DirtyGlass(g);
 
             // Cobwebs high in the corners of the service corridors and stairwells; the odd dirty handprint.
@@ -340,6 +345,55 @@ namespace AfterHours.EditorTools
             var prop = root.AddComponent<PhysicsProp>();
             prop.material = SurfaceType.Metal;
             EditorBuild.SetLayerRecursive(root, AfterHours.Core.GameLayers.PropLayer);
+        }
+
+        static void ParkedCar(Transform g, Vector3 floor, float yaw, int index)
+        {
+            Color[] paints = { new Color(0.45f, 0.47f, 0.5f), new Color(0.12f, 0.16f, 0.26f), new Color(0.4f, 0.07f, 0.06f), new Color(0.7f, 0.7f, 0.68f), new Color(0.08f, 0.08f, 0.08f), new Color(0.25f, 0.3f, 0.22f) };
+            Material paint = ArtLibrary.Plain("Car_Paint_" + index, paints[index % paints.Length], 0.82f, 0.45f);
+            Material glass = darkGlass;
+            Material tyre = blackMat;
+            Material lens = ArtLibrary.Plain("Car_Lens", new Color(0.8f, 0.78f, 0.7f), 0.9f);
+            Material rearLens = ArtLibrary.Plain("Car_Rear_Lens", new Color(0.45f, 0.04f, 0.04f), 0.9f);
+            var root = new GameObject("Parked car");
+            root.transform.SetParent(g, false);
+            root.transform.SetPositionAndRotation(floor, Quaternion.Euler(0f, yaw, 0f));
+            Transform t = root.transform;
+            GameObject Part(string n, Vector3 c, Vector3 s, Material m, bool col = true)
+            {
+                GameObject p = EditorBuild.Box(n, t, c, s, m, SurfaceType.Metal, null, true);
+                if (!col) Object.DestroyImmediate(p.GetComponent<Collider>());
+                return p;
+            }
+            Part("Car body", new Vector3(0f, 0.55f, 0f), new Vector3(1.78f, 0.62f, 4.3f), paint);
+            Part("Car bonnet", new Vector3(0f, 0.88f, 1.35f), new Vector3(1.7f, 0.06f, 1.5f), paint, false);
+            Part("Car cabin", new Vector3(0f, 1.12f, -0.25f), new Vector3(1.62f, 0.5f, 2.3f), glass);
+            Part("Car roof", new Vector3(0f, 1.38f, -0.3f), new Vector3(1.5f, 0.04f, 1.8f), paint, false);
+            for (int sd = -1; sd <= 1; sd += 2)
+            {
+                Part("Pillar", new Vector3(sd * 0.78f, 1.12f, 0.88f), new Vector3(0.06f, 0.5f, 0.08f), paint, false);
+                Part("Headlight", new Vector3(sd * 0.62f, 0.68f, 2.152f), new Vector3(0.36f, 0.14f, 0.01f), lens, false);
+                Part("Rear light", new Vector3(sd * 0.66f, 0.72f, -2.152f), new Vector3(0.3f, 0.14f, 0.01f), rearLens, false);
+                Part("Mirror", new Vector3(sd * 0.95f, 1.0f, 0.75f), new Vector3(0.1f, 0.1f, 0.16f), paint, false);
+                for (int fb = -1; fb <= 1; fb += 2)
+                {
+                    Vector3 wc = new Vector3(sd * 0.8f, 0.33f, fb * 1.38f);
+                    GameObject wheel = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                    wheel.name = "Wheel";
+                    Object.DestroyImmediate(wheel.GetComponent<Collider>());
+                    wheel.transform.SetParent(t, false);
+                    wheel.transform.localPosition = wc;
+                    wheel.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+                    wheel.transform.localScale = new Vector3(0.64f, 0.11f, 0.64f);
+                    wheel.GetComponent<Renderer>().sharedMaterial = tyre;
+                    wheel.isStatic = true;
+                }
+            }
+            Part("Bumper", new Vector3(0f, 0.36f, 2.17f), new Vector3(1.8f, 0.16f, 0.06f), blackMat, false);
+            Part("Bumper", new Vector3(0f, 0.36f, -2.17f), new Vector3(1.8f, 0.16f, 0.06f), blackMat, false);
+            Part("Number plate", new Vector3(0f, 0.5f, -2.18f), new Vector3(0.52f, 0.11f, 0.01f), yellowPaint, false);
+            DecalQuad(g, floor + Vector3.up * 0.014f, Vector3.up, 1.6f, 1.6f, yaw, decalOil);
+            if (index == 2) DecalQuad(g, floor + Vector3.up * 0.75f + Quaternion.Euler(0f, yaw, 0f) * new Vector3(0.9f, 0f, -0.6f), Quaternion.Euler(0f, yaw, 0f) * Vector3.right, 0.22f, 0.32f, -20f, decalHandprint);
         }
 
         static void Cone(Transform g, Vector3 floor)
