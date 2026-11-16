@@ -88,6 +88,7 @@ namespace AfterHours.Creature
 
         readonly ElliotAnimator.PuppetPose pose = new ElliotAnimator.PuppetPose();
         float flash, lens, black, listener = 1f;
+        AudioLowPassFilter ears;
 
         // =====================================================================
 
@@ -254,7 +255,24 @@ namespace AfterHours.Creature
             if (u > ResetT + 0.2f) black = 1f - Ease(ResetT + 0.2f, EndT, u);
             float wantListener = u >= StillT && u < ScreamT ? 0.2f : u > BlackT ? 0.3f : 1f;
             listener = Mathf.MoveTowards(listener, wantListener, dt * 4f);
-            if (local) AudioListener.volume = listener * SettingsService.CurrentOrDefault.masterVolume;
+            if (local)
+            {
+                AudioListener.volume = listener * SettingsService.CurrentOrDefault.masterVolume;
+                // Your hearing: muffled in the dead-still moment, wide open for the scream and the bite,
+                // then going under as you're dropped.
+                if (ears == null && look != null && look.playerCamera != null)
+                {
+                    ears = look.playerCamera.GetComponent<AudioLowPassFilter>();
+                    if (ears == null) ears = look.playerCamera.gameObject.AddComponent<AudioLowPassFilter>();
+                }
+                if (ears != null)
+                {
+                    ears.enabled = true;
+                    float want = u >= StillT && u < ScreamT ? 700f : u > LandT ? Mathf.Lerp(22000f, 450f, Mathf.InverseLerp(LandT, BlackT, u)) : 22000f;
+                    if (u > ResetT) want = 22000f;
+                    ears.cutoffFrequency = Mathf.Lerp(ears.cutoffFrequency, want, 1f - Mathf.Exp(-12f * dt));
+                }
+            }
 
             if (u >= EndT) Finish();
         }
@@ -511,13 +529,20 @@ namespace AfterHours.Creature
             if (Fire(0, GrabT, u))
             {
                 Sfx(ProceduralSounds.Sfx.Thud, eye, 1f);
+                if (local) { AudioPool.Play2D(AudioLibrary.Get("sub_hit"), 1f); AudioMix.Kick(1f, EndT); }
                 if (ctx != CatchContext.HidingPlace) Sfx(ProceduralSounds.Sfx.Gasp, eye, 1f, 1.0f, 1.25f);
             }
             if (Fire(1, StillT - 0.1f, u)) Sfx(ProceduralSounds.Sfx.Gasp, eye, 0.5f, 0.7f, 0.85f);
-            if (Fire(2, ScreamT, u) && anim != null && anim.audioOut != null) anim.audioOut.Scream();
+            if (Fire(2, ScreamT, u))
+            {
+                if (anim != null && anim.audioOut != null) anim.audioOut.Scream();
+                // ...and right in your face: the same scream, close and unfiltered.
+                if (local) AudioPool.Play2D(AudioLibrary.Get("elliot_scream"), 0.85f, UnityEngine.Random.Range(0.97f, 1.03f));
+            }
             if (Fire(3, BiteHitT, u))
             {
                 Sfx(ProceduralSounds.Sfx.Crunch, eye, 1f);
+                if (local) AudioPool.Play2D(AudioLibrary.Get("sub_hit"), 1f, 0.85f);
                 Sfx(ProceduralSounds.Sfx.Tear, eye, 0.9f);
                 Sfx(ProceduralSounds.Sfx.Splatter, eye, 1f);
                 if (goreOn) BloodSpray.Burst(Mouth, -fwd + Vector3.up * 0.4f, 160, 3.5f, 0.6f, seed);
@@ -591,6 +616,7 @@ namespace AfterHours.Creature
         {
             if (!released) ResetRun();
             if (local) AudioListener.volume = SettingsService.CurrentOrDefault.masterVolume;
+            if (ears != null) { ears.cutoffFrequency = 22000f; ears.enabled = false; }
             if (anim != null && anim.Puppet == pose) anim.Puppet = null;
             active.Remove(this);
             Destroy(gameObject);

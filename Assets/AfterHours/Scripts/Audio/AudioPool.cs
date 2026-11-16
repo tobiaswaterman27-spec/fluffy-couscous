@@ -31,14 +31,42 @@ namespace AfterHours.Audio
             s.Play();
         }
 
+        static readonly List<AudioSource> flat = new List<AudioSource>();
+        static int nextFlat;
+
+        /// <summary>A sound in your head, not in the world (scare hits, the scream right in your face).</summary>
+        public static void Play2D(AudioClip clip, float volume, float pitch = 1f)
+        {
+            if (clip == null) return;
+            Ensure();
+            AudioSource s = flat[nextFlat];
+            nextFlat = (nextFlat + 1) % flat.Count;
+            s.Stop();
+            s.clip = clip;
+            s.volume = Mathf.Clamp01(volume);
+            s.pitch = pitch;
+            s.Play();
+        }
+
         static void Ensure()
         {
             if (root != null) return;
             sources.Clear();
+            flat.Clear();
             next = 0;
+            nextFlat = 0;
             var go = new GameObject("[Audio Pool]");
             Object.DontDestroyOnLoad(go);
             root = go.transform;
+            for (int i = 0; i < 4; i++)
+            {
+                var f = new GameObject("Pooled2D" + i);
+                f.transform.SetParent(go.transform, false);
+                AudioSource fs = f.AddComponent<AudioSource>();
+                fs.playOnAwake = false;
+                fs.spatialBlend = 0f;
+                flat.Add(fs);
+            }
             for (int i = 0; i < Size; i++)
             {
                 var child = new GameObject("PooledSource" + i);

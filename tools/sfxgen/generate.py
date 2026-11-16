@@ -14,6 +14,8 @@ def main(only=None):
     count = [0]
 
     def out(name, x):
+        from dsp import soften
+        x = soften(x, 11000)  # nothing in the game needs more air than this; it reads as hiss
         path = os.path.join(OUT, name + ".wav")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         write(path, x)

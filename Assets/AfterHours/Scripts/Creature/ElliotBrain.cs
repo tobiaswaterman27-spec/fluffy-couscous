@@ -129,7 +129,9 @@ namespace AfterHours.Creature
             memory.RememberSighting(p, p.transform.position, p.Motor.Locomotion.worldVelocity);
             bool firstTime = state != ElliotState.Hunt;
             Enter(ElliotState.Hunt);
-            if (firstTime && Random.value < 0.12f)
+            bool stares = firstTime && Random.value < 0.12f;
+            if (firstTime && !stares && audioOut != null) audioOut.Spot();
+            if (stares)
             {
                 // Rarely: it just stares at you for a few seconds first.
                 float stare = Random.Range(1.5f, 3f);

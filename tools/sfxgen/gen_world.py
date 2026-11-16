@@ -13,8 +13,7 @@ def amb_hum(rng):
     for h, a in ((2, 1.0), (4, 0.5), (6, 0.3), (8, 0.15), (10, 0.08)):
         x += (a * np.sin(2 * np.pi * 50 * h * t * (1 + rng.uniform(-0.001, 0.001)))).astype(np.float32)
         x += (a * 0.4 * np.sin(2 * np.pi * 50.15 * h * t)).astype(np.float32)
-    x += np.sin(2 * np.pi * 12500 * t).astype(np.float32) * 0.01
-    x += pink(dur, rng) * 0.05
+    x += lp(pink(dur, rng), 3000) * 0.04
     return loopify(x * 0.6, 1.0)
 
 
@@ -23,9 +22,9 @@ def amb_buzz(rng):
     dur = 8.0
     t = t_axis(dur)
     x = np.sign(np.sin(2 * np.pi * 100 * t)).astype(np.float32)
-    x = lp(x, 4000) * 0.4
+    x = lp(x, 1800) * 0.4
     crackle = (rng.random(len(t)) < 0.002).astype(np.float32)
-    x += bp(crackle, 2000, 9000) * 6
+    x += bp(crackle, 1500, 5000) * 4
     x *= (0.7 + 0.3 * lp(rng.standard_normal(len(t)).astype(np.float32), 3) * 30).clip(0.2, 1.2)
     return loopify(x, 1.0)
 
@@ -129,10 +128,11 @@ def bird(rng):
 # ------------------------------------------------------------------ distant one-shots
 
 def drip(rng):
-    t = t_axis(0.4)
-    f = rng.uniform(900, 1500) * (1 + 1.5 * np.exp(-t / 0.01))
-    x = np.sin(2 * np.pi * np.cumsum(f) / SR).astype(np.float32) * np.exp(-t / 0.04).astype(np.float32)
-    return fade(reverb(x * 0.6, 1.5, 0.7, 0.4, 0.5, rng), 0.001, 0.2)
+    """A drop landing in a puddle: a tiny splash and the bubble 'plink' (pitch rising as it dies)."""
+    x = silence(0.4)
+    place(x, bp(pink(0.01, rng), 1500, 6000) * env_exp(int(0.01 * SR), 0.002) * 0.4, 0)
+    place(x, bubble(rng, rng.uniform(900, 1700), rng.uniform(0.04, 0.08)), 0.002)
+    return fade(reverb(soften(x, 8000), 1.6, 0.8, 0.45, 0.4, rng), 0.001, 0.2)
 
 
 def structure_groan(rng):

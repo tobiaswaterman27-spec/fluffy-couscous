@@ -49,6 +49,20 @@ namespace AfterHours.Audio
             int offset = Mathf.Abs((int)(p.x * 73.1f) * 7919 + (int)(p.z * 37.7f) * 104729 + (int)(p.y * 11f));
             s.timeSamples = offset % Mathf.Max(1, s.clip.samples);
             s.Play();
+            source = s;
+        }
+
+        AudioSource source;
+
+        float lastDuck;
+
+        void Update()
+        {
+            // Only touch the volume while the mix is ducking (machines that drive their own volume are left alone).
+            float d = AudioMix.Duck;
+            if (source == null || Mathf.Approximately(d, lastDuck)) return;
+            lastDuck = d;
+            source.volume = volume * (1f - 0.8f * d);
         }
     }
 }

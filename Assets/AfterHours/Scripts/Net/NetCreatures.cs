@@ -89,6 +89,7 @@ namespace AfterHours.Net
                 ElliotBrain b = All[i];
                 if (b.gameObject.activeSelf != active) b.gameObject.SetActive(active);
                 if (CatchSequence.IsCreatureBusy(b)) continue; // the catch sequence is posing it
+                if (gait == ElliotGait.Run && b.motor.Gait != ElliotGait.Run && b.audioOut != null) b.audioOut.Spot();
                 b.motor.ApplyRemote(pos, yaw, vel, gait, hunch);
                 ElliotAnimator a = b.animator;
                 a.LookTarget = hasLook ? look : (Vector3?)null;

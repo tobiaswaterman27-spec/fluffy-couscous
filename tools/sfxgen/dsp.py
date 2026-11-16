@@ -81,7 +81,7 @@ def modes(dur, freqs, decays, amps, rng, detune=0.0):
 
 
 def place(dst, src, at_sec, gain=1.0):
-    i = int(at_sec * SR)
+    i = max(0, int(at_sec * SR))
     if i >= len(dst):
         return dst
     n = min(len(src), len(dst) - i)
@@ -122,7 +122,10 @@ def reverb(x, rt60=1.2, size=0.5, wet=0.3, bright=0.5, rng=None):
     w = signal.fftconvolve(x, ir)[: len(x) + len(ir) - 1].astype(np.float32)
     w /= (np.abs(w).max() + 1e-9)
     dry = np.concatenate([x, np.zeros(len(w) - len(x), dtype=np.float32)])
-    return (dry * (1 - wet) + w * wet * (np.abs(x).max() + 1e-9)).astype(np.float32)
+    y = (dry * (1 - wet) + w * wet * (np.abs(x).max() + 1e-9)).astype(np.float32)
+    k = min(len(y), int(0.08 * SR))
+    y[-k:] *= np.linspace(1, 0, k)
+    return y
 
 
 def glottal(dur, f0, rng, jitter=0.02, shimmer=0.1, open_q=0.6):
@@ -197,3 +200,121 @@ def normalize(x, peak_db=-1.0):
 def write(path, x, peak_db=-1.0):
     x = normalize(np.nan_to_num(x), peak_db)
     wavfile.write(path, SR, (x * 32767).astype(np.int16))
+
+
+# ---------------------------------------------------------------------------------- physical models (v2)
+
+def modal_ir(dur, freqs, decays, amps, rng=None):
+    """Impulse response of a resonating object: decaying sines (no random phase, so no click)."""
+    t = t_axis(dur)
+    ir = np.zeros_like(t, dtype=np.float32)
+    for f, d, a in zip(freqs, decays, amps):
+        if f >= SR / 2 - 200:
+            continue
+        ir += (a * np.sin(2 * np.pi * f * t) * np.exp(-t / d)).astype(np.float32)
+    return ir
+
+
+def material_modes(kind, size, rng, count=None):
+    """Mode frequencies / decays / amplitudes for a material. size scales pitch (bigger = lower)."""
+    s = max(0.2, size)
+    if kind == "sheet":       # thin steel sheet / shutter slat / duct: dense, inharmonic, long ringing
+        n = count or 40
+        f = np.sort(rng.uniform(60, 3500, n) / s)
+        d = 0.9 * (f / 200.0) ** -0.55 * rng.uniform(0.6, 1.3, n)
+        a = (f / 200.0) ** -0.4 * rng.uniform(0.3, 1.0, n)
+    elif kind == "steel":     # thick steel (doors, frames): fewer, brighter, long
+        n = count or 18
+        base = rng.uniform(180, 320) / s
+        f = base * np.array([1, 2.76, 5.4, 8.9, 13.3, 18.6, 24.8, 31.9, 40.0, 49.0, 58.8, 69.4, 80.9, 93.3, 106.6, 120.8, 135.9, 152.0])[:n]
+        f *= rng.uniform(0.97, 1.03, n)
+        d = 1.2 * (f / base) ** -0.5 * rng.uniform(0.7, 1.2, n)
+        a = (f / base) ** -0.6
+    elif kind == "wood":
+        n = count or 10
+        f = np.sort(rng.uniform(120, 1400, n) / s)
+        d = 0.06 * (f / 200.0) ** -0.5 * rng.uniform(0.6, 1.4, n)
+        a = rng.uniform(0.4, 1.0, n)
+    elif kind == "ceramic":   # tile, porcelain
+        n = count or 12
+        f = np.sort(rng.uniform(900, 7000, n) / s)
+        d = 0.025 * (f / 2000.0) ** -0.5 * rng.uniform(0.6, 1.3, n)
+        a = rng.uniform(0.3, 1.0, n)
+    elif kind == "glass":
+        n = count or 12
+        f = np.sort(rng.uniform(1200, 9000, n) / s)
+        d = 0.12 * (f / 2000.0) ** -0.5 * rng.uniform(0.6, 1.3, n)
+        a = rng.uniform(0.3, 1.0, n)
+    elif kind == "concrete":
+        n = count or 6
+        f = np.sort(rng.uniform(80, 600, n) / s)
+        d = 0.015 * rng.uniform(0.6, 1.4, n)
+        a = rng.uniform(0.4, 1.0, n)
+    else:                     # "body": a hollow / soft body (people, furniture)
+        n = count or 6
+        f = np.sort(rng.uniform(70, 400, n) / s)
+        d = 0.03 * rng.uniform(0.6, 1.4, n)
+        a = rng.uniform(0.5, 1.0, n)
+    return f, d, a
+
+
+def excitation(rng, hardness=0.5, dur=0.004):
+    """The 'hit': a short burst whose brightness depends on how hard the two things are."""
+    n = max(8, int(dur * SR))
+    x = rng.standard_normal(n).astype(np.float32) * np.hanning(n * 2)[n:].astype(np.float32)
+    cutoff = 800 + 12000 * hardness ** 2
+    return lp(x, cutoff, 2)
+
+
+def strike_object(rng, kind, size=1.0, hardness=0.5, level=1.0, dur=None, count=None, damp=1.0):
+    f, d, a = material_modes(kind, size, rng, count)
+    d = d * damp
+    dur = dur or float(min(3.0, max(0.15, d.max() * 4)))
+    ir = modal_ir(dur, f, d, a)
+    ir /= (np.abs(ir).max() + 1e-9)
+    exc = excitation(rng, hardness, rng.uniform(0.002, 0.006))
+    y = signal.fftconvolve(exc, ir)[: len(ir)].astype(np.float32)
+    # a little of the raw contact noise on top
+    y[: len(exc)] += exc * 0.3 * hardness
+    y = fade(y, 0.0, min(0.05, dur * 0.3))
+    return (y / (np.abs(y).max() + 1e-9) * level).astype(np.float32)
+
+
+def soften(x, top=9000.0):
+    """Tame fizz: real recordings rarely have much above ~10 kHz at a distance."""
+    return lp(x, top, 2)
+
+
+def bubble(rng, f0=None, dur=None):
+    """A single bubble popping in liquid: a sine whose pitch rises as it dies (Minnaert resonance)."""
+    f0 = f0 or rng.uniform(250, 900)
+    dur = dur or rng.uniform(0.02, 0.07)
+    t = t_axis(dur)
+    tau = dur / 3
+    f = f0 * (1 + 0.6 * t / dur)
+    return (np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / tau)).astype(np.float32)
+
+
+def gurgle(dur, rng, rate=40, low=180, high=700, level=1.0):
+    """Liquid in a throat: a dense, irregular stream of bubbles, some bigger and lower."""
+    x = silence(dur + 0.1)
+    tpos = 0.0
+    while tpos < dur:
+        b = bubble(rng, rng.uniform(low, high))
+        place(x, b * rng.uniform(0.2, 1.0), tpos)
+        tpos += rng.exponential(1.0 / rate)
+    return lp(x[: int(dur * SR)], 3000) * level
+
+
+def voice(dur, f0, rng, formant_path, jitter=0.03, shimmer=0.15, open_q=0.5, subharm=0.0, breath=0.1, q=5.0):
+    """A voiced sound (groan, moan, scream). subharm adds period-doubling roughness (creaky, inhuman)."""
+    g = glottal(dur, f0, rng, jitter, shimmer, open_q)
+    if subharm > 0:
+        n = len(g)
+        f0a = np.asarray(f0, dtype=np.float32) if not np.isscalar(f0) else np.full(n, f0, np.float32)
+        g2 = glottal(dur, f0a[:n] * 0.5, rng, jitter * 1.5, shimmer, open_q * 0.8)
+        g = g + g2[:n] * subharm
+    v = morph_formants(g, formant_path, q)
+    air = lp(pink(dur, rng), 3500)
+    air = morph_formants(air, formant_path, q * 0.6) * breath
+    return (v + air[: len(v)]).astype(np.float32)

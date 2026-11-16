@@ -205,6 +205,7 @@ namespace AfterHours.Audio
         void Update()
         {
             float dt = Time.unscaledDeltaTime;
+            AudioMix.Tick(dt);
             float musicVol = AfterHours.Settings.SettingsService.CurrentOrDefault.musicVolume;
             bool hunted = false;
             foreach (ElliotBrain b in FindObjectsByType<ElliotBrain>(FindObjectsSortMode.None))
@@ -214,12 +215,17 @@ namespace AfterHours.Audio
             }
             if (hunted) chaseHold = 4f; else chaseHold -= dt;
             bool now = chaseHold > 0f && !MenuMode;
-            if (now && !chased) Sting("music_sting", 0.9f);
+            if (now && !chased)
+            {
+                Sting("music_sting", 0.9f);
+                AudioPool.Play2D(AudioLibrary.Get("sub_hit"), 0.85f);
+                AudioMix.Kick(1f, 1.5f);
+            }
             if (!now && chased) Sting("music_lost", 0.5f);
             chased = now;
             if (Silent) musicVol = 0f;
             Fade(menu, MenuMode ? 0.5f * musicVol : 0f, dt, 0.3f);
-            Fade(dread, MenuMode ? 0f : (chased ? 0.05f : 0.16f) * musicVol, dt, 0.08f);
+            Fade(dread, MenuMode ? 0f : (chased ? 0.05f : 0.16f) * musicVol * (1f - AudioMix.Duck), dt, 0.3f);
             Fade(chase, chased ? 0.6f * musicVol : 0f, dt, chased ? 0.5f : 0.15f);
         }
 
@@ -253,6 +259,36 @@ namespace AfterHours.Audio
             PlayerController pc = GetComponent<PlayerController>();
             if (pc != null && !pc.isLocallyControlled) Destroy(this);
         }
+        float NearestCreature()
+        {
+            float best = 9999f;
+            foreach (ElliotBrain b in FindObjectsByType<ElliotBrain>(FindObjectsSortMode.None))
+                if (b != null && b.gameObject.activeInHierarchy) best = Mathf.Min(best, Vector3.Distance(b.transform.position, transform.position));
+            return best;
+        }
+
+        System.Collections.IEnumerator FalseAlarm()
+        {
+            Vector2 d = Random.insideUnitCircle.normalized * Random.Range(18f, 30f);
+            Vector3 p = transform.position + new Vector3(d.x, 0f, d.y);
+            if (Random.value < 0.6f)
+            {
+                int steps = Random.Range(3, 6);
+                for (int i = 0; i < steps; i++)
+                {
+                    AudioClip s = AudioLibrary.Get("elliot_step_hard");
+                    if (s != null) AudioPool.PlayAt(s, p, 0.6f, Random.Range(0.92f, 1.02f), 60f);
+                    p += new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f));
+                    yield return new WaitForSeconds(Random.Range(0.55f, 0.75f));
+                }
+            }
+            else
+            {
+                AudioClip g = AudioLibrary.Get(Random.value < 0.5f ? "elliot_growl" : "elliot_gurgle");
+                if (g != null) AudioPool.PlayAt(g, p + Vector3.up * 2f, 0.45f, Random.Range(0.85f, 0.95f), 70f);
+            }
+        }
+
         static readonly string[] Inside = { "groan", "pipe_tick", "distant_thud", "distant_clatter", "crackle", "drip" };
         static readonly string[] CarPark = { "drip", "drip", "groan", "distant_thud", "pipe_tick" };
 
@@ -261,6 +297,12 @@ namespace AfterHours.Audio
             timer -= Time.deltaTime;
             if (timer > 0f) return;
             timer = Random.Range(7f, 22f);
+            // Now and then, when nothing is actually near: footsteps somewhere that stop, or a groan far away.
+            if (Random.value < 0.12f && NearestCreature() > 50f)
+            {
+                StartCoroutine(FalseAlarm());
+                return;
+            }
             bool carPark = transform.position.y < -0.6f;
             string[] set = carPark ? CarPark : Inside;
             AudioClip c = AudioLibrary.Get(set[Random.Range(0, set.Length)]);

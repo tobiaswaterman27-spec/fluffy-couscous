@@ -44,7 +44,7 @@ namespace AfterHours.Creature
                 breathing.loop = true;
                 breathing.spatialBlend = 1f;
                 breathing.rolloffMode = AudioRolloffMode.Logarithmic;
-                breathing.minDistance = 1.2f;
+                breathing.minDistance = 2.5f; // right behind you, it's loud
                 breathing.maxDistance = 22f;
                 breathing.volume = 0.35f;
                 breathing.Play();
@@ -81,11 +81,20 @@ namespace AfterHours.Creature
             voiceTimer -= Time.deltaTime;
             if (voiceTimer > 0f || voice == null) return;
             string key;
-            if (intensity > 0.7f) { key = Random.value < 0.6f ? "elliot_growl" : "elliot_clicks"; voiceTimer = Random.Range(6f, 12f); }
-            else if (intensity > 0.2f) { key = Random.value < 0.5f ? "elliot_sniff" : "elliot_clicks"; voiceTimer = Random.Range(5f, 11f); }
-            else { key = Random.value < 0.7f ? "elliot_clicks" : "elliot_twitch"; voiceTimer = Random.Range(14f, 32f); }
+            float r = Random.value;
+            if (intensity > 0.7f) { key = r < 0.45f ? "elliot_growl" : r < 0.8f ? "elliot_gurgle" : "elliot_clicks"; voiceTimer = Random.Range(4f, 9f); }
+            else if (intensity > 0.2f) { key = r < 0.35f ? "elliot_sniff" : r < 0.6f ? "elliot_gurgle" : r < 0.8f ? "elliot_clicks" : "elliot_growl"; voiceTimer = Random.Range(5f, 10f); }
+            else { key = r < 0.35f ? "elliot_gurgle" : r < 0.6f ? "elliot_growl" : r < 0.85f ? "elliot_clicks" : "elliot_twitch"; voiceTimer = Random.Range(10f, 24f); }
             AudioClip c = AudioLibrary.Get(key);
             if (c != null) voice.PlayOneShot(c, key == "elliot_twitch" ? 0.6f : 0.85f);
+        }
+
+        /// <summary>It has seen you: a short rising screech, loud, from where it stands.</summary>
+        public void Spot()
+        {
+            AudioClip c = AudioLibrary.Get("elliot_spot");
+            if (c != null && voice != null) voice.PlayOneShot(c, 1f);
+            voiceTimer = Random.Range(3f, 5f);
         }
 
         /// <summary>Its joints cracking (the animator's twitches).</summary>
@@ -99,7 +108,9 @@ namespace AfterHours.Creature
         {
             string kind = surface == SurfaceType.Carpet ? "carpet" : surface == SurfaceType.Metal || surface == SurfaceType.VentMetal ? "metal" : "hard";
             AudioClip clip = AudioLibrary.Get("elliot_step_" + kind);
-            if (clip != null) AudioPool.PlayAt(clip, position, Mathf.Clamp01(footstepVolume * weight), Random.Range(0.92f, 1.05f), 45f);
+            // Running: heavier, louder, carrying further - you hear the gap closing.
+            float run = Mathf.InverseLerp(0.7f, 1f, weight);
+            if (clip != null) AudioPool.PlayAt(clip, position, Mathf.Clamp01(footstepVolume * weight * (1f + 0.4f * run)), Random.Range(0.92f, 1.05f) - 0.06f * run, 45f + 25f * run);
             else AudioPool.PlayAt(ProceduralSounds.Impact(surface == SurfaceType.Carpet ? SurfaceType.Carpet : SurfaceType.Concrete), position, Mathf.Clamp01(footstepVolume * weight), Random.Range(0.55f, 0.7f), 45f);
             NoiseBus.Emit(new NoiseEvent(position, 10f * weight, NoiseKind.Creature, gameObject));
         }
