@@ -257,7 +257,7 @@ def main():
     flip = lambda a: a[::-1]
     save_rgb(flip(nimg), os.path.join(UNITY_TEX, "elliot_body_N.png"))
     outs = {}
-    for variant, bloody in (("body", False), ("bodyblood", True)):
+    for variant, bloody in (("body", True),):   # he always looks like this: he has fed
         col, sm = albedo(el, p, nh, tags, masks, ao, bloody)
         cimg = dilate(img(col, 3), mask)
         mimg = np.zeros((size, size, 4))
@@ -289,7 +289,7 @@ def main():
         os.makedirs(VIEWER, exist_ok=True)
         import shutil
         shutil.copy(os.path.join(UNITY_MODEL, "elliot_model.bytes"), os.path.join(VIEWER, "elliot_model.bin"))
-        for variant in ("body", "bodyblood"):
+        for variant in ("body",):
             cimg, mimg = outs[variant]
             save_rgb(flip(cimg), os.path.join(VIEWER, f"{variant}_A.jpg"), 88)
             r = np.zeros((size, size, 3)); r[..., 0] = mimg[..., 1]; r[..., 1] = 1 - mimg[..., 3]

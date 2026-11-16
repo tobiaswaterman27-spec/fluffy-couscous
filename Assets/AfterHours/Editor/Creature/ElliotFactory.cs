@@ -203,7 +203,6 @@ namespace AfterHours.EditorTools
             body.model = model;
             body.rig = rig;
             body.skin = SkinMaterial("Elliot_Skin", Tex("elliot_body_A.jpg"), normal, Tex("elliot_body_M.png"));
-            body.bloodySkin = SkinMaterial("Elliot_SkinBloody", Tex("elliot_bodyblood_A.jpg"), normal, Tex("elliot_bodyblood_M.png"));
             body.mouthParts = SkinMaterial("Elliot_MouthParts", Tex("elliot_mouth_A.png"), null, Tex("elliot_mouth_M.png"));
             body.Build();
         }

@@ -115,17 +115,29 @@ class Elliot:
         rib = A(ellipsoid([0, 1.80, 0.0], [0.142, 0.19, 0.106]), "Chest", k=0.05)
 
         def ribs(p):
-            y, x, z = p[:, 1], p[:, 0], p[:, 2]
-            phi = np.arctan2(np.abs(x), z)                        # 0 at the front, pi at the back
-            s = (y - 1.62 + 0.075 * np.cos(phi) - 0.03 * (phi / np.pi)) / 0.041
-            ridge = np.maximum(0, np.cos(2 * np.pi * s)) ** 3
-            mask = smoothstep(1.6, 1.66, y) * (1 - smoothstep(1.9, 1.97, y)) * smoothstep(0.012, 0.035, np.abs(x)) * (1 - smoothstep(2.3, 2.8, phi) * 0.7)
-            return 0.0042 * ridge * mask
+            """Real ribs: each one starts high at the spine and slopes down round the side to the front; the upper
+            ones reach the breastbone, the lower ones stop short and form the arch under the chest. Shallow
+            hollows between them; hidden at the back by muscle and at the top under the collarbones."""
+            x, y, z = p[:, 0], p[:, 1], p[:, 2]
+            phi = np.arctan2(np.abs(x), -z)                       # 0 at the spine, pi at the breastbone
+            best = np.zeros(len(p))
+            for i in range(9):
+                yb = 1.96 - i * 0.036
+                drop = 0.085 + i * 0.01                            # ribs fall steeply round the side to the front
+                yc = yb - drop * (phi / np.pi) ** 1.7
+                end = np.pi * (0.94 if i < 6 else 0.86 - (i - 6) * 0.08)
+                w = (0.0085 + 0.0007 * i) * (1.15 - 0.3 * phi / np.pi)   # broad at the side, narrower at the front
+                bump = np.clip(1 - ((y - yc) / w) ** 2, 0, 1) ** 1.2
+                along = smoothstep(0.55, 1.05, phi) * (1 - smoothstep(end - 0.18, end, phi))
+                best = np.maximum(best, bump * along * (0.75 + 0.25 * np.cos(i * 1.7)))
+            region = smoothstep(1.62, 1.68, y) * (1 - smoothstep(1.88, 1.95, y)) * smoothstep(0.6, 1.1, phi)
+            sternum = np.exp(-(x / 0.01) ** 2) * smoothstep(1.68, 1.72, y) * (1 - smoothstep(1.92, 1.96, y)) * (z > 0)
+            return (0.0034 * best - 0.0007 * (1 - best) * region) * (1 - smoothstep(1.89, 1.96, y)) + 0.0014 * sternum
         m.m.disp.append((rib, ribs))
         A(ellipsoid([0, 1.935, -0.012], [0.165, 0.09, 0.094]), "Chest", k=0.04)                  # upper chest / shoulders
         for s in (-1, 1):
             A(cone([s * 0.015, 1.988, 0.072], [s * 0.168, 2.0, 0.018], 0.011, 0.013), "Chest", k=0.012)   # collarbones
-            A(ellipsoid([s * 0.098, 1.86, -0.088], [0.064, 0.075, 0.022]), "Spine", k=0.025)            # shoulder blades
+            A(ellipsoid([s * 0.085, 1.86, -0.085], [0.05, 0.07, 0.02]), "Spine", k=0.025)              # shoulder blades
             A(cone([s * 0.02, 2.06, -0.035], [s * 0.18, 1.99, -0.02], 0.028, 0.022), "Chest", k=0.04)     # trapezius
         for i in range(19):
             y = 1.42 + i * 0.034
@@ -136,7 +148,7 @@ class Elliot:
         A(cone([0, 1.97, -0.015], m.H(0, 0.075, -0.022), 0.05, 0.04), "Neck", k=0.035)
         for s in (-1, 1):
             A(cone(m.H(s * 0.048, 0.115, -0.028), [s * 0.022, 2.0, 0.045], 0.011, 0.012), "Neck", k=0.016)   # tendons
-        A(ellipsoid([0, 2.115, 0.031], [0.012, 0.018, 0.012]), "Throat", k=0.012)                            # larynx
+        A(ellipsoid([0, 2.115, 0.022], [0.01, 0.015, 0.009]), "Throat", k=0.016)                             # larynx
 
         # ---------------------------------------------------------------- head (skull, long face)
         A(ellipsoid(m.H(0, 0.215, -0.02), [0.085, 0.12, 0.11]), "Head", k=0.03)
@@ -239,8 +251,8 @@ class Elliot:
             A(cone([x + s * 0.024, 1.26, 0.0], [x + s * 0.012, 0.84, 0.004], 0.03, 0.019), th, k=0.03)   # outer thigh
             for o in (-0.02, 0.02):
                 A(cone([x + o, 0.9, -0.028], [x + o * 1.1, 0.7, -0.03], 0.0095, 0.008), th, k=0.012)       # hamstring tendons
-            A(sphere([x, 0.72, 0.008], 0.04), sh, k=0.025)
-            A(ellipsoid([x, 0.725, 0.048], [0.024, 0.028, 0.014]), sh, k=0.012)       # kneecap
+            A(sphere([x, 0.72, 0.006], 0.037), sh, k=0.03)
+            A(ellipsoid([x, 0.725, 0.036], [0.02, 0.024, 0.011]), sh, k=0.02)         # kneecap
             A(cone([x, 0.70, 0.0], [x, 0.1, -0.004], 0.039, 0.026), sh, k=0.02)
             A(cone([x, 0.66, 0.028], [x, 0.15, 0.022], 0.012, 0.01), sh, k=0.015)      # shin bone ridge
             A(ellipsoid([x, 0.52, -0.024], [0.031, 0.09, 0.03]), sh, k=0.03)          # wasted calf

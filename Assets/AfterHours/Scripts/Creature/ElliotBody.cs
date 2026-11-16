@@ -19,11 +19,10 @@ namespace AfterHours.Creature
     {
         public TextAsset model;
         public Transform rig;
-        public Material skin, bloodySkin, mouthParts;
+        public Material skin, mouthParts;
 
         SkinnedMeshRenderer smr;
         Mesh mesh;
-        bool bloody;
         public bool Built => smr != null;
 
         public struct BoneDef { public string name; public int parent; public Vector3 pos; public Quaternion rot; }
@@ -43,16 +42,6 @@ namespace AfterHours.Creature
             }
             smr = null;
             mesh = null;
-        }
-
-        /// <summary>After a kill: blood round the mouth, down the chest, over the hands.</summary>
-        public void SetBloody(bool on)
-        {
-            bloody = on;
-            if (smr == null) return;
-            Material[] m = smr.sharedMaterials;
-            if (m.Length > 0) m[0] = on && bloodySkin != null ? bloodySkin : skin;
-            smr.sharedMaterials = m;
         }
 
         static string Str(BinaryReader r)
@@ -194,7 +183,7 @@ namespace AfterHours.Creature
                 smr.localBounds = new Bounds(new Vector3(0f, 1.3f, 0f), new Vector3(3f, 3.4f, 3f));
                 smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
                 smr.receiveShadows = true;
-                smr.sharedMaterials = new[] { bloody && bloodySkin != null ? bloodySkin : skin, mouthParts };
+                smr.sharedMaterials = new[] { skin, mouthParts };
             }
         }
     }

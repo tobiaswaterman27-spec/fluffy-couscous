@@ -242,17 +242,26 @@ def albedo(el, p, n, tags, masks, ao, bloody=False):
     corners = [(-0.05, H0[1] + 0.07, 0.08, 0.3, 0.0035), (0.052, H0[1] + 0.068, 0.08, 0.45, 0.004),
                (0.004, H0[1] + 0.03, 0.1, 0.22, 0.0045), (0.028, H0[1] + 0.045, 0.1, 0.38, 0.003)]
     if bloody:
-        corners += [(x, H0[1] + 0.06, 0.08, 0.7, 0.012) for x in (-0.04, -0.015, 0.01, 0.035, 0.05)]
-        corners += [(x, 1.98, 0.07, 0.6, 0.01) for x in (-0.07, -0.03, 0.04, 0.08)]
+        corners += [(-0.032, H0[1] + 0.06, 0.08, 0.55, 0.008), (0.018, H0[1] + 0.055, 0.08, 0.75, 0.006), (0.045, H0[1] + 0.065, 0.08, 0.4, 0.005)]
+        corners += [(-0.045, 1.97, 0.07, 0.32, 0.006), (0.06, 1.95, 0.07, 0.22, 0.005)]
     bl = drips(p, corners, 3)
     mouth_stain = head * np.exp(-(np.hypot(hl[:, 0] / 2.2, (hl[:, 1] - 0.072) * 1.6) / (0.014 if not bloody else 0.035)) ** 2) * smoothstep(0.06, 0.095, hl[:, 2])
     bl = np.maximum(bl, mouth_stain * (0.6 + 0.4 * (fbm(p, 120, 2, seed=31) > 0)))
     spat = smoothstep(0.38, 0.5, fbm(p, 45, 3, seed=33)) * np.clip(hand + forearm * 0.6, 0, 1) * (0.5 if not bloody else 1.0)
     bl = np.maximum(bl, spat)
     if bloody:
+        # smeared where it wiped its mouth and chest with its hands; chin and throat soaked
+        chin = head * smoothstep(0.075, 0.02, hl[:, 1]) * smoothstep(0.03, 0.08, hl[:, 2]) * smoothstep(0.1, 0.35, fbm(p, 35, 3, seed=61) + 0.3)
+        smear = smoothstep(0.12, 0.45, fbm(p * [1, 0.45, 1], 14, 3, seed=63)) * smoothstep(1.7, 1.85, p[:, 1]) * (1 - smoothstep(2.0, 2.08, p[:, 1])) * smoothstep(0.0, 0.07, p[:, 2])
+        throat = smoothstep(2.0, 2.06, p[:, 1]) * (1 - smoothstep(2.2, 2.24, p[:, 1])) * smoothstep(0.0, 0.03, p[:, 2]) * smoothstep(0.0, 0.4, fbm(p, 25, 3, seed=65) + 0.2)
+        bl = np.maximum(bl, np.maximum(chin * 0.9, np.maximum(smear * 0.6, throat * 0.7)))
+    if bloody:
         bl = np.maximum(bl, np.clip(hand * 1.2, 0, 1) * smoothstep(0.2, 0.5, fbm(p, 20, 3, seed=35) + 0.4))
-    dried = np.array([0.2, 0.07, 0.05]) if not bloody else np.array([0.3, 0.03, 0.03])
-    col = mix(col, dried, bl * (0.75 + 0.2 * (fbm(p, 200, 2, seed=37) > 0)))
+    dried = np.array([0.2, 0.07, 0.05])
+    fresh = np.array([0.26, 0.025, 0.025])
+    age = smoothstep(-0.2, 0.4, fbm(p, 40, 2, seed=39))                         # some fresh and wet, some dried brown
+    bcol = mix(np.tile(fresh, (N, 1)), dried, age * 0.8) if bloody else np.tile(dried, (N, 1))
+    col = col + (bcol - col) * (bl * (0.7 + 0.25 * (fbm(p, 200, 2, seed=37) > 0)))[:, None]
     col *= (0.45 + 0.55 * ao)[:, None]
     # smoothness: oily skin, wet mouth, eyes and blood; dry grime
     sm = 0.33 + 0.1 * fbm(p, 12, 3, seed=40)
@@ -263,5 +272,5 @@ def albedo(el, p, n, tags, masks, ao, bloody=False):
     sm = np.maximum(sm, T["lip"] * 0.6)
     sm = np.maximum(sm, T["socket"] * 0.55)
     sm = np.where(T["nail"] > 0.5, 0.5, sm)
-    sm = sm * (1 - bl) + bl * (0.42 if not bloody else 0.78)
+    sm = sm * (1 - bl) + bl * ((0.42 if not bloody else 0.62) - (0.2 * age if bloody else 0))
     return np.clip(col, 0, 1), np.clip(sm, 0, 1)
