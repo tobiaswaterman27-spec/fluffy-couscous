@@ -179,7 +179,52 @@ def clothes(name, seed):
     save_set(name, np.clip(alb, 0, 1), blur(h, 0.001), 2.0, 0.15)
 
 
+def light_beam():
+    """A soft shaft of light: bright at the top, fading out downwards, soft at the sides, faint dusty streaks."""
+    w, h = 256, 512
+    u = (np.arange(w) / (w - 1) - 0.5)[None, :]
+    v = (np.arange(h) / (h - 1))[:, None]
+    across = np.exp(-(u / 0.22) ** 2)
+    down = (1 - v) ** 1.6 * np.clip(v / 0.04, 0, 1)
+    streak = 0.75 + 0.25 * np.sin(u * 60 + np.sin(v * 7) * 2)
+    a = np.clip(across * down * streak, 0, 1)
+    img = np.stack([np.ones((h, w))] * 3 + [a], -1)
+    Image.fromarray((img * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "decal_light_beam.png"))
+
+
+def wear_decals():
+    n = 512
+    x, y = coords(n)
+    rng = np.random.default_rng(950)
+    # water streaks: drips running down from a leak line at the top, brown and uneven
+    a = np.zeros((n, n))
+    for _ in range(26):
+        cx = rng.uniform(0.1, 0.9) * n
+        length = rng.uniform(0.3, 0.95) * n
+        wdt = rng.uniform(3, 14)
+        wob = cx + 6 * np.sin(y / rng.uniform(25, 60) + rng.uniform(0, 6))
+        a = np.maximum(a, smoothstep(wdt, wdt * 0.2, np.abs(x - wob)) * smoothstep(length, length * 0.5, y) * rng.uniform(0.3, 0.8))
+    a = np.maximum(a, smoothstep(60, 0, y) * 0.6 * (0.6 + 0.4 * fnoise(n, 2.0, 951)))
+    a *= 0.7 + 0.3 * fnoise(n, 2.0, 952)
+    save_decal("water_streaks", np.ones((n, n, 3)) * col([105, 80, 50]), a * 0.75)
+    # peeling paint: flakes lifting off, showing grey plaster under, with a dark rim
+    b = blob(n, 953, 0.38, 0.9, 1.7)
+    flakes = smoothstep(0.45, 0.6, fnoise(n, 1.6, 954)) * b
+    rim = np.clip(blur(flakes, 0.004) - flakes, 0, 1) * 3
+    rgb = np.ones((n, n, 3)) * col([150, 148, 140])
+    rgb = rgb * (1 - rim[..., None]) + col([60, 58, 55]) * rim[..., None]
+    save_decal("peeling", rgb, np.clip(flakes + rim, 0, 1) * 0.9)
+    # glass grime: a dusty film, wiped arcs, fingerprints
+    film = 0.25 + 0.2 * fnoise(n, 2.2, 955)
+    arcs = 0.5 + 0.5 * np.sin(np.sqrt((x - n * 0.3) ** 2 + (y - n * 1.2) ** 2) / 9)
+    wipe = smoothstep(0.3, 0.8, blob(n, 956, 0.35, 0.6, 2.0)) * arcs * 0.5
+    a = np.clip(film - wipe * 0.3, 0, 1) * smoothstep(0, 0.15 * n, y) * 0.8
+    save_decal("glass_grime", np.ones((n, n, 3)) * col([150, 145, 130]), a * 0.6)
+
+
 if __name__ == "__main__":
+    wear_decals()
+    light_beam()
     clothes("clothes_rack", 901)
     products("products_grocery", 801, [(200, 40, 40), (240, 200, 60), (40, 120, 60), (230, 120, 30), (40, 80, 160), (240, 240, 230), (120, 60, 30), (160, 30, 90)])
     products("products_beauty", 802, [(240, 220, 225), (180, 140, 200), (60, 60, 70), (220, 230, 240), (230, 180, 160), (120, 190, 200), (250, 250, 250)])

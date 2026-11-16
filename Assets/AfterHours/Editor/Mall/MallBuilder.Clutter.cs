@@ -15,7 +15,7 @@ namespace AfterHours.EditorTools
     public static partial class MallBuilder
     {
         static Material stockClothes, stockGrocery, stockBeauty, stockBoxes, cardboardMat, decalLitter, decalLeaflet, decalPrintsShoe, decalPrintsBare,
-            decalCobweb, decalHandprint, cupMat, coneMat;
+            decalCobweb, decalHandprint, decalStreaks, decalPeeling, decalGlassGrime, cupMat, coneMat;
 
         static void PrepareClutterMaterials()
         {
@@ -31,6 +31,9 @@ namespace AfterHours.EditorTools
             decalPrintsBare = ArtLibrary.Decal("PrintsBare", "prints_bare", Color.white, 0.35f);
             decalCobweb = ArtLibrary.Decal("Cobweb", "cobweb", Color.white, 0.1f);
             decalHandprint = ArtLibrary.Decal("Handprint", "handprint", Color.white, 0.25f);
+            decalStreaks = ArtLibrary.Decal("WaterStreaks", "water_streaks", Color.white, 0.3f);
+            decalPeeling = ArtLibrary.Decal("Peeling", "peeling", Color.white, 0.15f);
+            decalGlassGrime = ArtLibrary.Decal("GlassGrime", "glass_grime", Color.white, 0.4f);
             cupMat = ArtLibrary.Plain("Paper_Cup", new Color(0.88f, 0.86f, 0.8f), 0.3f);
             ArtLibrary.MarkDetail(cupMat);
             coneMat = ArtLibrary.Plain("Traffic_Cone", new Color(0.9f, 0.35f, 0.08f), 0.4f);
@@ -184,6 +187,7 @@ namespace AfterHours.EditorTools
                 else if (roll < 0.7) DecalQuad(g, p + Vector3.up * 0.013f, Vector3.up, 0.9f, 1.6f, R(0f, 360f), decalPrintsShoe);
             }
             FootprintTrail(g, new Vector3(30f, cp, 66f), new Vector3(-13f, cp, 9f), rng);
+            DirtyGlass(g);
 
             // Cobwebs high in the corners of the service corridors and stairwells; the odd dirty handprint.
             int idx = 0;
@@ -201,9 +205,25 @@ namespace AfterHours.EditorTools
                     Vector3 nn = n * side;
                     Vector3 probe = wr.p0 + dir * (len * 0.5f) + nn * (wr.thickness * 0.5f + 0.5f);
                     ZoneInfo zone = MallZones.Classify(new Vector3(probe.x, wr.y0 + 1f, probe.z));
+                    if (zone.kind == ZoneKind.Outside || zone.kind == ZoneKind.LiftShaft) continue;
+                    if ((zone.kind == ZoneKind.Shop || zone.kind == ZoneKind.Anchor) && (zone.unit == null || !zone.unit.HasInterior)) continue;
                     bool service = zone.kind == ZoneKind.ServiceCorridor || zone.kind == ZoneKind.BackOfHouse || zone.kind == ZoneKind.Stairwell;
-                    if (!service) continue;
                     int h = MallLayout.Hash(idx, side, 9, 9);
+                    // Old leaks: brown streaks running down from the ceiling. Peeling paint lower down.
+                    float ceil = Mathf.Min(wr.y1, wr.y0 + (zone.kind == ZoneKind.CarPark ? 3.4f : 4.45f));
+                    if (h % (service ? 4 : 9) == 1)
+                    {
+                        float hgt = R(1.2f, 2.6f);
+                        Vector3 c = new Vector3(wr.p0.x, ceil - hgt * 0.5f, wr.p0.z) + dir * R(0.6f, len - 0.6f) + nn * (wr.thickness * 0.5f + 0.005f);
+                        DecalQuad(g, c, nn, R(0.8f, 1.8f), hgt, 0f, decalStreaks);
+                    }
+                    if (h % (service ? 5 : 13) == 2)
+                    {
+                        Vector3 c = new Vector3(wr.p0.x, wr.y0 + R(0.4f, 2.2f), wr.p0.z) + dir * R(0.5f, len - 0.5f) + nn * (wr.thickness * 0.5f + 0.005f);
+                        float sz = R(0.4f, 1.1f);
+                        DecalQuad(g, c, nn, sz, sz * R(0.7f, 1.3f), R(0f, 360f), decalPeeling);
+                    }
+                    if (!service) continue;
                     float top = wr.y0 + (zone.kind == ZoneKind.Stairwell ? 2.6f : 4.2f);
                     if (h % 3 == 0)
                     {
@@ -216,6 +236,27 @@ namespace AfterHours.EditorTools
                         DecalQuad(g, c, nn, 0.22f, 0.32f, R(-25f, 25f), decalHandprint);
                     }
                 }
+            }
+        }
+
+        /// <summary>Every tall pane of glass gets a dusty film with wipe marks (and the odd fingerprint).</summary>
+        static void DirtyGlass(Transform g)
+        {
+            int i = 0;
+            foreach (MeshRenderer r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+            {
+                if (r.sharedMaterial != glassMat) continue;
+                Bounds b = r.bounds;
+                if (b.size.y < 1.2f) continue;
+                bool thinX = b.size.x < 0.15f, thinZ = b.size.z < 0.15f;
+                if (thinX == thinZ) continue;
+                Vector3 n = thinX ? Vector3.right : Vector3.forward;
+                float width = thinX ? b.size.z : b.size.x;
+                float half = (thinX ? b.size.x : b.size.z) * 0.5f;
+                i++;
+                for (int s = -1; s <= 1; s += 2)
+                    DecalQuad(g, b.center + n * (s * (half + 0.003f)), n * s, width * 0.98f, b.size.y * 0.98f, (i % 2) * 180f, decalGlassGrime);
+                if (i % 6 == 0) DecalQuad(g, b.center + Vector3.down * (b.size.y * 0.5f - 1.3f) + n * (half + 0.004f), n, 0.2f, 0.3f, 10f, decalHandprint);
             }
         }
 

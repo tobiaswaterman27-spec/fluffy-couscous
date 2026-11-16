@@ -101,14 +101,14 @@ namespace AfterHours.EditorTools
             ls.realtimeGI = false;
             ls.lightmapper = LightingSettings.Lightmapper.ProgressiveGPU; // falls back to CPU automatically if needed
             ls.mixedBakeMode = MixedLightingMode.IndirectOnly;
-            ls.lightmapResolution = 3f;       // texels per metre: a balance of quality vs bake time for a huge building
+            ls.lightmapResolution = 4f;       // texels per metre: a balance of quality vs bake time for a huge building
             ls.lightmapPadding = 2;
             ls.lightmapMaxSize = 2048;
-            ls.directionalityMode = LightmapsMode.NonDirectional;
+            ls.directionalityMode = LightmapsMode.CombinedDirectional; // surface bumps (tiles, blockwork) still show under baked light
             ls.ao = true;
             ls.aoMaxDistance = 1.2f;
             ls.directSampleCount = 32;
-            ls.indirectSampleCount = 256;
+            ls.indirectSampleCount = 384;
             ls.environmentSampleCount = 64;
             ls.maxBounces = 3;
             EditorUtility.SetDirty(ls);

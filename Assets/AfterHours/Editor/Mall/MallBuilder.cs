@@ -121,6 +121,8 @@ namespace AfterHours.EditorTools
                 Progress("Detail: car park", 0.67f);
                 DressCarPark(carPark);
 
+                Progress("Atmosphere: light shafts", 0.715f);
+                BuildAtmosphere(mall);
                 Progress("Ambient sound", 0.72f);
                 BuildAmbience(mall);
 
@@ -289,7 +291,11 @@ namespace AfterHours.EditorTools
         static void SetupLighting()
         {
             RenderSettings.skybox = null;
-            RenderSettings.fog = false; // no artificial fog: darkness does the work
+            // A faint dark haze: big spaces fade into blackness with distance, the way they do at night.
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogColor = new Color(0.011f, 0.012f, 0.014f);
+            RenderSettings.fogDensity = 0.014f;
             RenderQuality.Apply();
 
             // Moonlight: faint and blue, baked only (so it never lights the inside before baking). After
@@ -517,7 +523,12 @@ namespace AfterHours.EditorTools
             l.type = LightType.Point;
             l.range = range;
             l.intensity = intensity;
-            l.color = color;
+            // No two old tubes are quite the same: a touch greener or pinker, a little brighter or dimmer.
+            int h = MallLayout.Hash((int)(pos.x * 10f), (int)(pos.y * 10f), (int)(pos.z * 10f), 61);
+            float v = (h % 1000) / 1000f;
+            Color drift = v < 0.33f ? new Color(0.88f, 1f, 0.9f) : v < 0.66f ? new Color(1f, 0.93f, 0.96f) : Color.white;
+            l.color = Color.Lerp(color, color * drift, 0.5f);
+            l.intensity = intensity * (0.88f + 0.24f * ((h / 1000 % 100) / 100f));
             l.shadows = LightShadows.None;
             go.AddComponent<AfterHours.Rendering.BakeableLight>();
             if (fixture)

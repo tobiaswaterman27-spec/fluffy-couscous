@@ -210,8 +210,14 @@ namespace AfterHours.EditorTools
             {
                 Slab("Roof", parent, region, holes, y, MallLayout.SlabThickness, concrete, SurfaceType.Concrete);
             }
+            // Clear glazing on a steel grid: after baking, moonlight comes through in stripes.
             BoxMinMax("Atrium skylight", parent, new Vector3(-MallLayout.VoidHalf, y - 0.15f, -MallLayout.VoidHalf),
-                new Vector3(MallLayout.VoidHalf, y - 0.05f, MallLayout.VoidHalf), darkGlass, SurfaceType.Glass);
+                new Vector3(MallLayout.VoidHalf, y - 0.05f, MallLayout.VoidHalf), glassMat, SurfaceType.Glass);
+            for (float m = -MallLayout.VoidHalf; m <= MallLayout.VoidHalf + 0.01f; m += 2.5f)
+            {
+                BoxMinMax("Skylight mullion", parent, new Vector3(m - 0.05f, y - 0.35f, -MallLayout.VoidHalf), new Vector3(m + 0.05f, y - 0.15f, MallLayout.VoidHalf), metal, SurfaceType.Metal);
+                BoxMinMax("Skylight mullion", parent, new Vector3(-MallLayout.VoidHalf, y - 0.33f, m - 0.04f), new Vector3(MallLayout.VoidHalf, y - 0.17f, m + 0.04f), metal, SurfaceType.Metal);
+            }
 
             // Accessible roof area above the north-east back-of-house block: parapets and security fencing.
             float q0 = MallLayout.OuterWall, q1 = MallLayout.QuadrantOuter;
