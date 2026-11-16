@@ -159,7 +159,28 @@ def decal_tex():
     Image.fromarray((img * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "decal_dust_mote.png"))
 
 
+def clothes(name, seed):
+    """A rail of hanging clothes: garments of different widths, colours and lengths, soft folds."""
+    n = 1024
+    rng = np.random.default_rng(seed)
+    alb = np.zeros((n, n, 3)); h = np.zeros((n, n)); x, y = coords(n)
+    pal = [(30, 30, 35), (200, 195, 185), (90, 20, 30), (40, 60, 100), (150, 120, 90), (60, 80, 60), (180, 170, 200), (220, 210, 190), (110, 110, 115)]
+    cx = 0
+    while cx < n:
+        w = int(rng.integers(14, 34)); c = np.array(pal[rng.integers(len(pal))]) / 255 * rng.uniform(.85, 1.1)
+        length = int(n * rng.uniform(0.55, 0.95))
+        x1 = min(n, cx + w)
+        fold = 0.75 + 0.25 * np.sin((x[:length, cx:x1] - cx) / max(1, w) * np.pi)
+        alb[:length, cx:x1] = c * fold[..., None]
+        h[:length, cx:x1] = fold
+        alb[:12, cx:x1] = 0.15
+        cx += w - 2
+    alb *= (0.9 + 0.1 * fnoise(n, 2.0, seed + 1))[..., None]
+    save_set(name, np.clip(alb, 0, 1), blur(h, 0.001), 2.0, 0.15)
+
+
 if __name__ == "__main__":
+    clothes("clothes_rack", 901)
     products("products_grocery", 801, [(200, 40, 40), (240, 200, 60), (40, 120, 60), (230, 120, 30), (40, 80, 160), (240, 240, 230), (120, 60, 30), (160, 30, 90)])
     products("products_beauty", 802, [(240, 220, 225), (180, 140, 200), (60, 60, 70), (220, 230, 240), (230, 180, 160), (120, 190, 200), (250, 250, 250)])
     products("products_boxes", 803, [(40, 40, 45), (220, 220, 225), (30, 70, 140), (180, 30, 30), (90, 90, 95), (240, 240, 240)], box_like=True)

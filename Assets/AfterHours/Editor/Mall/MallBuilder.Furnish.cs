@@ -23,7 +23,7 @@ namespace AfterHours.EditorTools
                     Rows(g, area, y, 2.4f, 0.6f, 1.9f, 2.3f, 1.3f, metal, SurfaceType.Metal, keepClear, seed % 2 == 0 ? stockBeauty : stockBoxes, seed);
                     break;
                 case FurnishStyle.Rails:
-                    Rows(g, area, y, 1.8f, 0.5f, 1.4f, 2.0f, 1.5f, railMat, SurfaceType.Metal, keepClear);
+                    Rows(g, area, y, 1.8f, 0.5f, 1.4f, 2.0f, 1.5f, railMat, SurfaceType.Metal, keepClear, stockClothes, seed);
                     break;
                 case FurnishStyle.Tables:
                     PlaceGrid(g, area, y, 1.4f, 0.9f, 0.9f, 2.7f, accent, SurfaceType.Wood, keepClear, null);
@@ -35,7 +35,7 @@ namespace AfterHours.EditorTools
                     Rows(g, area, y, 8f, 1.0f, 1.8f, 3.0f, 2.2f, metal, SurfaceType.Metal, keepClear, stockGrocery, seed);
                     break;
                 case FurnishStyle.Food:
-                    PlaceGrid(g, area, y, 0.9f, 0.9f, 0.75f, 2.9f, woodMat, SurfaceType.Wood, keepClear, (centre) => Chairs(g, centre, y));
+                    PlaceGrid(g, area, y, 0.9f, 0.9f, 0.75f, 2.9f, woodMat, SurfaceType.Wood, keepClear, (centre) => { Chairs(g, centre, y); Leftovers(g, centre + Vector3.up * 0.75f); });
                     break;
                 case FurnishStyle.Office:
                     PlaceGrid(g, area, y, 1.6f, 0.8f, 0.75f, 3.4f, woodMat, SurfaceType.Wood, keepClear, (centre) =>
@@ -117,6 +117,18 @@ namespace AfterHours.EditorTools
         {
             Prop(g, "Chair", tableCentre + new Vector3(0f, 0f, 0.8f), new Vector3(0.45f, 0.85f, 0.45f), 5f, propMat, SurfaceType.Wood);
             Prop(g, "Chair", tableCentre + new Vector3(0f, 0f, -0.8f), new Vector3(0.45f, 0.85f, 0.45f), 5f, propMat, SurfaceType.Wood);
+        }
+
+        /// <summary>Whatever people left when the place emptied: a tray, a cup, napkins, a wrapper.</summary>
+        static void Leftovers(Transform g, Vector3 tableTop)
+        {
+            int h = MallLayout.Hash((int)(tableTop.x * 10f), (int)(tableTop.z * 10f), 3, 77);
+            if (h % 3 == 0) return;
+            float yaw = h % 360;
+            Detail("Tray", g, tableTop + new Vector3(0.05f, 0.01f, -0.05f), new Vector3(0.45f, 0.02f, 0.32f), h % 2 == 0 ? redMat : darkPanel, Quaternion.Euler(0f, yaw, 0f));
+            Vector3 cup = tableTop + Quaternion.Euler(0f, yaw, 0f) * new Vector3(0.12f, 0.02f, 0.05f);
+            Cyl("Cup", g, cup, cup + Vector3.up * 0.13f, 0.08f, cupMat);
+            if (h % 5 == 0) DecalQuad(g, tableTop + new Vector3(-0.15f, 0.025f, 0.1f), Vector3.up, 0.25f, 0.25f, yaw, decalLitter);
         }
 
         static void Crates(Transform g, AreaRect area, float y, List<AreaRect> keepClear, int seed)

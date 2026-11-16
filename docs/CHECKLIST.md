@@ -173,3 +173,12 @@ Nothing on this list may be dropped silently. If something changes, it is noted 
 ## Part 18 — Polish & final testing
 - 🧪 Test plan (docs/TESTING.md) and automatic mall check (After Hours > 7 - Check Mall)
 - 🧪 Windows, macOS and Linux builds (After Hours > 8 - Make Game Builds)
+
+## After Part 18 — sound, polish, detail
+- 🧪 Sound library: ~380 designed sounds (tools/sfxgen) — footsteps per floor and pace, Elliot's voice, gore, mechanics, ambience, music
+- 🧪 Breathing (exertion / fear), heartbeat, hold your breath while hidden, tension music, random building noises
+- 🧪 One UI style, bound-key prompts, interaction dot, held-item caption, re-waking after being caught, locker slits
+- 🧪 Stocked shelves, clothes rails, food-court leftovers, litter, cardboard, trolleys, cones, cobwebs, handprints, hanging cables
+- 🧪 Elliot's footprint trail in the car park; dust in the air; Elliot's skin and anatomy
+- 🧪 Ambient occlusion, HDR, soft shadows; baked moonlight
+- 🧪 Co-op: join mid-game, co-op save, players bump into each other

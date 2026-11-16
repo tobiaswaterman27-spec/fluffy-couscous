@@ -14,7 +14,7 @@ namespace AfterHours.EditorTools
     /// </summary>
     public static partial class MallBuilder
     {
-        static Material stockGrocery, stockBeauty, stockBoxes, cardboardMat, decalLitter, decalLeaflet, decalPrintsShoe, decalPrintsBare,
+        static Material stockClothes, stockGrocery, stockBeauty, stockBoxes, cardboardMat, decalLitter, decalLeaflet, decalPrintsShoe, decalPrintsBare,
             decalCobweb, decalHandprint, cupMat, coneMat;
 
         static void PrepareClutterMaterials()
@@ -23,6 +23,7 @@ namespace AfterHours.EditorTools
             stockGrocery = ArtLibrary.Surface("Stock_Grocery", "products_grocery", 1f, w, 1f, 0.6f);
             stockBeauty = ArtLibrary.Surface("Stock_Beauty", "products_beauty", 1f, w, 1f, 0.6f);
             stockBoxes = ArtLibrary.Surface("Stock_Boxes", "products_boxes", 1.5f, w, 1f, 0.6f);
+            stockClothes = ArtLibrary.Surface("Stock_Clothes", "clothes_rack", 1.6f, w, 1f, 0.8f);
             cardboardMat = ArtLibrary.Surface("Cardboard", "cardboard", 0.8f, w, 1f, 0.8f);
             decalLitter = ArtLibrary.Decal("Litter", "litter", Color.white, 0.2f);
             decalLeaflet = ArtLibrary.Decal("Leaflet", "leaflet", Color.white, 0.55f);

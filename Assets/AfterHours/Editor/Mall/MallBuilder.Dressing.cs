@@ -253,6 +253,15 @@ namespace AfterHours.EditorTools
         {
             // Dark void where the tile should be...
             Detail("Missing ceiling tile", g, tileCentre + Vector3.down * 0.003f, new Vector3(0.58f, 0.004f, 0.58f), blackMat);
+            // Cables and an insulation scrap dangling out of the hole.
+            int cables = 1 + h % 3;
+            for (int c = 0; c < cables; c++)
+            {
+                Vector3 top = tileCentre + new Vector3(Rand(-0.22f, 0.22f), 0.05f, Rand(-0.22f, 0.22f));
+                Vector3 bottom = top + new Vector3(Rand(-0.25f, 0.25f), -Rand(0.4f, 1.3f), Rand(-0.25f, 0.25f));
+                Cyl("Hanging cable", g, top, bottom, Rand(0.008f, 0.016f), blackMat);
+            }
+            if (h % 3 == 0) Detail("Insulation scrap", g, tileCentre + new Vector3(0.1f, -0.12f, -0.05f), new Vector3(0.3f, 0.2f, 0.06f), yellowPaint, Quaternion.Euler(Rand(-30f, 30f), Rand(0f, 90f), Rand(60f, 100f)));
             if (h % 2 == 0)
             {
                 // ...hanging down from one edge,
