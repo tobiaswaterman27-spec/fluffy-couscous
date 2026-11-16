@@ -53,6 +53,7 @@ namespace AfterHours.Items
             if (item == null) { Held = null; return; }
             Held = item;
             item.AttachTo(gameObject, handAnchor);
+            ShowCaption(item.DisplayName);
         }
 
         /// <summary>Host: a remote player let go of their item.</summary>
@@ -64,12 +65,35 @@ namespace AfterHours.Items
             item.Release(position, velocity);
         }
 
+        float captionUntil;
+        string caption;
+
+        void OnGUI()
+        {
+            if (Time.time > captionUntil || GamePause.IsPaused) return;
+            PlayerController pc = GetComponent<PlayerController>();
+            if (pc != null && !pc.isLocallyControlled) return;
+            float w = AfterHours.UI.UiSkin.Scale();
+            float a = Mathf.Clamp01((captionUntil - Time.time) / 0.8f);
+            var st = new GUIStyle(GUI.skin.label) { fontSize = 20, alignment = TextAnchor.MiddleRight };
+            st.normal.textColor = new Color(0.86f, 0.85f, 0.8f, 0.75f * a);
+            GUI.Label(new Rect(w - 640f, 1080f - 90f, 600f, 34f), caption, st);
+            AfterHours.UI.UiSkin.Unscale();
+        }
+
+        void ShowCaption(string text)
+        {
+            caption = text;
+            captionUntil = Time.time + 3f;
+        }
+
         public void PickUp(ItemPickup item)
         {
             if (item == null || item.IsHeld) return;
             if (Held != null) Drop(0.3f, false);
             Held = item;
             item.AttachTo(gameObject, handAnchor);
+            ShowCaption(item.DisplayName);
             AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Pickup), item.transform.position, 0.35f, Random.Range(0.9f, 1.1f), 6f);
             NoiseBus.Emit(new NoiseEvent(item.transform.position, 1.2f, NoiseKind.Interaction, gameObject));
         }

@@ -55,6 +55,12 @@ namespace AfterHours.Controls
             LoadBindingOverrides();
             GameplayMap.Enable();
             SystemMap.Enable();
+            // On-screen prompts show whatever key Interact is bound to.
+            AfterHours.Interaction.PlayerInteractor.KeyName = () =>
+            {
+                try { string k = Interact.GetBindingDisplayString(0); return string.IsNullOrEmpty(k) ? "E" : k; }
+                catch (Exception) { return "E"; }
+            };
         }
 
         void OnDestroy()

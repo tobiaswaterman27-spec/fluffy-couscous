@@ -105,6 +105,7 @@ namespace AfterHours.EditorTools
             Door d = HingedDoor(root.transform, "Locker door", floorCentre + facing * (dpt * 0.5f) + Vector3.up * 0.12f, worldAxis, w - 0.02f, h - 0.15f,
                 door, SurfaceType.Metal, handle, DoorKind.Storage, DoorWeight.Light, locked, "key_lockers", false, false, true, 0.018f, facing);
             d.maxAngle = 110f;
+            CutVentSlits(d, door, h - 0.15f);
             AddHidingSpot(root, floorCentre, facing, w - 0.06f, dpt, 0.12f, 0.35f, 35f, d);
             Dynamic(root);
             return root;
@@ -132,6 +133,40 @@ namespace AfterHours.EditorTools
             AddHidingSpot(root, floorCentre, facing, w - 0.1f, dpt, 0.1f, 0.6f, 50f, dl, dr);
             Dynamic(root);
             return root;
+        }
+
+        /// <summary>
+        /// Real locker doors have louvred slits at eye height: you can peek out through them while hiding (and see
+        /// a sliver of light, or something walking past). The door keeps one solid collider; only its look changes.
+        /// </summary>
+        static void CutVentSlits(Door d, Material mat, float doorHeight)
+        {
+            Transform leaf = d.leaf;
+            if (leaf == null) return;
+            Renderer r = leaf.GetComponent<Renderer>();
+            if (r == null) return;
+            r.enabled = false;
+            // In the leaf's unit-cube space: y from -0.5 (bottom) to 0.5 (top).
+            float slitTop = (1.72f / doorHeight) - 0.5f, slitBottom = (1.48f / doorHeight) - 0.5f;
+            void Piece(string n, float y0, float y1, float zScale = 1f)
+            {
+                GameObject p = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                p.name = n;
+                Object.DestroyImmediate(p.GetComponent<Collider>());
+                p.transform.SetParent(leaf, false);
+                p.transform.localPosition = new Vector3(0f, (y0 + y1) * 0.5f, 0f);
+                p.transform.localScale = new Vector3(1f, y1 - y0, zScale);
+                p.GetComponent<Renderer>().sharedMaterial = mat;
+            }
+            Piece("Door lower", -0.5f, slitBottom);
+            Piece("Door upper", slitTop, 0.5f);
+            int slats = 5;
+            float step = (slitTop - slitBottom) / slats;
+            for (int i = 0; i < slats; i++)
+            {
+                float y = slitBottom + i * step;
+                Piece("Louvre", y, y + step * 0.55f, 1.6f); // angled-looking lip: a bit thicker than the door
+            }
         }
 
         /// <summary>

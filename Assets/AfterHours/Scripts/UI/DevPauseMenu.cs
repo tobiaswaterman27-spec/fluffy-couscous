@@ -86,15 +86,21 @@ namespace AfterHours.UI
             InputService input = InputService.Instance;
             if (service == null || input == null) return;
             EnsureStyles();
+            GUISkin oldSkin = GUI.skin;
+            GUI.skin = UiSkin.Get();
+            // Darken the game behind the menu.
+            GUI.color = new Color(0f, 0f, 0f, 0.45f);
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.color = Color.white;
 
             float scale = Screen.height / 1080f;
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1f));
-            float w = 560f, h = 640f;
+            float w = 600f, h = 700f;
             float x = (Screen.width / scale - w) * 0.5f;
             float y = (1080f - h) * 0.5f;
 
             GUILayout.BeginArea(new Rect(x, y, w, h), GUI.skin.box);
-            GUILayout.Label("PAUSED", title);
+            GUILayout.Label(GameFlowFlags.InMainMenu ? "SETTINGS" : "PAUSED", title);
             GUILayout.BeginHorizontal();
             if (GUILayout.Toggle(page == Page.Settings, "Settings", GUI.skin.button, GUILayout.Height(30))) page = Page.Settings;
             if (GUILayout.Toggle(page == Page.Controls, "Controls", GUI.skin.button, GUILayout.Height(30))) page = Page.Controls;
@@ -118,6 +124,7 @@ namespace AfterHours.UI
                 GUI.enabled = true;
                 GUILayout.EndArea();
                 GUI.matrix = Matrix4x4.identity;
+                GUI.skin = oldSkin;
                 return;
             }
             if (GUILayout.Button("Quit", GUILayout.Height(30)))
@@ -133,6 +140,7 @@ namespace AfterHours.UI
             GUI.enabled = true;
             GUILayout.EndArea();
             GUI.matrix = Matrix4x4.identity;
+            GUI.skin = oldSkin;
         }
 
         void DrawSettings(SettingsService service)
@@ -304,7 +312,7 @@ namespace AfterHours.UI
         void EnsureStyles()
         {
             if (title != null) return;
-            title = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            title = new GUIStyle(UiSkin.Get().label) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             rowLabel = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
             waiting = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
             waiting.normal.textColor = new Color(1f, 0.85f, 0.3f);

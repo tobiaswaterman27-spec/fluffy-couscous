@@ -42,6 +42,9 @@ namespace AfterHours.Interaction
             i.HoldTick(this, dt);
         }
 
+        /// <summary>Shows the key currently bound to Interact (set by the input service; "E" if not).</summary>
+        public static System.Func<string> KeyName;
+
         /// <summary>Optional item check provided by the inventory (Part 6).</summary>
         public System.Func<string, bool> itemCheck;
 
@@ -122,19 +125,29 @@ namespace AfterHours.Interaction
 
         void OnGUI()
         {
-            if (GamePause.IsPaused || string.IsNullOrEmpty(prompt)) return;
+            if (GamePause.IsPaused || string.IsNullOrEmpty(prompt) || !isActiveAndEnabled) return;
+            PlayerController pc = GetComponent<PlayerController>();
+            if (pc != null && !pc.isLocallyControlled) return;
             if (style == null)
             {
-                style = new GUIStyle(GUI.skin.label) { fontSize = 18, alignment = TextAnchor.MiddleCenter };
-                style.normal.textColor = new Color(0.92f, 0.92f, 0.88f, 0.9f);
+                style = new GUIStyle(GUI.skin.label) { fontSize = 20, alignment = TextAnchor.MiddleCenter };
+                style.normal.textColor = new Color(0.9f, 0.89f, 0.85f, 0.85f);
             }
-            float w = Screen.width, h = Screen.height;
-            GUI.Label(new Rect(0f, h * 0.56f, w, 28f), "E  " + prompt, style);
+            float w = AfterHours.UI.UiSkin.Scale(), h = 1080f;
+            // A faint dot where you're looking, only when there's something to use.
+            GUI.color = new Color(1f, 1f, 1f, 0.45f);
+            GUI.DrawTexture(new Rect(w * 0.5f - 2f, h * 0.5f - 2f, 4f, 4f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            string key = KeyName != null ? KeyName() : "E";
+            GUI.Label(new Rect(0f, h * 0.555f, w, 30f), key + "   " + prompt, style);
             if (holding != null && !actionDone && holding.HoldTime > 0.25f)
             {
                 float p = Mathf.Clamp01(holdTimer / holding.HoldTime);
-                GUI.DrawTexture(new Rect(w * 0.5f - 40f, h * 0.56f + 26f, 80f * p, 3f), Texture2D.whiteTexture);
+                GUI.color = new Color(1f, 1f, 1f, 0.6f);
+                GUI.DrawTexture(new Rect(w * 0.5f - 50f, h * 0.555f + 32f, 100f * p, 2f), Texture2D.whiteTexture);
+                GUI.color = Color.white;
             }
+            AfterHours.UI.UiSkin.Unscale();
         }
     }
 }

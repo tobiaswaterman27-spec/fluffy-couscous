@@ -74,6 +74,7 @@ namespace AfterHours.Flow
             elliot = FindAnyObjectByType<ElliotBrain>();
             if (GetComponent<SaveSystem>() == null) gameObject.AddComponent<SaveSystem>();
             RunReset.Done += OnRunReset;
+            AudioLibrary.Has("preload"); // load the sound library now, not at the first sound
             EnterMenu();
         }
 
@@ -292,6 +293,15 @@ namespace AfterHours.Flow
         /// <summary>Eyes: black with blinks while waking. 1 = closed.</summary>
         float EyesClosed()
         {
+            if (rewakeT >= 0f)
+            {
+                // After being caught: black, then two slow blinks.
+                if (rewakeT < 1.2f) return 1f;
+                if (rewakeT < 2.2f) return Mathf.Lerp(1f, 0.2f, (rewakeT - 1.2f) / 1f);
+                if (rewakeT < 2.6f) return Mathf.Lerp(0.2f, 0.9f, (rewakeT - 2.2f) / 0.4f);
+                if (rewakeT < 3.6f) return Mathf.Lerp(0.9f, 0f, (rewakeT - 2.6f) / 1f);
+                return 0f;
+            }
             if (State != FlowState.Opening) return 0f;
             if (t < 3f) return 1f;
             if (t < 4.6f) return Mathf.Lerp(1f, 0.35f, (t - 3f) / 1.6f);
@@ -356,11 +366,15 @@ namespace AfterHours.Flow
             if (State == FlowState.Playing && SaveSystem.Instance != null) SaveSystem.Instance.Save(player, playTime);
         }
 
+        float rewakeT = -1f;
+
         void OnRunReset()
         {
             if (NetSession.Active) return; // co-op never resets the whole run
-            // Caught: the run starts over, so the save goes too.
+            // Caught: the run starts over, so the save goes too. You come to again on the atrium floor... at 11:30.
             SaveSystem.DeleteSave();
+            rewakeT = 0f;
+            captionT = 0.5f;
             autosaveTimer = 60f;
         }
 
@@ -621,6 +635,7 @@ namespace AfterHours.Flow
                 case FlowState.Ending: UpdateEnding(dt); break;
             }
             if (captionT >= 0f) captionT += dt;
+            if (rewakeT >= 0f) { rewakeT += dt; if (rewakeT > 4f) rewakeT = -1f; }
             if (credits)
             {
                 creditsT += dt;
