@@ -516,12 +516,18 @@ namespace AfterHours.Creature
             }
 
             // Locked: bang on it; when hunting it may force it; otherwise it soon gives up.
-            int maxBangs = state == ElliotState.Hunt ? 4 : 1;
-            if (doorTime > 1.2f * (bangs + 1))
+            int maxBangs = state == ElliotState.Hunt ? 6 : 2;
+            if (doorTime > (state == ElliotState.Hunt ? 0.75f : 1.3f) * (bangs + 1))
             {
                 bangs++;
                 animator.PlayAction(ElliotAction.BangDoor, d.transform.position + Vector3.up * 1.4f, 1.1f);
                 d.Bang(gameObject);
+                // between blows: a snarl or a scream through the door
+                if (audioOut != null && audioOut.voice != null && !audioOut.voice.isPlaying && Random.value < 0.55f)
+                {
+                    AudioClip v = AfterHours.Audio.AudioLibrary.Get(Random.value < 0.6f ? "elliot_snarl" : "elliot_shriek");
+                    if (v != null) audioOut.voice.PlayOneShot(v, 1f);
+                }
                 if (state == ElliotState.Hunt && bangs >= 2 && d.forceable && Random.value < 0.4f)
                 {
                     d.Force(transform.position, gameObject);

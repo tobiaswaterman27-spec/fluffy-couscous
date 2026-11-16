@@ -193,6 +193,15 @@ namespace AfterHours.Interaction
         public void Bang(GameObject actor)
         {
             InteractionFx.Play(ProceduralSounds.Sfx.Bang, HandlePosition, 1f, 24f, actor, NoiseKind.Door);
+            // A second, deeper layer from the same spot carries much further through the building...
+            AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Bang), HandlePosition, 1f, Random.Range(0.72f, 0.8f), 80f);
+            // ...and if you're right on the other side of the door, you feel it.
+            Camera cam = Camera.main;
+            if (cam != null && Vector3.Distance(cam.transform.position, HandlePosition) < 7f)
+            {
+                AudioPool.Play2D(AudioLibrary.Get("sub_hit"), Mathf.InverseLerp(7f, 1f, Vector3.Distance(cam.transform.position, HandlePosition)), Random.Range(0.9f, 1.1f));
+                AudioMix.Kick(0.6f, 0.8f);
+            }
         }
 
         /// <summary>Breaks a locked door open (if this door can be forced).</summary>

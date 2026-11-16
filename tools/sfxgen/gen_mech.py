@@ -77,16 +77,26 @@ def slam(rng):
 
 
 def bang(rng):
-    """Something big hammering on a door: the whole door booms, the frame jumps, the wall shudders. LOUD."""
-    dur = 1.8
+    """Elliot hammering on a door: a colossal low boom, the whole leaf flexing, the frame and hinges jumping,
+    wood splitting, dust and grit raining down, the corridor ringing with it. As loud as it gets."""
+    dur = 2.4
     x = silence(dur)
-    place(x, thump(rng, rng.uniform(40, 50), 0.6, 2.2), 0)
-    place(x, door_body(rng, 2.0, 1.4), 0)
-    place(x, lp(pink(0.4, rng), 500) * env_exp(int(0.4 * SR), 0.08, 0.0005) * 1.5, 0)  # the wall shuddering
-    for k in range(rng.integers(3, 6)):  # hinges, latch and frame rattling
-        place(x, click(rng, (800, 4000), 0.004, rng.uniform(0.3, 0.7)), 0.01 + k * rng.uniform(0.02, 0.05))
-    x = sat(x * 1.3, 1.8)
-    return fade(reverb(soften(x, 6000), 1.5, 0.8, 0.28, 0.25, rng), 0.0003, 0.3)
+    place(x, thump(rng, rng.uniform(34, 42), 0.9, 3.0), 0)            # the body blow
+    place(x, thump(rng, rng.uniform(70, 90), 0.3, 1.6), 0.004)
+    place(x, door_body(rng, 2.6, 1.6), 0)                              # the leaf booming
+    place(x, lp(pink(0.6, rng), 400) * env_exp(int(0.6 * SR), 0.15, 0.0005) * 2.0, 0)  # wall and floor shuddering
+    if rng.random() < 0.7:  # wood splitting
+        for k in range(rng.integers(6, 16)):
+            cd = rng.uniform(0.004, 0.015)
+            c = bp(pink(cd, rng), rng.uniform(400, 900), rng.uniform(2500, 5000)) * env_exp(int(cd * SR), cd / 3, 0.0001)
+            place(x, c * rng.uniform(0.6, 1.4) * 2.5, rng.uniform(0.005, 0.08))
+    for k in range(rng.integers(5, 9)):  # hinges, latch, frame, things on the walls rattling
+        place(x, click(rng, (600, 4000), 0.006, rng.uniform(0.4, 1.0)), 0.01 + k * rng.uniform(0.02, 0.06))
+    for k in range(rng.integers(10, 25)):  # grit and dust falling from the frame
+        gd = rng.uniform(0.003, 0.008)
+        place(x, bp(pink(gd, rng), 1500, 5000) * env_exp(int(gd * SR), gd / 3, 0.0002) * rng.uniform(0.1, 0.35), rng.uniform(0.1, 0.8))
+    x = sat(x * 1.6, 2.4)
+    return fade(reverb(soften(x, 6500), 2.2, 1.0, 0.32, 0.22, rng), 0.0003, 0.4)
 
 
 def unlock(rng):
