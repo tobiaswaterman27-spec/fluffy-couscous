@@ -414,6 +414,27 @@ def elliot_chatter(rng):
     return fade(reverb(soften(x, 7000), 0.6, 0.4, 0.14, 0.3, rng), 0.001, 0.1)
 
 
+def elliot_mutter(rng):
+    """Low, quick, broken syllables - like it is trying to talk, under its breath. No words come out right."""
+    x = silence(3.2)
+    t0 = 0.0
+    base = rng.uniform(95, 135)
+    for k in range(rng.integers(6, 12)):
+        d = rng.uniform(0.08, 0.22)
+        nn = int(d * SR)
+        f = base * rng.uniform(0.85, 1.25) * np.linspace(1.0, rng.uniform(0.8, 1.1), nn)
+        vs = pick(rng, [["uh", "e"], ["a", "o"], ["e", "i"], ["o", "uh"], ["ae", "uh"], ["i", "a"]])
+        v = voice(d, f, rng, [(0, VOWELS[vs[0]]), (1, VOWELS[vs[1]])], 0.08, 0.4, 0.45, 0.35, 0.35, 4)
+        v = sat(v * 1.1, 2.0) * env_adsr(nn, 0.012, d * 0.3, 0.7, d * 0.4)
+        place(x, v * rng.uniform(0.5, 1.0), t0)
+        t0 += d + (rng.uniform(0.25, 0.5) if rng.random() < 0.2 else rng.uniform(0.01, 0.06))
+        if t0 > 2.6:
+            break
+    tail = rasp(0.4, rng, (25, 35), 0.35) * env_adsr(int(0.4 * SR), 0.05, 0.1, 0.6, 0.25)
+    place(x, tail, t0 + 0.05)
+    return fade(reverb(soften(x[: int((t0 + 0.6) * SR)], 6000), 0.7, 0.45, 0.14, 0.25, rng), 0.002, 0.15)
+
+
 def elliot_whine(rng):
     """A thin, high keening - like something in pain, or something pretending to be."""
     return vocalise(rng, rng.uniform(1.5, 3.0), rng.uniform(420, 560), rng.uniform(640, 900),
@@ -516,7 +537,7 @@ def render(out, rng):
     for i in range(8):
         out(f"creature/elliot_moan_{i}", elliot_moan(rng))
         out(f"creature/elliot_croak_{i}", elliot_croak(rng))
-        out(f"creature/elliot_chatter_{i}", elliot_chatter(rng))
+        elliot_chatter(rng)  # retired (teeth chattering); still drawn so the other takes stay exactly as you heard them
         out(f"creature/elliot_whine_{i}", elliot_whine(rng))
         out(f"creature/elliot_laugh_{i}", elliot_laugh(rng))
         out(f"creature/elliot_call_{i}", elliot_call(rng))
@@ -528,3 +549,6 @@ def render(out, rng):
         out(f"creature/elliot_wail_{i + 8}", wail_variant(rng))
         out(f"creature/elliot_clicks_{i + 5}", elliot_clicks(rng))
         out(f"creature/elliot_sniff_{i + 4}", elliot_sniff(rng))
+    mrng = np.random.default_rng(4242)
+    for i in range(8):
+        out(f"creature/elliot_mutter_{i}", elliot_mutter(mrng))
