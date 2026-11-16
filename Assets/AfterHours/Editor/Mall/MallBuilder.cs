@@ -290,6 +290,18 @@ namespace AfterHours.EditorTools
         {
             RenderSettings.skybox = null;
             RenderSettings.fog = false; // no artificial fog: darkness does the work
+            RenderQuality.Apply();
+
+            // Moonlight: faint and blue, baked only (so it never lights the inside before baking). After
+            // "5 - Bake Lighting" it falls through the atrium skylight, the glass entrance and the car park ramp.
+            var moonGo = new GameObject("Moonlight");
+            moonGo.transform.rotation = Quaternion.Euler(38f, 145f, 0f);
+            Light moon = moonGo.AddComponent<Light>();
+            moon.type = LightType.Directional;
+            moon.color = new Color(0.55f, 0.65f, 0.88f);
+            moon.intensity = 0.3f;
+            moon.shadows = LightShadows.Soft;
+            moon.lightmapBakeType = LightmapBakeType.Baked;
         }
 
         static void AddSceneFirstInBuild(string path)
