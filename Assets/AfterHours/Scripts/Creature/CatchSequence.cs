@@ -506,7 +506,6 @@ namespace AfterHours.Creature
             // Openings.
             if (Fire(12, -intro, u))
             {
-                if (intro > 0f) Sfx(ProceduralSounds.Sfx.Gasp, eye, 0.9f, 0.95f, 1.2f);
                 if (ctx == CatchContext.HidingPlace && spot != null) spot.RipOpen(brain.gameObject);
                 if (ctx == CatchContext.DarkRoom) Sfx(ProceduralSounds.Sfx.Thud, eye, 0.8f);
             }
@@ -530,9 +529,13 @@ namespace AfterHours.Creature
             {
                 Sfx(ProceduralSounds.Sfx.Thud, eye, 1f);
                 if (local) { AudioPool.Play2D(AudioLibrary.Get("sub_hit"), 1f); AudioMix.Kick(1f, EndT); }
-                if (ctx != CatchContext.HidingPlace) Sfx(ProceduralSounds.Sfx.Gasp, eye, 1f, 1.0f, 1.25f);
             }
-            if (Fire(1, StillT - 0.1f, u)) Sfx(ProceduralSounds.Sfx.Gasp, eye, 0.5f, 0.7f, 0.85f);
+            if (Fire(1, LiftT + 0.1f, u)) Voice("elliot_snarl", 0.9f);
+            if (Fire(15, ThrashT + 0.05f, u)) Voice("elliot_snarl", 1f);
+            if (Fire(16, ThrashT + 0.7f, u)) Voice(rng.NextDouble() < 0.5 ? "elliot_roar" : "elliot_shriek", 1f);
+            if (Fire(17, FeedT + 0.15f, u)) Voice("elliot_snarl", 0.9f);
+            if (Fire(18, FeedT + 1.0f, u)) Voice(rng.NextDouble() < 0.5 ? "elliot_roar" : "elliot_snarl", 0.85f);
+            if (Fire(19, FeedT + 1.6f, u)) Voice("elliot_scream", 0.7f);
             if (Fire(2, ScreamT, u))
             {
                 if (anim != null && anim.audioOut != null) anim.audioOut.Scream();
@@ -585,6 +588,15 @@ namespace AfterHours.Creature
                 }
             }
             if (Fire(10, ResetT, u)) ResetRun();
+        }
+
+        /// <summary>Elliot's voice during the kill: from its mouth (everyone hears it there), varied takes.</summary>
+        void Voice(string key, float vol)
+        {
+            AudioClip c = AudioLibrary.Get(key);
+            if (c == null) return;
+            if (anim != null && anim.audioOut != null && anim.audioOut.voice != null) anim.audioOut.voice.PlayOneShot(c, vol);
+            else AudioPool.PlayAt(c, Mouth, vol, 1f, 40f);
         }
 
         void ResetRun()

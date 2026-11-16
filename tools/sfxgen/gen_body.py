@@ -6,7 +6,7 @@ from dsp import *
 MOUTH_OUT = [520, 1350, 2500]   # an open-mouth exhale
 MOUTH_IN = [680, 1700, 2800]    # inhale through the mouth (tighter, a little higher)
 NOSE = [260, 1050, 2200]        # nasal breathing
-VOWELS = {"a": [780, 1200, 2600], "ae": [700, 1700, 2500], "o": [520, 880, 2500], "u": [330, 800, 2300],
+VOWELS = {"e": [480, 1850, 2550], "i": [320, 2250, 3000], "a": [780, 1200, 2600], "ae": [700, 1700, 2500], "o": [520, 880, 2500], "u": [330, 800, 2300],
           "uh": [600, 1150, 2450], "throat": [450, 1250, 3100]}
 
 
@@ -293,6 +293,88 @@ def whimper(rng):
     return fade(lp(x, 3000, 4), 0.003, 0.1)
 
 
+# ------------------------------------------------------------------ Elliot's voice, many variations
+
+def contour(kind, dur, rng, lo, hi):
+    """A pitch path for a vocalisation."""
+    n = int(dur * SR)
+    t = np.linspace(0, 1, n)
+    if kind == "rise":
+        c = lo + (hi - lo) * np.clip(t / rng.uniform(0.15, 0.4), 0, 1) ** 0.6
+    elif kind == "fall":
+        c = hi - (hi - lo) * t ** rng.uniform(0.6, 1.4)
+    elif kind == "arch":
+        c = lo + (hi - lo) * np.sin(np.pi * np.clip(t * rng.uniform(0.9, 1.2), 0, 1))
+    elif kind == "warble":
+        c = (lo + hi) / 2 + (hi - lo) / 2 * np.sin(2 * np.pi * rng.uniform(2, 5) * t)
+    else:  # "stutter": breaks and jumps
+        steps = rng.uniform(lo, hi, 6)
+        c = steps[np.minimum((t * 6).astype(int), 5)]
+        c = lp(c.astype(np.float32), 30, 1)
+    vib = 1 + rng.uniform(0.01, 0.07) * np.sin(2 * np.pi * rng.uniform(4, 9) * t * dur)
+    return (c * vib).astype(np.float32)
+
+
+def vocalise(rng, dur, lo, hi, kind, vowels, rough, under=0.0, drive=3.0, rasp_amt=0.15, attack=0.03, room=(1.2, 0.6, 0.22)):
+    n = int(dur * SR)
+    f0 = contour(kind, dur, rng, lo, hi)
+    path = [(k / (len(vowels) - 1), VOWELS[v]) for k, v in enumerate(vowels)]
+    main = voice(dur, f0, rng, path, rng.uniform(0.05, 0.1), 0.3, rng.uniform(0.4, 0.55), rough, 0.25, rng.uniform(3, 4.5))
+    x = sat(main * 1.4, drive)
+    if under > 0:
+        low = voice(dur, f0 * 0.5, rng, [(0, VOWELS["o"]), (1, VOWELS["uh"])], 0.1, 0.4, 0.4, 0.8, 0.2, 3)
+        x += sat(low * 1.2, drive + 0.5) * under
+    x += bp(pink(dur, rng), 1000, 4500) * rasp_amt
+    x *= env_adsr(n, attack, dur * 0.15, 0.85, dur * 0.3)
+    if kind == "stutter":  # broken off and restarting
+        t = t_axis(dur)
+        gate = (np.sin(2 * np.pi * rng.uniform(5, 9) * t) > -0.6).astype(np.float32)
+        x *= lp(gate, 60, 1)
+    return fade(reverb(soften(x, 7500), *room, 0.3, rng), 0.003, 0.25)
+
+
+def scream_variant(rng):
+    pre = rasp(rng.uniform(0.25, 0.5), rng, (35, 50), 0.7) if rng.random() < 0.6 else silence(0.01)
+    body = vocalise(rng, rng.uniform(1.6, 2.8), rng.uniform(200, 320), rng.uniform(560, 820),
+                    rng.choice(["rise", "arch", "warble", "stutter"]), list(rng.choice([["o", "a", "ae"], ["a", "ae", "a"], ["uh", "a", "i"], ["o", "a", "e"]])),
+                    rng.uniform(0.4, 0.8), rng.uniform(0.3, 0.7), rng.uniform(2.5, 3.5))
+    x = silence(len(pre) / SR + len(body) / SR)
+    place(x, pre, 0)
+    place(x, body, len(pre) / SR)
+    return x
+
+
+def shriek_variant(rng):
+    return vocalise(rng, rng.uniform(0.6, 1.2), rng.uniform(380, 520), rng.uniform(800, 1100),
+                    rng.choice(["rise", "arch", "fall"]), list(rng.choice([["a", "ae"], ["e", "i"], ["ae", "i"]])),
+                    rng.uniform(0.3, 0.7), 0.2, 3.2, 0.2, 0.01)
+
+
+def wail_variant(rng):
+    """Long, eerie, carrying - meant to be heard from far away through the building."""
+    return vocalise(rng, rng.uniform(2.5, 4.5), rng.uniform(140, 220), rng.uniform(300, 480),
+                    rng.choice(["fall", "arch", "warble"]), list(rng.choice([["o", "u", "uh"], ["a", "o", "u"], ["uh", "o", "u"]])),
+                    rng.uniform(0.15, 0.4), rng.uniform(0.2, 0.4), 2.0, 0.08, 0.4, room=(2.4, 0.9, 0.35))
+
+
+def roar_variant(rng):
+    return vocalise(rng, rng.uniform(1.2, 2.2), rng.uniform(70, 100), rng.uniform(130, 190),
+                    rng.choice(["arch", "fall", "rise"]), list(rng.choice([["o", "a", "uh"], ["uh", "a", "o"]])),
+                    rng.uniform(0.7, 1.0), 0.8, 4.0, 0.25, 0.06)
+
+
+def snarl_variant(rng):
+    """Short, wet-mouthed, aggressive bursts - the sound it makes while it's on you."""
+    x = silence(1.6)
+    t0 = 0.0
+    for k in range(rng.integers(2, 4)):
+        d = rng.uniform(0.25, 0.5)
+        b = vocalise(rng, d, rng.uniform(90, 140), rng.uniform(160, 260), "arch", ["uh", "a"], 0.9, 0.7, 4.0, 0.3, 0.01, room=(0.5, 0.3, 0.1))
+        place(x, b, t0)
+        t0 += d * rng.uniform(0.7, 1.0)
+    return x
+
+
 def render(out, rng):
     out("creature/elliot_breath_calm_0", elliot_breath(rng, False))
     out("creature/elliot_breath_hunt_0", elliot_breath(rng, True))
@@ -307,13 +389,18 @@ def render(out, rng):
         out(f"gore/sfx_crunch_{i}", crunch(rng))
         out(f"gore/sfx_tear_{i}", tear(rng))
         out(f"gore/sfx_splatter_{i}", splatter(rng))
-        out(f"player/sfx_gasp_{i}", player_gasp(rng))
         out(f"player/heartbeat_{i}", heartbeat(rng))
-        out(f"player/exhale_{i}", exhale(rng))
-        out(f"player/whimper_{i}", whimper(rng))
     for i in range(3):
         out(f"music/sub_hit_{i}", sub_hit(rng))
     out("gore/feeding_0", chewing(rng))
-    out("player/breath_calm_0", breath_loop(rng, 12, 14, 0.25, "calm", extras=0.08))
-    out("player/breath_heavy_0", breath_loop(rng, 12, 30, 0.8, "heavy", voiced=0.25, f0=150, extras=0.05))
-    out("player/breath_panic_0", breath_loop(rng, 12, 40, 1.0, "panic", voiced=0.6, f0=190, jitter=0.35, shaky=0.5))
+    # Elliot's voice: many takes of each, so it never sounds like a loop
+    for i in range(10):
+        out(f"creature/elliot_scream_{i + 4}", scream_variant(rng))
+        out(f"creature/elliot_shriek_{i}", shriek_variant(rng))
+        out(f"creature/elliot_snarl_{i}", snarl_variant(rng))
+    for i in range(8):
+        out(f"creature/elliot_wail_{i}", wail_variant(rng))
+        out(f"creature/elliot_roar_{i}", roar_variant(rng))
+    for i in range(6):
+        out(f"creature/elliot_growl_{i + 4}", elliot_groan(rng))
+        out(f"creature/elliot_spot_{i + 4}", shriek_variant(rng))

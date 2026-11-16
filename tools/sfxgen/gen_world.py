@@ -231,29 +231,60 @@ def music_near(rng):
     return loopify(reverb(soften(x, 8000), 2.5, 0.9, 0.35, 0.35, rng)[: len(t)], 2.0)
 
 
-def music_chase(rng):
-    """The chase: 4 bars at 120 bpm (loops). Pounding low drums, a sawing staccato string ostinato on a minor
-    second, metal hits on the off-beats, a cluster that swells and screams over the top."""
-    bpm = 120
+def siren_strings(dur, f_from, f_to, rng, level=1.0):
+    """Screeching high strings sliding upwards, bowed hard with a fast tremolo."""
+    n = int(dur * SR)
+    t = t_axis(dur)
+    x = np.zeros(n, np.float32)
+    for k, ratio in enumerate((1.0, 1.06, 1.5)):
+        f = (f_from + (f_to - f_from) * (t / dur) ** 1.4) * ratio
+        for det in (-0.005, 0.004):
+            ph = (np.cumsum(f * (1 + det)) / SR) % 1
+            x += (2 * ph - 1).astype(np.float32)
+    x = bp(x, 600, 6500) / 6
+    x *= (0.45 + 0.55 * np.abs(np.sin(2 * np.pi * 13 * t))).astype(np.float32)
+    return sat(x * 2, 2.0) * env_adsr(n, dur * 0.3, 0.2, 0.9, dur * 0.15) * level
+
+
+def brass_blast(rng, f=55.0, dur=0.7, level=1.0):
+    n = int(dur * SR)
+    t = t_axis(dur)
+    v = voice(dur, f * (1 + 0.02 * np.sin(2 * np.pi * 6 * t)), rng, [(0, [500, 1000, 2300]), (1, [650, 1250, 2500])], 0.02, 0.1, 0.65, 0.3, 0.0, 3)
+    return sat(v * 3, 3.0) * env_adsr(n, 0.03, 0.15, 0.7, 0.3) * level
+
+
+def music_chase(rng, variant=0):
+    """Being chased: 8 bars at 140 bpm. Distorted war drums, a sawing minor-second ostinato, screeching string
+    sirens climbing, low brass blasts, metal crashes and a sub that never lets up."""
+    bpm = 140
     beat = 60 / bpm
-    dur = 16 * beat  # 8 s
+    bars = 8
+    dur = bars * 4 * beat
     t = t_axis(dur)
     x = np.zeros(len(t), np.float32)
-    for b in range(16):  # drums: heavy on 1 and 3, lighter between, a fill at the end
-        place(x, drum(rng, 95, 46, 0.3, 1.0 if b % 2 == 0 else 0.55), b * beat)
-        if b in (13, 14, 15):
-            place(x, drum(rng, 120, 60, 0.15, 0.5), b * beat + beat * 0.5)
-    for k in range(64):  # 16th-note ostinato: D / Eb, low strings, staccato
-        f = 73.4 if (k // 2) % 2 == 0 else 77.8
-        note = strings(beat / 4 * 0.9, [f, f * 2], rng, 0.005, 0.05, 1800, 0.0, 0.0, 0.9)
-        place(x, note * (1.0 if k % 4 == 0 else 0.65), k * beat / 4)
-    for b in (1, 5, 9, 13):
-        place(x, metal_hit(rng, 0.35), b * beat + beat * 0.5)
-    swell = strings(dur, [587.3, 622.3, 880.0, 932.3], rng, dur * 0.8, 0.3, 4500, 6.5, trem=0.6, level=0.7)
-    x += swell * np.clip(t / dur, 0, 1).astype(np.float32) ** 1.5
-    x += lp(sum(np.sin(2 * np.pi * 36.7 * h * t) / h for h in (1, 2)).astype(np.float32), 150) * 0.25
-    x = sat(x * 1.2, 1.6)
-    return loopify(reverb(soften(x, 7000), 1.6, 0.8, 0.22, 0.3, rng)[: len(t)], 0.15)
+    root = 73.4 if variant == 0 else 69.3
+    for b in range(bars * 4):
+        bar = b // 4
+        place(x, drum(rng, 100, 44, 0.28, 1.0 if b % 4 in (0, 2) else 0.7), b * beat)
+        if b % 4 == 3 or bar >= 6:  # double-time pushing forward
+            place(x, drum(rng, 120, 55, 0.14, 0.55), b * beat + beat * 0.5)
+        if b % 4 == 0:
+            place(x, drum(rng, 60, 30, 0.6, 1.2), b * beat)  # the floor-shaking boom on each bar
+    for k in range(bars * 16):  # 16th-note ostinato
+        f = root if (k // 2) % 2 == 0 else root * 1.0595
+        note = strings(beat / 4 * 0.85, [f, f * 2, f * 3], rng, 0.004, 0.04, 2600, 0.0, 0.0, 1.0)
+        place(x, sat(note * 1.5, 2.0) * (1.0 if k % 4 == 0 else 0.6), k * beat / 4)
+    for bar in (0, 2, 4, 6):
+        place(x, brass_blast(rng, root * 0.75, beat * 1.5, 0.8), bar * 4 * beat)
+    for bar in (1, 3, 5, 7):
+        place(x, metal_hit(rng, 0.45), bar * 4 * beat + beat * 2.5)
+    # sirens: each two bars a screech climbs higher
+    for k, bar in enumerate((0, 2, 4, 6)):
+        place(x, siren_strings(beat * 8, 700 + 200 * k, 1400 + 300 * k, rng, 0.55), bar * 4 * beat)
+    x += lp(sum(np.sin(2 * np.pi * root / 2 * h * t) / h for h in (1, 2)).astype(np.float32), 140) * 0.3 * \
+        (0.6 + 0.4 * np.abs(np.sin(np.pi * t / beat))).astype(np.float32)
+    x = sat(x * 1.3, 1.8)
+    return loopify(reverb(soften(x, 7500), 1.4, 0.8, 0.2, 0.3, rng)[: len(t)], 0.12)
 
 
 def music_sting(rng):
@@ -312,7 +343,8 @@ def render(out, rng):
         out(f"world/distant_clatter_{i}", distant_clatter(rng))
         out(f"world/crackle_{i}", electrical_crackle(rng))
     out("music/music_dread_0", music_dread(rng))
-    out("music/music_chase_0", music_chase(rng))
+    out("music/music_chase_0", music_chase(rng, 0))
+    out("music/music_chase_1", music_chase(rng, 1))
     out("music/music_menu_0", music_menu(rng))
     out("music/music_near_0", music_near(rng))
     for i in range(3):

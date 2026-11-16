@@ -29,9 +29,7 @@ namespace AfterHours.Audio
         {
             player = GetComponent<PlayerController>();
             if (player == null || !player.isLocallyControlled) { Destroy(this); return; }
-            calm = Loop("breath_calm", 0.25f);
-            heavy = Loop("breath_heavy", 0f);
-            panic = Loop("breath_panic", 0f);
+            // (No breathing or voice sounds for you: just your heart and the duct around you.)
             duct = Loop("amb_duct", 0f);
             heart = Make();
             oneShots = Make();
@@ -88,7 +86,7 @@ namespace AfterHours.Audio
                 {
                     holding = false;
                     bool forced = heldFor >= MaxHold;
-                    Play(forced ? "sfx_gasp" : "exhale", forced ? 0.9f : 0.4f);
+                    // (released silently; a forced release is still heard by the creatures)
                     if (forced) NoiseBus.Emit(new NoiseEvent(player.EyePosition, 7f, NoiseKind.Voice, gameObject));
                     exertion = Mathf.Max(exertion, heldFor / MaxHold * 0.8f);
                 }

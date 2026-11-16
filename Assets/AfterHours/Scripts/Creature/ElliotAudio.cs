@@ -54,7 +54,7 @@ namespace AfterHours.Creature
                 voice.spatialBlend = 1f;
                 voice.rolloffMode = AudioRolloffMode.Logarithmic;
                 voice.minDistance = 2f;
-                voice.maxDistance = 60f;
+                voice.maxDistance = 90f; // its screams carry through the whole building
             }
         }
 
@@ -75,18 +75,38 @@ namespace AfterHours.Creature
             }
         }
 
+        float outburstTimer = 20f;
+
         void Update()
         {
+            // Every so often, when it isn't already making a sound: a scream, a shriek, a long wail through the
+            // building, a roar. What it chooses depends on its mood. Many takes, never the same twice in a row.
+            outburstTimer -= Time.deltaTime;
+            if (outburstTimer <= 0f && voice != null && !voice.isPlaying)
+            {
+                float roll = Random.value;
+                string outburst;
+                if (intensity > 0.7f) { outburst = roll < 0.4f ? "elliot_shriek" : roll < 0.75f ? "elliot_roar" : "elliot_scream"; outburstTimer = Random.Range(5f, 11f); }
+                else if (intensity > 0.2f) { outburst = roll < 0.4f ? "elliot_shriek" : roll < 0.7f ? "elliot_wail" : "elliot_roar"; outburstTimer = Random.Range(12f, 26f); }
+                else { outburst = roll < 0.55f ? "elliot_wail" : roll < 0.8f ? "elliot_growl" : "elliot_roar"; outburstTimer = Random.Range(22f, 55f); }
+                AudioClip clip = AudioLibrary.Get(outburst);
+                if (clip != null)
+                {
+                    voice.PlayOneShot(clip, 1f);
+                    voiceTimer = Mathf.Max(voiceTimer, clip.length + 1f);
+                    NoiseBus.Emit(new NoiseEvent(transform.position, 40f, NoiseKind.Creature, gameObject));
+                }
+            }
             // Its voice: rare throat clicks while wandering, clicking and sniffing while searching, growls in a hunt.
             voiceTimer -= Time.deltaTime;
-            if (voiceTimer > 0f || voice == null) return;
+            if (voiceTimer > 0f || voice == null || voice.isPlaying) return;
             string key;
             float r = Random.value;
             if (intensity > 0.7f) { key = r < 0.65f ? "elliot_growl" : "elliot_clicks"; voiceTimer = Random.Range(4f, 9f); }
             else if (intensity > 0.2f) { key = r < 0.4f ? "elliot_sniff" : r < 0.75f ? "elliot_clicks" : "elliot_growl"; voiceTimer = Random.Range(5f, 10f); }
             else { key = r < 0.4f ? "elliot_growl" : r < 0.8f ? "elliot_clicks" : "elliot_twitch"; voiceTimer = Random.Range(10f, 24f); }
             AudioClip c = AudioLibrary.Get(key);
-            if (c != null) voice.PlayOneShot(c, key == "elliot_twitch" ? 0.6f : 0.85f);
+            if (c != null) { voice.PlayOneShot(c, key == "elliot_twitch" ? 0.6f : 0.85f); outburstTimer = Mathf.Max(outburstTimer, c.length + 2f); }
         }
 
         /// <summary>It has seen you: a short rising screech, loud, from where it stands.</summary>

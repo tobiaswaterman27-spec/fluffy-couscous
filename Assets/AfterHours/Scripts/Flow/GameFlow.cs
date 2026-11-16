@@ -267,9 +267,7 @@ namespace AfterHours.Flow
             }
 
             if (ringing != null) ringing.volume = Mathf.Lerp(0.22f, 0f, Mathf.InverseLerp(6f, 14f, t));
-            if (Fire(0, 2.6f)) AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Gasp), eye, 0.7f, 0.85f, 10f);
             if (Fire(1, 6.4f)) AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.ShutterStop), new Vector3(0f, 3f, -70f), 1f, 0.8f, 120f);
-            if (Fire(2, 11.8f)) AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Gasp), eye, 0.5f, 0.75f, 10f);
 
             if (t >= 15f)
             {
@@ -426,7 +424,7 @@ namespace AfterHours.Flow
                 if (Fire(10, 1.2f) && player != null)
                     AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Slam), player.transform.position + Vector3.up * 2f, 1f, 0.6f, 60f);
                 if (Fire(11, 3.4f) && player != null && elliot != null && elliot.animator != null && elliot.animator.audioOut != null)
-                    AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Gasp), player.EyePosition, 1f, 1.1f, 10f);
+                    AudioPool.PlayAt(AudioLibrary.Get("elliot_scream"), player.EyePosition + player.transform.forward * -2f, 1f, 1f, 30f);
                 if (t > 5.5f) StartCredits();
                 return;
             }
