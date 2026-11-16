@@ -50,7 +50,8 @@ namespace AfterHours.Items
             }
             if (!source.isPlaying)
             {
-                source.clip = isPhone ? (phoneClip != null ? phoneClip : phoneClip = Ring(true)) : (ringClip != null ? ringClip : ringClip = Ring(false));
+                AudioClip lib = AudioLibrary.Get(isPhone ? "sfx_phonering" : "sfx_beep");
+                source.clip = lib != null ? lib : isPhone ? (phoneClip != null ? phoneClip : phoneClip = Ring(true)) : (ringClip != null ? ringClip : ringClip = Ring(false));
                 source.loop = true;
                 source.Play();
             }
@@ -92,8 +93,7 @@ namespace AfterHours.Items
             ItemPickup pick = GetComponent<ItemPickup>();
             if (pick != null && pick.IsHeld) return;
             Vector3 p = transform.position;
-            AudioPool.PlayAt(ProceduralSounds.Impact(SurfaceType.Glass), p, 1f, 1.3f, 40f);
-            AudioPool.PlayAt(ProceduralSounds.Impact(SurfaceType.Glass), p, 0.8f, 1.7f, 40f);
+            AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.GlassBreak), p, 1f, Random.Range(0.9f, 1.1f), 40f);
             NoiseBus.Emit(new NoiseEvent(p, noiseRadius, NoiseKind.Distraction, gameObject));
             for (int i = 0; i < 6; i++)
             {

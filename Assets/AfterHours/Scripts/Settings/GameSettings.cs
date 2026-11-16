@@ -29,6 +29,7 @@ namespace AfterHours.Settings
 
         [Header("Audio")]
         public float masterVolume = 1f;
+        public float musicVolume = 0.8f;
 
         [Header("Display")]
         public bool vSync = true;
@@ -41,6 +42,7 @@ namespace AfterHours.Settings
             if (bindingOverrides == null) bindingOverrides = "";
             fieldOfView = Mathf.Clamp(fieldOfView, 55f, 100f);
             masterVolume = Mathf.Clamp01(masterVolume);
+            musicVolume = Mathf.Clamp01(musicVolume);
             targetFrameRate = Mathf.Clamp(targetFrameRate, 0, 360);
             // Future versions migrate older files here before stamping the new version.
             version = CurrentVersion;

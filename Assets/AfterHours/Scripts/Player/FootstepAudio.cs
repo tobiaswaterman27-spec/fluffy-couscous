@@ -18,6 +18,20 @@ namespace AfterHours.Player
             source.spatialBlend = 0f; // your own feet: not positioned
         }
 
+        void Start()
+        {
+            // Someone else's feet (co-op): heard from where they are, through walls.
+            PlayerController pc = GetComponentInParent<PlayerController>();
+            if (pc != null && !pc.isLocallyControlled)
+            {
+                source.spatialBlend = 1f;
+                source.rolloffMode = AudioRolloffMode.Logarithmic;
+                source.minDistance = 1.5f;
+                source.maxDistance = 30f;
+                if (GetComponent<AudioOcclusion>() == null) gameObject.AddComponent<AudioOcclusion>();
+            }
+        }
+
         void OnEnable()
         {
             if (motor != null) motor.Footstep += OnFootstep;
@@ -30,9 +44,8 @@ namespace AfterHours.Player
 
         void OnFootstep(FootstepInfo info)
         {
-            bool crawl = info.mode == MoveMode.Crawl;
-            AudioClip clip = ProceduralSounds.Footstep(info.surface, crawl);
-            source.pitch = Random.Range(0.92f, 1.08f) * (info.mode == MoveMode.Sprint ? 1.05f : 1f);
+            AudioClip clip = ProceduralSounds.Footstep(info.surface, info.mode);
+            source.pitch = Random.Range(0.95f, 1.05f);
             float volume = Mathf.Clamp01(info.intensity * SurfaceAcoustics.FootstepVolume(info.surface));
             source.PlayOneShot(clip, volume);
         }

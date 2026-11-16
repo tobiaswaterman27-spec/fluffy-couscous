@@ -50,6 +50,9 @@ namespace AfterHours.Net
             foreach (Camera c in go.GetComponentsInChildren<Camera>(true)) Destroy(c);
             LocalPlayerInput input = go.GetComponent<LocalPlayerInput>();
             if (input != null) Destroy(input);
+            // Your breathing, heart, music and ambience belong to you, not to copies of you.
+            foreach (MonoBehaviour m in go.GetComponents<MonoBehaviour>())
+                if (m is AfterHours.Audio.PlayerAudio || m is AfterHours.Audio.TensionMusic || m is AfterHours.Audio.AmbientEvents) DestroyImmediate(m);
 
             // Visible to everyone (the local body layer is hidden from its owner's camera only), in their colour.
             Material mat = null;

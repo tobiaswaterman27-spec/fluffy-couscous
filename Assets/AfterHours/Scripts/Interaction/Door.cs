@@ -176,7 +176,7 @@ namespace AfterHours.Interaction
             }
             StartMove(goal, urgency);
             float noise = Mathf.Lerp(1.5f, 10f, Mathf.InverseLerp(0.4f, 1.8f, urgency)) + (squeaky ? 5f : 0f);
-            InteractionFx.Play(squeaky ? ProceduralSounds.Sfx.Creak : ProceduralSounds.Sfx.Latch, HandlePosition, Mathf.Clamp01(0.3f + 0.4f * urgency), noise, actor, NoiseKind.Door);
+            InteractionFx.Play(squeaky ? ProceduralSounds.Sfx.Creak : ProceduralSounds.Sfx.Handle, HandlePosition, Mathf.Clamp01(0.3f + 0.4f * urgency), noise, actor, NoiseKind.Door);
             return true;
         }
 

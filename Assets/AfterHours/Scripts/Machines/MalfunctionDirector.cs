@@ -59,7 +59,7 @@ namespace AfterHours.Machines
             string trip = on[rng.Next(on.Count)];
             PowerGrid.SetBreaker(trip, false);
             Vector3 at = switchboard != null ? switchboard.position : Vector3.zero;
-            AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.MetalClank), at, 1f, 0.7f, 40f);
+            AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.BreakerOff), at, 1f, 0.9f, 40f);
             NoiseBus.Emit(new NoiseEvent(at, 18f, NoiseKind.Machinery, gameObject));
         }
 

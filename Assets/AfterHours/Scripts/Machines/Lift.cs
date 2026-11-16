@@ -137,8 +137,7 @@ namespace AfterHours.Machines
         public void Alarm(GameObject actor)
         {
             // An old bell: very loud, and it carries.
-            for (int i = 0; i < 4; i++)
-                AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Rattle), car.transform.position + Vector3.up * 2f, 1f, 2.2f, 50f);
+            AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Bell), car.transform.position + Vector3.up * 2f, 1f, 1f, 60f);
             NoiseBus.Emit(new NoiseEvent(car.transform.position, 35f, NoiseKind.Machinery, actor));
         }
 
@@ -221,6 +220,7 @@ namespace AfterHours.Machines
 
                 case LiftState.Closing:
                     if (!powered) break; // doors stay where they are
+                    if (openAmt >= 0.999f) AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.LiftDoors), car.transform.position + Vector3.up, 0.5f, 0.95f, 15f);
                     if (Obstructed())
                     {
                         state = LiftState.Opening;
@@ -313,8 +313,8 @@ namespace AfterHours.Machines
             state = LiftState.Opening;
             UpdateIndicators();
             Vector3 at = car.transform.position + Vector3.up * 2.3f;
-            AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Click), at, 0.9f, 2.4f, 30f); // ding
-            AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Click), at, 0.7f, 1.9f, 30f);
+            AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Chime), at, 0.8f, 1f, 30f); // ding-dong
+            AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.LiftDoors), at + Vector3.down * 1.5f, 0.6f, 1f, 15f);
             NoiseBus.Emit(new NoiseEvent(at, 16f, NoiseKind.Machinery, gameObject));
         }
 

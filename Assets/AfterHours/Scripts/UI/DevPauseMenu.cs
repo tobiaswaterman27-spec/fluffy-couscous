@@ -147,6 +147,8 @@ namespace AfterHours.UI
             s.fieldOfView = Mathf.Round(GUILayout.HorizontalSlider(s.fieldOfView, 55f, 100f));
             GUILayout.Label($"Master volume: {s.masterVolume * 100f:0}%");
             s.masterVolume = GUILayout.HorizontalSlider(s.masterVolume, 0f, 1f);
+            GUILayout.Label($"Music: {s.musicVolume * 100f:0}%");
+            s.musicVolume = GUILayout.HorizontalSlider(s.musicVolume, 0f, 1f);
             s.invertY = GUILayout.Toggle(s.invertY, " Invert look Y");
             s.headBob = GUILayout.Toggle(s.headBob, " Head bob");
             s.cameraShake = GUILayout.Toggle(s.cameraShake, " Camera shake");

@@ -82,6 +82,7 @@ Press the **Play** button (▶, top centre). Click inside the **Game** view to c
 - **After Hours > 8 - Make Game Builds** makes a stand-alone game for Linux, Windows or macOS (in the `Builds`
   folder). Each needs its Build Support module: Unity Hub > Installs > gear icon > Add modules.
 - The full test plan is in `docs/TESTING.md`.
+- Sounds are made by `tools/sfxgen` (`python3 generate.py`, needs numpy + scipy) into `Assets/AfterHours/Resources/Audio`.
 
 ### 7. Playing the whole game (Part 13)
 After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the camera drifts through the dark atrium).
@@ -94,6 +95,7 @@ After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the cam
 
 ### Things to know when playing
 - **Hide**: open a locker or cupboard, look inside, hold **E**. **E** again to get out.
+  While hidden, **hold Shift to hold your breath** (panting can be heard; hold it too long and you gasp).
 - **Vents**: hold **Ctrl** to crawl through the low grilles in the service corridors.
 - **Lifts**: call button beside the doors, floor buttons inside. No power = stuck. The alarm bell is very loud.
 - **Power cuts**: breakers trip now and then; the area goes dark. The switchboard is in the car park plant room.

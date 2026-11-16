@@ -266,6 +266,7 @@ namespace AfterHours.Creature
                 twitchT = 0f;
                 twitchTimer = Random.Range(3f, 9f);
                 twitchOffset = new Vector3(Random.Range(-14f, 14f), Random.Range(-30f, 30f), Random.Range(-28f, 28f));
+                if (audioOut != null && Random.value < 0.5f) audioOut.Twitch();
             }
             Vector3 tw = Vector3.zero;
             if (twitchT >= 0f)

@@ -39,7 +39,7 @@ namespace AfterHours.Power
         {
             bool on = !PowerGrid.BreakerOn(circuit);
             PowerGrid.SetBreaker(circuit, on);
-            InteractionFx.Play(on ? ProceduralSounds.Sfx.Slam : ProceduralSounds.Sfx.MetalClank, transform.position, on ? 0.8f : 0.6f, on ? 14f : 8f, who.Actor, NoiseKind.Machinery);
+            InteractionFx.Play(on ? ProceduralSounds.Sfx.BreakerOn : ProceduralSounds.Sfx.BreakerOff, transform.position, on ? 0.9f : 0.7f, on ? 14f : 8f, who.Actor, NoiseKind.Machinery);
         }
 
         void OnChanged(string id)

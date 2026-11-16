@@ -24,14 +24,31 @@ namespace AfterHours.Audio
 
         static readonly Dictionary<int, AudioClip[]> cache = new Dictionary<int, AudioClip[]>();
 
+        static string SurfaceName(SurfaceType s) => s.ToString().ToLowerInvariant();
+
+        /// <summary>A footstep for how you're moving: sprint = run, crouching = sneak, crawl = hands and knees.</summary>
+        public static AudioClip Footstep(SurfaceType surface, AfterHours.Player.MoveMode mode)
+        {
+            string s = SurfaceName(surface);
+            string key = mode == AfterHours.Player.MoveMode.Crawl ? "crawl_" + s
+                : mode == AfterHours.Player.MoveMode.Sprint ? "step_" + s + "_run"
+                : mode == AfterHours.Player.MoveMode.CrouchWalk ? "step_" + s + "_sneak"
+                : "step_" + s + "_walk";
+            return AudioLibrary.Get(key) ?? Footstep(surface, mode == AfterHours.Player.MoveMode.Crawl);
+        }
+
         public static AudioClip Footstep(SurfaceType surface, bool crawling)
         {
+            AudioClip lib = AudioLibrary.Get(crawling ? "crawl_" + SurfaceName(surface) : "step_" + SurfaceName(surface) + "_walk");
+            if (lib != null) return lib;
             int key = crawling ? 1000 + (int)surface : (int)surface;
             return Pick(key, () => crawling ? CrawlRecipe(surface) : StepRecipe(surface), "Step_" + surface + (crawling ? "_Crawl" : ""));
         }
 
         public static AudioClip Impact(SurfaceType surface)
         {
+            AudioClip lib = AudioLibrary.Get("land_" + SurfaceName(surface));
+            if (lib != null) return lib;
             int key = 2000 + (int)surface;
             return Pick(key, () =>
             {
@@ -49,6 +66,9 @@ namespace AfterHours.Audio
         /// <summary>Seamless looping scrape for heavy objects dragged across the floor.</summary>
         public static AudioClip ScrapeLoop(SurfaceType material)
         {
+            string libKey = material == SurfaceType.Metal || material == SurfaceType.VentMetal ? "scrape_metal" : material == SurfaceType.Wood ? "scrape_wood" : "scrape_concrete";
+            AudioClip lib = AudioLibrary.Get(libKey);
+            if (lib != null) return lib;
             int key = 3000 + (int)material;
             if (cache.TryGetValue(key, out AudioClip[] cached) && cached[0] != null) return cached[0];
 
@@ -195,11 +215,17 @@ namespace AfterHours.Audio
 
         // ------------------------------------------------------------------ interaction one-shots
 
-        public enum Sfx { Latch, Creak, Slam, Rattle, ShutterRoll, ShutterStop, DrawerSlide, MetalClank, Click, Unlock, Bump, Crunch, Tear, Splatter, Thud, Gasp }
+        public enum Sfx
+        {
+            Latch, Creak, Slam, Rattle, ShutterRoll, ShutterStop, DrawerSlide, MetalClank, Click, Unlock, Bump, Crunch, Tear, Splatter, Thud, Gasp,
+            Handle, Pickup, Chime, BreakerOn, BreakerOff, TubeStart, GlassBreak, Bell, Beep, PhoneRing, LiftDoors
+        }
 
         /// <summary>One-shot interaction sounds (doors, shutters, drawers, switches...). A few variations each.</summary>
         public static AudioClip Effect(Sfx kind)
         {
+            AudioClip lib = AudioLibrary.Get("sfx_" + kind.ToString().ToLowerInvariant());
+            if (lib != null) return lib;
             int key = 5000 + (int)kind;
             if (!cache.TryGetValue(key, out AudioClip[] clips) || clips[0] == null)
             {
@@ -337,11 +363,13 @@ namespace AfterHours.Audio
 
         // ------------------------------------------------------------------ ambience loops
 
-        public enum Ambience { FluorescentHum, Ventilation, Machinery, CarParkFans, Water, Buzz }
+        public enum Ambience { FluorescentHum, Ventilation, Machinery, CarParkFans, Water, Buzz, Duct, Rain, Wind, Dawn }
 
         /// <summary>Seamless looping ambience clip (generated once, cached).</summary>
         public static AudioClip AmbienceLoop(Ambience kind)
         {
+            AudioClip lib = AudioLibrary.Get("amb_" + kind.ToString().ToLowerInvariant());
+            if (lib != null) return lib;
             int key = 4000 + (int)kind;
             if (cache.TryGetValue(key, out AudioClip[] cached) && cached[0] != null) return cached[0];
 

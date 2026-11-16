@@ -465,7 +465,7 @@ namespace AfterHours.Flow
             var go = new GameObject("Dawn chorus");
             go.transform.SetParent(transform, false);
             birds = go.AddComponent<AudioSource>();
-            birds.clip = MakeBirds();
+            birds.clip = AudioLibrary.Get("amb_dawn") ?? MakeBirds();
             birds.loop = true;
             birds.spatialBlend = 0f;
             birds.volume = 0.35f;
@@ -603,6 +603,8 @@ namespace AfterHours.Flow
         void Update()
         {
             float dt = Time.unscaledDeltaTime;
+            TensionMusic.MenuMode = State == FlowState.Menu;
+            TensionMusic.Silent = State == FlowState.Ending || State == FlowState.Opening;
             switch (State)
             {
                 case FlowState.Menu:

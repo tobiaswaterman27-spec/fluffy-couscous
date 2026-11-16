@@ -16,13 +16,30 @@ namespace AfterHours.Creature
         public float footstepVolume = 0.9f;
 
         static AudioClip breathClip, screamClip;
+        AudioSource huntBreath;
+        float intensity, voiceTimer = 8f;
 
         void Start()
         {
-            if (breathClip == null) breathClip = MakeBreath();
+            if (breathClip == null) breathClip = AudioLibrary.Get("elliot_breath_calm") ?? MakeBreath();
             if (screamClip == null) screamClip = MakeScream();
             if (breathing != null)
             {
+                // Two breaths crossfaded: slow and wet when calm, fast and growling when hunting.
+                AudioClip hunt = AudioLibrary.Get("elliot_breath_hunt");
+                if (hunt != null)
+                {
+                    huntBreath = breathing.gameObject.AddComponent<AudioSource>();
+                    huntBreath.clip = hunt;
+                    huntBreath.loop = true;
+                    huntBreath.spatialBlend = 1f;
+                    huntBreath.rolloffMode = AudioRolloffMode.Logarithmic;
+                    huntBreath.minDistance = 1.5f;
+                    huntBreath.maxDistance = 30f;
+                    huntBreath.volume = 0f;
+                    huntBreath.timeSamples = Random.Range(0, hunt.samples);
+                    huntBreath.Play();
+                }
                 breathing.clip = breathClip;
                 breathing.loop = true;
                 breathing.spatialBlend = 1f;
@@ -43,21 +60,54 @@ namespace AfterHours.Creature
 
         public void SetIntensity(float hunting)
         {
+            intensity = Mathf.MoveTowards(intensity, hunting, Time.deltaTime * 0.8f);
             if (breathing == null) return;
-            breathing.pitch = Mathf.Lerp(0.85f, 1.35f, hunting);
-            breathing.volume = Mathf.Lerp(0.3f, 0.6f, hunting);
+            if (huntBreath != null)
+            {
+                breathing.pitch = Mathf.Lerp(0.95f, 1.1f, intensity);
+                breathing.volume = Mathf.Lerp(0.4f, 0.05f, intensity);
+                huntBreath.volume = Mathf.Lerp(0f, 0.7f, intensity);
+            }
+            else
+            {
+                breathing.pitch = Mathf.Lerp(0.85f, 1.35f, intensity);
+                breathing.volume = Mathf.Lerp(0.3f, 0.6f, intensity);
+            }
+        }
+
+        void Update()
+        {
+            // Its voice: rare throat clicks while wandering, clicking and sniffing while searching, growls in a hunt.
+            voiceTimer -= Time.deltaTime;
+            if (voiceTimer > 0f || voice == null) return;
+            string key;
+            if (intensity > 0.7f) { key = Random.value < 0.6f ? "elliot_growl" : "elliot_clicks"; voiceTimer = Random.Range(6f, 12f); }
+            else if (intensity > 0.2f) { key = Random.value < 0.5f ? "elliot_sniff" : "elliot_clicks"; voiceTimer = Random.Range(5f, 11f); }
+            else { key = Random.value < 0.7f ? "elliot_clicks" : "elliot_twitch"; voiceTimer = Random.Range(14f, 32f); }
+            AudioClip c = AudioLibrary.Get(key);
+            if (c != null) voice.PlayOneShot(c, key == "elliot_twitch" ? 0.6f : 0.85f);
+        }
+
+        /// <summary>Its joints cracking (the animator's twitches).</summary>
+        public void Twitch()
+        {
+            AudioClip c = AudioLibrary.Get("elliot_twitch");
+            if (c != null && voice != null) voice.PlayOneShot(c, 0.5f);
         }
 
         public void Footstep(Vector3 position, SurfaceType surface, float weight)
         {
-            AudioClip clip = ProceduralSounds.Impact(surface == SurfaceType.Carpet ? SurfaceType.Carpet : SurfaceType.Concrete);
-            AudioPool.PlayAt(clip, position, Mathf.Clamp01(footstepVolume * weight), Random.Range(0.55f, 0.7f), 45f);
+            string kind = surface == SurfaceType.Carpet ? "carpet" : surface == SurfaceType.Metal || surface == SurfaceType.VentMetal ? "metal" : "hard";
+            AudioClip clip = AudioLibrary.Get("elliot_step_" + kind);
+            if (clip != null) AudioPool.PlayAt(clip, position, Mathf.Clamp01(footstepVolume * weight), Random.Range(0.92f, 1.05f), 45f);
+            else AudioPool.PlayAt(ProceduralSounds.Impact(surface == SurfaceType.Carpet ? SurfaceType.Carpet : SurfaceType.Concrete), position, Mathf.Clamp01(footstepVolume * weight), Random.Range(0.55f, 0.7f), 45f);
             NoiseBus.Emit(new NoiseEvent(position, 10f * weight, NoiseKind.Creature, gameObject));
         }
 
         public void Scream()
         {
-            if (voice != null) voice.PlayOneShot(screamClip, 1f);
+            AudioClip s = AudioLibrary.Get("elliot_scream");
+            if (voice != null) voice.PlayOneShot(s != null ? s : screamClip, 1f);
             NoiseBus.Emit(new NoiseEvent(transform.position, 40f, NoiseKind.Creature, gameObject));
         }
 

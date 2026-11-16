@@ -84,7 +84,15 @@ namespace AfterHours.Power
             transitionT = 0f;
             Vector3 ear = Camera.main != null ? Camera.main.transform.position : transform.position;
             if (Contains(ear))
-                AudioPool.PlayAt(ProceduralSounds.Effect(now ? ProceduralSounds.Sfx.Click : ProceduralSounds.Sfx.Thud), ear + Vector3.up * 2f, now ? 0.5f : 0.9f, now ? 0.6f : 0.5f, 30f);
+            {
+                if (now)
+                    for (int i = 0; i < 4; i++)
+                    {
+                        Vector3 p = ear + new Vector3(Random.Range(-8f, 8f), 2.5f, Random.Range(-8f, 8f));
+                        AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.TubeStart), p, 0.5f, Random.Range(0.9f, 1.1f), 25f);
+                    }
+                else AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.BreakerOff), ear + Vector3.up * 2f, 0.6f, 0.6f, 30f);
+            }
         }
 
         void Update()

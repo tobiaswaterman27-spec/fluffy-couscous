@@ -77,6 +77,13 @@ namespace AfterHours.Player
 
         void Start()
         {
+            if (isLocallyControlled && GetComponent<AfterHours.Audio.PlayerAudio>() == null)
+            {
+                // Your breathing and heart, the music, and the building's random noises follow you.
+                gameObject.AddComponent<AfterHours.Audio.PlayerAudio>();
+                gameObject.AddComponent<AfterHours.Audio.TensionMusic>();
+                gameObject.AddComponent<AfterHours.Audio.AmbientEvents>();
+            }
             look.Initialize(transform.eulerAngles.y);
             motor.Landed += look.OnLanded;
 

@@ -70,6 +70,7 @@ namespace AfterHours.Items
             if (Held != null) Drop(0.3f, false);
             Held = item;
             item.AttachTo(gameObject, handAnchor);
+            AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Pickup), item.transform.position, 0.35f, Random.Range(0.9f, 1.1f), 6f);
             NoiseBus.Emit(new NoiseEvent(item.transform.position, 1.2f, NoiseKind.Interaction, gameObject));
         }
 
