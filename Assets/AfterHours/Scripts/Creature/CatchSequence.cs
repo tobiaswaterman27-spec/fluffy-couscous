@@ -534,7 +534,7 @@ namespace AfterHours.Creature
             if (Fire(15, ThrashT + 0.05f, u)) Voice("elliot_snarl", 1f);
             if (Fire(16, ThrashT + 0.7f, u)) Voice(rng.NextDouble() < 0.5 ? "elliot_roar" : "elliot_shriek", 1f);
             if (Fire(17, FeedT + 0.15f, u)) Voice("elliot_snarl", 0.9f);
-            if (Fire(18, FeedT + 1.0f, u)) Voice(rng.NextDouble() < 0.5 ? "elliot_roar" : "elliot_snarl", 0.85f);
+            if (Fire(18, FeedT + 1.0f, u)) Voice(rng.NextDouble() < 0.6 ? "elliot_feed" : rng.NextDouble() < 0.5 ? "elliot_roar" : "elliot_snarl", 0.85f);
             if (Fire(19, FeedT + 1.6f, u)) Voice("elliot_scream", 0.7f);
             if (Fire(2, ScreamT, u))
             {

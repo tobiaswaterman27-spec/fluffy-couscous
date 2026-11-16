@@ -291,7 +291,7 @@ namespace AfterHours.Audio
             }
             else
             {
-                AudioClip g = AudioLibrary.Get("elliot_growl");
+                AudioClip g = AudioLibrary.Get(Random.value < 0.4f ? "elliot_growl" : Random.value < 0.5f ? "elliot_moan" : Random.value < 0.5f ? "elliot_call" : "elliot_wail");
                 if (g != null) AudioPool.PlayAt(g, p + Vector3.up * 2f, 0.45f, Random.Range(0.85f, 0.95f), 70f);
             }
         }

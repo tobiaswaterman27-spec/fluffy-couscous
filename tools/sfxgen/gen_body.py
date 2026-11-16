@@ -375,6 +375,114 @@ def snarl_variant(rng):
     return x
 
 
+# ------------------------------------------------------------------ more of Elliot's repertoire
+
+def pick(rng, options):
+    return list(options[int(rng.integers(len(options)))])
+
+def elliot_moan(rng):
+    """Low, slow and almost human - a sad, hollow moan drifting through the dark."""
+    return vocalise(rng, rng.uniform(2.5, 4.0), rng.uniform(85, 115), rng.uniform(130, 180),
+                    rng.choice(["fall", "arch"]), pick(rng, [["u", "o", "uh"], ["o", "u"], ["uh", "o", "u"]]),
+                    rng.uniform(0.05, 0.2), rng.uniform(0.1, 0.3), 1.6, 0.05, 0.5, room=(2.2, 0.85, 0.3))
+
+
+def elliot_croak(rng):
+    """Vocal fry slowed to a crawl: a creaking, clicking rattle like a door hinge in its throat."""
+    dur = rng.uniform(1.4, 2.6)
+    n = int(dur * SR)
+    t = t_axis(dur)
+    f0 = rng.uniform(14, 24) * (1 + 0.35 * np.sin(2 * np.pi * rng.uniform(0.3, 0.8) * t)) * np.linspace(1.15, 0.8, n)
+    v = voice(dur, f0, rng, [(0, VOWELS["a"]), (0.5, VOWELS[rng.choice(["uh", "o"])]), (1, VOWELS["throat"])], 0.25, 0.7, 0.15, 0.0, 0.05, 4)
+    v = sat(v * 1.3, 2.5) * env_adsr(n, 0.15, 0.3, 0.85, 0.4)
+    return fade(reverb(soften(v, 5500), 0.9, 0.5, 0.16, 0.25, rng), 0.01, 0.25)
+
+
+def elliot_chatter(rng):
+    """Teeth clattering together, fast and uncontrolled, with a thin whine leaking through."""
+    dur = rng.uniform(0.9, 1.8)
+    x = silence(dur + 0.4)
+    t, rate = 0.0, rng.uniform(16, 28)
+    while t < dur:
+        c = strike_object(rng, "glass", 0.25, 0.95, 1.0, 0.03, damp=0.3)
+        c = formants(c, [rng.uniform(900, 1300), rng.uniform(2200, 2900)], 5) + c * 0.2
+        place(x, c * rng.uniform(0.4, 1.0), t)
+        t += 1 / rate * rng.uniform(0.7, 1.4)
+    if rng.random() < 0.7:
+        w = vocalise(rng, dur, 500, 700, "warble", ["i", "e"], 0.2, 0.0, 2.0, 0.05, 0.1, room=(0.4, 0.3, 0.1))
+        place(x, w * 0.25, 0.05)
+    return fade(reverb(soften(x, 7000), 0.6, 0.4, 0.14, 0.3, rng), 0.001, 0.1)
+
+
+def elliot_whine(rng):
+    """A thin, high keening - like something in pain, or something pretending to be."""
+    return vocalise(rng, rng.uniform(1.5, 3.0), rng.uniform(420, 560), rng.uniform(640, 900),
+                    rng.choice(["warble", "fall", "arch"]), pick(rng, [["i", "e"], ["e", "i", "e"], ["ae", "i"]]),
+                    rng.uniform(0.05, 0.2), 0.0, 1.8, 0.04, 0.3, room=(1.8, 0.8, 0.28))
+
+
+def elliot_laugh(rng):
+    """Breathy, stuttering bursts falling in pitch - it sounds like laughing. It isn't."""
+    x = silence(2.6)
+    t0, hi = 0.0, rng.uniform(260, 380)
+    for k in range(rng.integers(4, 8)):
+        d = rng.uniform(0.09, 0.16)
+        f = hi * (0.93 ** k)
+        b = vocalise(rng, d, f * 0.9, f, "arch", pick(rng, [["a", "uh"], ["ae", "a"], ["e", "uh"]]), 0.5, 0.4, 3.0, 0.35, 0.005, room=(0.3, 0.2, 0.05))
+        place(x, b, t0)
+        t0 += d + rng.uniform(0.05, 0.12)
+    tail = rasp(0.5, rng, (30, 40), 0.5) * env_adsr(int(0.5 * SR), 0.05, 0.1, 0.7, 0.3)
+    place(x, tail, t0 + 0.05)
+    return fade(reverb(soften(x[: int((t0 + 0.6) * SR)], 7000), 1.0, 0.55, 0.18, 0.3, rng), 0.002, 0.2)
+
+
+def elliot_call(rng):
+    """Two notes, like someone calling out across the mall. From the wrong throat."""
+    x = silence(3.0)
+    a = rng.uniform(170, 230)
+    b = a * rng.choice([0.75, 0.8, 1.2])
+    n1 = vocalise(rng, rng.uniform(0.4, 0.6), a * 0.97, a, "arch", ["e", "uh"], 0.3, 0.3, 2.2, 0.06, 0.04, room=(0.2, 0.1, 0.02))
+    n2 = vocalise(rng, rng.uniform(0.7, 1.1), b * 0.85, b, "fall", ["o", "u"], 0.35, 0.35, 2.2, 0.06, 0.04, room=(0.2, 0.1, 0.02))
+    place(x, n1, 0.0)
+    place(x, n2, len(n1) / SR + rng.uniform(0.02, 0.1))
+    x = x[: int((len(n1) + len(n2)) / SR * SR) + int(0.3 * SR)]
+    return fade(reverb(soften(x, 6000), 2.6, 0.9, 0.38, 0.4, rng), 0.003, 0.3)
+
+
+def elliot_howl(rng):
+    """A roar that climbs into a scream and keeps going - the loudest thing in the building."""
+    dur = rng.uniform(2.8, 4.0)
+    x = vocalise(rng, dur, rng.uniform(90, 130), rng.uniform(520, 760), "rise", pick(rng, [["uh", "a", "ae", "a"], ["o", "a", "e"]]),
+                 rng.uniform(0.6, 0.9), 0.7, 3.6, 0.2, 0.08, room=(2.4, 0.9, 0.32))
+    return x
+
+
+def elliot_huff(rng):
+    """Short, heavy, voiced huffs through the nose and teeth - it is close, and it is searching."""
+    x = silence(2.4)
+    t0 = 0.0
+    for k in range(rng.integers(3, 6)):
+        d = rng.uniform(0.15, 0.28)
+        nn = int(d * SR)
+        a = airflow(d, rng, list(rng.choice([NOSE, MOUTH_OUT])), 3, 2200) * 0.9
+        g = voice(d, rng.uniform(55, 75), rng, [(0, VOWELS["uh"]), (1, VOWELS["o"])], 0.1, 0.5, 0.4, 0.6, 0.1, 4) * 0.6
+        place(x, (a + sat(g, 2.5)) * env_adsr(nn, 0.01, d * 0.3, 0.5, d * 0.6), t0)
+        t0 += d + rng.uniform(0.12, 0.35)
+    return fade(reverb(soften(x[: int((t0 + 0.3) * SR)], 4500), 0.6, 0.4, 0.14, 0.25, rng), 0.002, 0.15)
+
+
+def elliot_feed(rng):
+    """Wet growling with a full mouth - the sound it makes over a body."""
+    dur = rng.uniform(1.8, 3.0)
+    n = int(dur * SR)
+    g = vocalise(rng, dur, rng.uniform(70, 90), rng.uniform(110, 150), "warble", ["uh", "o", "uh"], 0.9, 0.8, 3.8, 0.3, 0.1, room=(0.5, 0.3, 0.1))
+    g = lp(g, 1600, 2)  # muffled by what's in its mouth
+    x = silence(dur + 0.5)
+    place(x, g, 0)
+    place(x, squelch(dur, rng, 0.35) * env_adsr(n, 0.1, 0.2, 0.8, 0.3), 0.05)
+    return fade(x, 0.003, 0.2)
+
+
 def render(out, rng):
     out("creature/elliot_breath_calm_0", elliot_breath(rng, False))
     out("creature/elliot_breath_hunt_0", elliot_breath(rng, True))
@@ -404,3 +512,19 @@ def render(out, rng):
     for i in range(6):
         out(f"creature/elliot_growl_{i + 4}", elliot_groan(rng))
         out(f"creature/elliot_spot_{i + 4}", shriek_variant(rng))
+    # more of its repertoire
+    for i in range(8):
+        out(f"creature/elliot_moan_{i}", elliot_moan(rng))
+        out(f"creature/elliot_croak_{i}", elliot_croak(rng))
+        out(f"creature/elliot_chatter_{i}", elliot_chatter(rng))
+        out(f"creature/elliot_whine_{i}", elliot_whine(rng))
+        out(f"creature/elliot_laugh_{i}", elliot_laugh(rng))
+        out(f"creature/elliot_call_{i}", elliot_call(rng))
+        out(f"creature/elliot_howl_{i}", elliot_howl(rng))
+        out(f"creature/elliot_huff_{i}", elliot_huff(rng))
+    for i in range(6):
+        out(f"creature/elliot_feed_{i}", elliot_feed(rng))
+        out(f"creature/elliot_roar_{i + 8}", roar_variant(rng))
+        out(f"creature/elliot_wail_{i + 8}", wail_variant(rng))
+        out(f"creature/elliot_clicks_{i + 5}", elliot_clicks(rng))
+        out(f"creature/elliot_sniff_{i + 4}", elliot_sniff(rng))

@@ -525,7 +525,7 @@ namespace AfterHours.Creature
                 // between blows: a snarl or a scream through the door
                 if (audioOut != null && audioOut.voice != null && !audioOut.voice.isPlaying && Random.value < 0.55f)
                 {
-                    AudioClip v = AfterHours.Audio.AudioLibrary.Get(Random.value < 0.6f ? "elliot_snarl" : "elliot_shriek");
+                    AudioClip v = AfterHours.Audio.AudioLibrary.Get(Random.value < 0.5f ? "elliot_snarl" : Random.value < 0.6f ? "elliot_shriek" : "elliot_howl");
                     if (v != null) audioOut.voice.PlayOneShot(v, 1f);
                 }
                 if (state == ElliotState.Hunt && bangs >= 2 && d.forceable && Random.value < 0.4f)

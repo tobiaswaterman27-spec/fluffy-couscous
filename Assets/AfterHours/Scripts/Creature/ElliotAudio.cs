@@ -84,11 +84,10 @@ namespace AfterHours.Creature
             outburstTimer -= Time.deltaTime;
             if (outburstTimer <= 0f && voice != null && !voice.isPlaying)
             {
-                float roll = Random.value;
                 string outburst;
-                if (intensity > 0.7f) { outburst = roll < 0.4f ? "elliot_shriek" : roll < 0.75f ? "elliot_roar" : "elliot_scream"; outburstTimer = Random.Range(5f, 11f); }
-                else if (intensity > 0.2f) { outburst = roll < 0.4f ? "elliot_shriek" : roll < 0.7f ? "elliot_wail" : "elliot_roar"; outburstTimer = Random.Range(12f, 26f); }
-                else { outburst = roll < 0.55f ? "elliot_wail" : roll < 0.8f ? "elliot_growl" : "elliot_roar"; outburstTimer = Random.Range(22f, 55f); }
+                if (intensity > 0.7f) { outburst = Pick("elliot_shriek", 25, "elliot_roar", 20, "elliot_scream", 20, "elliot_howl", 15, "elliot_laugh", 10, "elliot_chatter", 10); outburstTimer = Random.Range(5f, 11f); }
+                else if (intensity > 0.2f) { outburst = Pick("elliot_shriek", 18, "elliot_wail", 14, "elliot_roar", 10, "elliot_whine", 14, "elliot_call", 14, "elliot_laugh", 14, "elliot_croak", 8, "elliot_howl", 8); outburstTimer = Random.Range(12f, 26f); }
+                else { outburst = Pick("elliot_wail", 25, "elliot_moan", 22, "elliot_call", 14, "elliot_whine", 12, "elliot_growl", 10, "elliot_roar", 9, "elliot_howl", 8); outburstTimer = Random.Range(22f, 55f); }
                 AudioClip clip = AudioLibrary.Get(outburst);
                 if (clip != null)
                 {
@@ -101,12 +100,25 @@ namespace AfterHours.Creature
             voiceTimer -= Time.deltaTime;
             if (voiceTimer > 0f || voice == null || voice.isPlaying) return;
             string key;
-            float r = Random.value;
-            if (intensity > 0.7f) { key = r < 0.65f ? "elliot_growl" : "elliot_clicks"; voiceTimer = Random.Range(4f, 9f); }
-            else if (intensity > 0.2f) { key = r < 0.4f ? "elliot_sniff" : r < 0.75f ? "elliot_clicks" : "elliot_growl"; voiceTimer = Random.Range(5f, 10f); }
-            else { key = r < 0.4f ? "elliot_growl" : r < 0.8f ? "elliot_clicks" : "elliot_twitch"; voiceTimer = Random.Range(10f, 24f); }
+            if (intensity > 0.7f) { key = Pick("elliot_growl", 40, "elliot_huff", 25, "elliot_clicks", 15, "elliot_chatter", 20); voiceTimer = Random.Range(4f, 9f); }
+            else if (intensity > 0.2f) { key = Pick("elliot_sniff", 25, "elliot_huff", 20, "elliot_clicks", 20, "elliot_croak", 15, "elliot_growl", 10, "elliot_chatter", 10); voiceTimer = Random.Range(5f, 10f); }
+            else { key = Pick("elliot_growl", 20, "elliot_croak", 20, "elliot_clicks", 25, "elliot_twitch", 15, "elliot_sniff", 20); voiceTimer = Random.Range(10f, 24f); }
             AudioClip c = AudioLibrary.Get(key);
             if (c != null) { voice.PlayOneShot(c, key == "elliot_twitch" ? 0.6f : 0.85f); outburstTimer = Mathf.Max(outburstTimer, c.length + 2f); }
+        }
+
+        /// <summary>Weighted random choice from (key, weight) pairs.</summary>
+        static string Pick(params object[] kw)
+        {
+            float total = 0f;
+            for (int i = 1; i < kw.Length; i += 2) total += System.Convert.ToSingle(kw[i]);
+            float roll = Random.value * total;
+            for (int i = 0; i < kw.Length; i += 2)
+            {
+                roll -= System.Convert.ToSingle(kw[i + 1]);
+                if (roll <= 0f) return (string)kw[i];
+            }
+            return (string)kw[0];
         }
 
         /// <summary>It has seen you: a short rising screech, loud, from where it stands.</summary>
