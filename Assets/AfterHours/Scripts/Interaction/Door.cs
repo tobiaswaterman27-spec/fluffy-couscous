@@ -106,6 +106,7 @@ namespace AfterHours.Interaction
             moving = false;
             angle = 0f;
             target = 0f;
+            blows = 0;
             faultTriggered = false;
             locked = startLocked;
             lockId = startLockId;
@@ -190,9 +191,14 @@ namespace AfterHours.Interaction
         GameObject closer;
 
         /// <summary>Loud banging (Elliot hammering on a door it cannot open).</summary>
+        int blows; // how battered this door is: every blow cracks it a bit more
+
         public void Bang(GameObject actor)
         {
+            blows++;
             InteractionFx.Play(ProceduralSounds.Sfx.Bang, HandlePosition, 1f, 24f, actor, NoiseKind.Door);
+            // The wood splitting gets louder with every blow - you can hear the door giving up.
+            if (blows >= 2) AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Crack), HandlePosition, Mathf.Clamp01(0.45f + 0.15f * blows), Random.Range(0.9f, 1.05f), 60f);
             // A second, deeper layer from the same spot carries much further through the building...
             AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Bang), HandlePosition, 1f, Random.Range(0.72f, 0.8f), 80f);
             // ...and if you're right on the other side of the door, you feel it.
@@ -209,9 +215,17 @@ namespace AfterHours.Interaction
         {
             if (!forceable) { Bang(actor); return false; }
             locked = false;
-            InteractionFx.Play(ProceduralSounds.Sfx.Bang, HandlePosition, 1f, 30f, actor, NoiseKind.Door);
-            InteractionFx.Play(ProceduralSounds.Sfx.Slam, HandlePosition, 1f, 0f, actor, NoiseKind.Door);
-            return Open(fromPosition, 2.2f, actor);
+            // It gives way: the frame splits, the lock tears out, the door crashes back into the wall.
+            InteractionFx.Play(ProceduralSounds.Sfx.DoorBreak, HandlePosition, 1f, 40f, actor, NoiseKind.Door);
+            AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.DoorBreak), HandlePosition, 1f, 0.75f, 90f);
+            Camera cam = Camera.main;
+            if (cam != null && Vector3.Distance(cam.transform.position, HandlePosition) < 12f)
+            {
+                AudioPool.Play2D(AudioLibrary.Get("sub_hit"), 1f, 0.8f);
+                AudioMix.Kick(1f, 1.2f);
+            }
+            blows = 0;
+            return Open(fromPosition, 2.6f, actor);
         }
 
         void StartMove(float goal, float u)

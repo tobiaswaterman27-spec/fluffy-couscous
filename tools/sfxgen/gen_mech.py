@@ -76,27 +76,80 @@ def slam(rng):
     return fade(reverb(soften(x, 7500), 1.6, 0.8, 0.3, 0.3, rng), 0.0003, 0.3)
 
 
+def wood_crack(rng, power=1.0):
+    """Timber splitting: a hard, loud crack with body - several fibres going at once - then a short tearing groan."""
+    dur = 0.9
+    x = silence(dur)
+    # the main crack: a loud, low-mid snap
+    cd = rng.uniform(0.02, 0.04)
+    main = bp(pink(cd, rng), rng.uniform(180, 300), rng.uniform(2500, 4000)) * env_exp(int(cd * SR), cd / 3.5, 0.0001)
+    place(x, main * 4.0 * power, 0)
+    place(x, thump(rng, rng.uniform(70, 100), 0.12, 1.2 * power), 0)
+    # fibres snapping in a burst after it
+    for k in range(rng.integers(8, 20)):
+        fd = rng.uniform(0.004, 0.015)
+        f = bp(pink(fd, rng), rng.uniform(300, 800), rng.uniform(2000, 5000)) * env_exp(int(fd * SR), fd / 3, 0.0001)
+        place(x, f * rng.uniform(0.6, 1.6) * 2.5 * power, rng.uniform(0.003, 0.12) ** 1.3)
+    # the wood groaning as it gives
+    place(x, lp(creak(rng.uniform(0.25, 0.45), rng, 1.0), 2500) * 0.6 * power, rng.uniform(0.04, 0.1))
+    return x
+
+
 def bang(rng):
-    """Elliot hammering on a door: a colossal low boom, the whole leaf flexing, the frame and hinges jumping,
-    wood splitting, dust and grit raining down, the corridor ringing with it. As loud as it gets."""
+    """Elliot hammering on a door: a colossal low boom, the leaf flexing, timber cracking, the frame jumping,
+    grit raining down, the corridor ringing with it."""
     dur = 2.4
     x = silence(dur)
-    place(x, thump(rng, rng.uniform(34, 42), 0.9, 3.0), 0)            # the body blow
+    place(x, thump(rng, rng.uniform(34, 42), 0.9, 3.0), 0)
     place(x, thump(rng, rng.uniform(70, 90), 0.3, 1.6), 0.004)
-    place(x, door_body(rng, 2.6, 1.6), 0)                              # the leaf booming
-    place(x, lp(pink(0.6, rng), 400) * env_exp(int(0.6 * SR), 0.15, 0.0005) * 2.0, 0)  # wall and floor shuddering
-    if rng.random() < 0.7:  # wood splitting
-        for k in range(rng.integers(6, 16)):
-            cd = rng.uniform(0.004, 0.015)
-            c = bp(pink(cd, rng), rng.uniform(400, 900), rng.uniform(2500, 5000)) * env_exp(int(cd * SR), cd / 3, 0.0001)
-            place(x, c * rng.uniform(0.6, 1.4) * 2.5, rng.uniform(0.005, 0.08))
-    for k in range(rng.integers(5, 9)):  # hinges, latch, frame, things on the walls rattling
+    place(x, door_body(rng, 2.6, 1.6), 0)
+    place(x, lp(pink(0.6, rng), 400) * env_exp(int(0.6 * SR), 0.15, 0.0005) * 2.0, 0)
+    place(x, wood_crack(rng, rng.uniform(0.8, 1.2)), rng.uniform(0.0, 0.01))
+    for k in range(rng.integers(5, 9)):
         place(x, click(rng, (600, 4000), 0.006, rng.uniform(0.4, 1.0)), 0.01 + k * rng.uniform(0.02, 0.06))
-    for k in range(rng.integers(10, 25)):  # grit and dust falling from the frame
+    for k in range(rng.integers(10, 25)):
         gd = rng.uniform(0.003, 0.008)
         place(x, bp(pink(gd, rng), 1500, 5000) * env_exp(int(gd * SR), gd / 3, 0.0002) * rng.uniform(0.1, 0.35), rng.uniform(0.1, 0.8))
     x = sat(x * 1.6, 2.4)
     return fade(reverb(soften(x, 6500), 2.2, 1.0, 0.32, 0.22, rng), 0.0003, 0.4)
+
+
+def crack_heavy(rng):
+    """Just the splitting - layered on top of later blows as the door gets weaker."""
+    x = silence(1.2)
+    place(x, wood_crack(rng, 1.3), 0)
+    if rng.random() < 0.6:
+        place(x, wood_crack(rng, 0.8), rng.uniform(0.08, 0.2))
+    x = sat(x * 1.4, 2.0)
+    return fade(reverb(soften(x, 7000), 1.6, 0.8, 0.25, 0.25, rng), 0.0003, 0.3)
+
+
+def door_break(rng):
+    """The door gives way: one last blow, the frame splits down its length, the lock tears out of the wood,
+    the door slams back against the wall, and splinters and screws rain onto the floor."""
+    dur = 3.5
+    x = silence(dur)
+    place(x, thump(rng, 32, 1.0, 3.2), 0)
+    place(x, door_body(rng, 2.8, 1.7), 0)
+    t = 0.0
+    for k in range(rng.integers(4, 7)):              # the frame splitting, crack after crack
+        place(x, wood_crack(rng, rng.uniform(1.0, 1.5)), t)
+        t += rng.uniform(0.04, 0.12)
+    place(x, lp(creak(0.8, rng, 1.0), 2200) * 1.2, 0.08)  # long tearing groan of timber
+    for k in range(rng.integers(3, 6)):              # the lock and hinges ripping out
+        place(x, metal_clank(rng)[: int(0.5 * SR)] * rng.uniform(0.4, 0.8), 0.1 + rng.uniform(0, 0.25))
+    hit = rng.uniform(0.45, 0.6)                     # the door swinging back into the wall
+    place(x, thump(rng, 45, 0.7, 2.6), hit)
+    place(x, door_body(rng, 2.2, 1.4), hit)
+    for k in range(rng.integers(25, 45)):            # splinters, screws, plaster falling
+        dd = rng.uniform(0.004, 0.012)
+        d = bp(pink(dd, rng), 800, 5000) * env_exp(int(dd * SR), dd / 3, 0.0002)
+        place(x, d * rng.uniform(0.2, 0.8), hit + rng.uniform(0.05, 1.6) ** 1.5)
+    for k in range(rng.integers(2, 5)):
+        place(x, click(rng, (2000, 7000), 0.01, rng.uniform(0.3, 0.6)), hit + rng.uniform(0.2, 1.2))  # screws bouncing
+    place(x, lp(pink(1.2, rng), 900) * env_adsr(int(1.2 * SR), 0.05, 0.3, 0.4, 0.8) * 0.6, hit)   # dust
+    x = sat(x * 1.5, 2.4)
+    return fade(reverb(soften(x, 7000), 2.6, 1.0, 0.33, 0.25, rng), 0.0003, 0.5)
 
 
 def unlock(rng):
@@ -348,6 +401,9 @@ def render(out, rng):
         out(f"sfx/sfx_bump_{i}", bump(rng))
         out(f"sfx/sfx_thud_{i}", thud(rng))
         out(f"sfx/sfx_bang_{i}", bang(rng))
+        out(f"sfx/sfx_bang_{i + 4}", bang(rng)) if i < 2 else None
+        out(f"sfx/sfx_crack_{i}", crack_heavy(rng))
+        out(f"sfx/sfx_doorbreak_{i}", door_break(rng))
         out(f"sfx/sfx_pickup_{i}", pickup(rng))
     for i in range(3):
         out(f"sfx/sfx_shutterstop_{i}", shutter_stop(rng))
