@@ -595,6 +595,32 @@ def wear_decal():
     save_decal("wear", rgb, a)
 
 
+def missing_tile_decal():
+    """A 600 mm floor tile that's come up: bare screed with combed adhesive ridges, a few shards of tile still
+    stuck at the edges, a dark shadow line under the neighbours' edges. Mapped 1:1 onto one tile."""
+    n = 256
+    x, y = coords(n)
+    u, v = x / n, y / n
+    edge = np.minimum(np.minimum(u, 1 - u), np.minimum(v, 1 - v))
+    rng = np.random.default_rng(733)
+    screed = 0.42 + 0.06 * (fnoise(n, 2.0, 734) - 0.5)
+    # adhesive combed in overlapping arcs
+    ridges = 0.5 + 0.5 * np.sin((np.hypot(u - 0.2, v + 0.6) * 90.0) + 2.0 * fnoise(n, 2.2, 735))
+    patch = smoothstep(0.45, 0.6, fnoise(n, 2.0, 736))
+    adhesive = ridges * patch
+    g = screed * (0.85 + 0.25 * adhesive)
+    rgb = np.stack([g * 1.02, g * 0.98, g * 0.9], -1)
+    # tile shards still stuck near the edges
+    shard = (smoothstep(0.62, 0.7, fnoise(n, 1.6, 737)) * smoothstep(0.12, 0.03, edge))
+    rgb = rgb * (1 - shard[..., None]) + shard[..., None] * col([186, 178, 160])
+    # shadow under the neighbouring tiles' edges, and grit
+    rgb *= (0.55 + 0.45 * smoothstep(0.0, 0.035, edge))[..., None]
+    grit = (rng.random((n, n)) > 0.985) * 0.25
+    rgb *= (1 - grit)[..., None]
+    a = np.clip(smoothstep(-0.004, 0.006, edge + 0.004 * (fnoise(n, 1.5, 738) - 0.5)), 0, 1)
+    save_decal("missing_tile", rgb, a)
+
+
 if __name__ == "__main__":
     print("Generating textures into", os.path.abspath(OUT))
     for fn in (floor_tile, terrazzo, ceiling_tile, wall_paint, wall_block, concrete, carpark_floor, floor_vinyl,
@@ -602,5 +628,6 @@ if __name__ == "__main__":
         fn()
     decals()
     wear_decal()
+    missing_tile_decal()
     blood_decals()
     print("Done.")

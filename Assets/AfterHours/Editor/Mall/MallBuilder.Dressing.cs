@@ -18,7 +18,7 @@ namespace AfterHours.EditorTools
     {
         static System.Random dressRng;
         static Material decalStainA, decalStainB, decalScuffs, decalGum, decalCrack, decalOil, decalTyre, decalPuddle,
-            decalWater, decalGrime, decalDamp, decalTape, decalWear;
+            decalWater, decalGrime, decalDamp, decalTape, decalWear, decalMissingTile;
         static readonly List<Material> adMaterials = new List<Material>();
 
         static readonly string[] AdSlogans =
@@ -44,6 +44,7 @@ namespace AfterHours.EditorTools
             decalDamp = ArtLibrary.Decal("Damp", "damp", Color.white, 0.2f);
             decalTape = ArtLibrary.Decal("TapeMarks", "tape_marks", Color.white, 0.2f);
             decalWear = ArtLibrary.Decal("Wear", "wear", Color.white, 0.12f);
+            decalMissingTile = ArtLibrary.Decal("MissingTile", "missing_tile", Color.white, 0.08f);
 
             adMaterials.Clear();
             Color[] adColours =
@@ -450,6 +451,7 @@ namespace AfterHours.EditorTools
         {
             Transform g = Group("Floor decals", parent);
             WornPaths(g);
+            MissingTiles(g);
             foreach (MallFloor f in MallLayout.ShopFloors)
             {
                 float y = MallLayout.FloorY(f);
@@ -522,6 +524,43 @@ namespace AfterHours.EditorTools
                     // a short worn patch leading out of the doorway, angled towards the middle of the concourse
                     WearPiece(g, door, MallLayout.WingFacingYaw(unit.wing) + 90f + Rand(-20f, 20f), Rand(1.6f, 2.2f), Rand(2.2f, 3f));
                 }
+            }
+        }
+
+        /// <summary>
+        /// A few concourse tiles have come up (snapped to the real 600 mm tile grid), the broken pieces left
+        /// lying nearby, and some cracked ones next to them.
+        /// </summary>
+        static void MissingTiles(Transform g)
+        {
+            Material shardMat = Mat("Tile shard", new Color(0.77f, 0.74f, 0.66f), 0.55f);
+            foreach (MallFloor f in MallLayout.ShopFloors)
+            {
+                float y = MallLayout.FloorY(f) + 0.012f;
+                List<AreaRect> holes = MallLayout.FloorHoles(f);
+                foreach (WingId w in MallLayout.Wings)
+                    for (int k = 0; k < 4; k++)
+                    {
+                        Vector3 p = MallLayout.WingPoint(w, Rand(20f, 92f), Rand(-5.2f, 5.2f), y);
+                        p.x = Mathf.Floor(p.x / 0.6f) * 0.6f + 0.3f;
+                        p.z = Mathf.Floor(p.z / 0.6f) * 0.6f + 0.3f;
+                        if (MallZones.Classify(p + Vector3.up).kind != ZoneKind.Concourse) continue;
+                        if (holes.Exists(h => h.Expanded(0.8f).Contains(p.x, p.z))) continue;
+                        bool two = dressRng.NextDouble() < 0.3;
+                        DecalQuad(g, p, Vector3.up, 0.6f, 0.6f, 0f, decalMissingTile);
+                        if (two) DecalQuad(g, p + new Vector3(0.6f, 0f, 0f), Vector3.up, 0.6f, 0.6f, 0f, decalMissingTile);
+                        // the cracked neighbour
+                        DecalQuad(g, p + new Vector3(0f, 0f, 0.6f), Vector3.up, 0.6f, 0.6f, Rand(0f, 360f), decalCrack);
+                        // broken pieces lying about
+                        int pieces = 2 + dressRng.Next(4);
+                        for (int i = 0; i < pieces; i++)
+                        {
+                            float sx = Rand(0.05f, 0.22f), sz = Rand(0.04f, 0.16f);
+                            GameObject shard = Decor("Tile shard", g, Vector3.zero, new Vector3(sx, 0.009f, sz), shardMat);
+                            shard.transform.localPosition = p + new Vector3(Rand(-0.9f, 0.9f), 0.0045f, Rand(-0.9f, 0.9f));
+                            shard.transform.localRotation = Quaternion.Euler(Rand(-4f, 4f), Rand(0f, 360f), Rand(-4f, 4f));
+                        }
+                    }
             }
         }
 
