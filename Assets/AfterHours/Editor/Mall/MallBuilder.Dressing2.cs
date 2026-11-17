@@ -331,18 +331,19 @@ namespace AfterHours.EditorTools
 
         static void Plant(Transform g, Vector3 top, int h)
         {
-            for (int i = 0; i < 4; i++)
+            var go = new GameObject("Plant (dying)");
+            go.transform.SetParent(g, false);
+            go.transform.localPosition = top;
+            go.transform.localRotation = Quaternion.Euler(0f, h % 360, 0f);
+            go.AddComponent<MeshFilter>().sharedMesh = PlantMesh(Mathf.Abs(h) % 4);
+            var r = go.AddComponent<MeshRenderer>();
+            r.sharedMaterials = new[]
             {
-                GameObject leaf = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                leaf.name = "Plant";
-                leaf.transform.SetParent(g, false);
-                float a = (h % 360) + i * 90f;
-                leaf.transform.localPosition = top + Quaternion.Euler(0f, a, 0f) * new Vector3(0.25f, 0.25f + i * 0.12f, 0f);
-                leaf.transform.localScale = new Vector3(0.7f, 0.8f + 0.1f * i, 0.7f);
-                Object.DestroyImmediate(leaf.GetComponent<Collider>());
-                leaf.GetComponent<Renderer>().sharedMaterial = greenMat;
-                leaf.isStatic = true;
-            }
+                Mat("Plant stem", new Color(0.3f, 0.26f, 0.16f), 0.2f),
+                TwoSided(Mat("Plant leaf", new Color(0.2f, 0.3f, 0.12f), 0.35f)),
+                TwoSided(Mat("Plant leaf dead", new Color(0.42f, 0.33f, 0.18f), 0.15f)),
+            };
+            go.isStatic = true;
         }
 
         // =====================================================================
