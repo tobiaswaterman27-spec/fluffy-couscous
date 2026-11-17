@@ -66,7 +66,15 @@ def build(spec):
     hem = ankleY + {"jeans": 0.01, "trousers": 0.005, "cargo": 0.03, "joggers": 0.045, "leggings": 0.05}[bot]
     m_bot = (w("Pelvis", "Spine", "ThighL", "ThighR", "ShinL", "ShinR") > 0.5) & (y < waistY) & (y > hem) & (footw < 0.4)
     thick = {"jeans": 0.011, "trousers": 0.015, "cargo": 0.016, "joggers": 0.016, "leggings": 0.0025}[bot]
-    pb = shell(body, m_bot, lambda p: np.full(len(p), thick) + 0.006 * smoothstep(hipY + 0.05, hipY - 0.15, p[:, 1]) * (bot in ("cargo", "joggers", "trousers")),
+    # trousers lie smooth over the groin (the anatomy underneath doesn't show through the cloth)
+    groin = (np.abs(V[:, 0]) < 0.1) & (y > hipY - 0.12) & (y < hipY + 0.08) & (V[:, 2] > P("Pelvis")[2] - 0.01)
+    Vb = V.copy()
+    Ab = neighbours(F, len(V)); db = np.asarray(Ab.sum(1)).ravel()
+    for _ in range(40):
+        avg = (Ab @ Vb) / np.maximum(db, 1)[:, None]
+        Vb[groin] += 0.5 * (avg[groin] - Vb[groin])
+    body_bot = dict(V=Vb, F=F, N=vertex_normals(Vb, F))
+    pb = shell(body_bot, m_bot, lambda p: np.full(len(p), thick) + 0.006 * smoothstep(hipY + 0.05, hipY - 0.15, p[:, 1]) * (bot in ("cargo", "joggers", "trousers")),
                "bottom", hem=hem, smooth=22 if bot != "leggings" else 3, folds=trouser_folds(kneeY, 0.0025 if bot != "leggings" else 0.0008))
     if bot != "leggings":
         # straight legs: each leg falls from the thigh to the hem
@@ -95,8 +103,12 @@ def build(spec):
     if top == "coat":
         torso = torso + w("ThighL", "ThighR") * (y > hemY)
     thighw = w("ThighL", "ThighR")
+    # the crotch: the lowest point of the body between the legs
+    between = (np.abs(V[:, 0]) < 0.025) & (y < hipY + 0.05) & (y > kneeY) & (np.abs(V[:, 2] - P("Pelvis")[2]) < 0.12)
+    crotchY = float(V[between][:, 1].max()) if between.any() else hipY - 0.06
+    crotchY = float(np.percentile(V[between][:, 1], 95)) if between.sum() > 5 else crotchY
     if top != "coat":
-        hemY = max(hemY, hipY - 0.035)            # a hem goes straight across, it doesn't dip between the legs
+        hemY = max(hemY, crotchY + 0.02)           # a hem goes straight across, it never cuts up between the legs
     torso = torso + (thighw > 0.2) * (y > hemY) * (top != "coat")                    # the hips too, so the hem runs straight round
     m_top = (torso > 0.5) & (y > hemY) & (y < neckY + (0.035 if top != "tabard" else 0.02)) & (headw < 0.3) & (handw < 0.3) & (fore_t < sleeve_end)
     tthick = {"hoodie": 0.03, "cardigan": 0.016, "security": 0.02, "workjacket": 0.028, "jacket": 0.026, "tabard": 0.012, "coat": 0.032}[top]
