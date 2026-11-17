@@ -40,6 +40,8 @@ namespace AfterHours.Power
             bool on = !PowerGrid.BreakerOn(circuit);
             PowerGrid.SetBreaker(circuit, on);
             InteractionFx.Play(on ? ProceduralSounds.Sfx.BreakerOn : ProceduralSounds.Sfx.BreakerOff, transform.position, on ? 0.9f : 0.7f, on ? 14f : 8f, who.Actor, NoiseKind.Machinery);
+            // old switchgear arcs when it's thrown back on under load
+            if (on && Random.value < 0.6f) AfterHours.World.WorldFX.Sparks(transform.position + transform.forward * 0.05f, transform.forward + Vector3.down * 0.5f, 25, 0.6f);
         }
 
         void OnChanged(string id)

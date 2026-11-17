@@ -221,22 +221,25 @@ namespace AfterHours.EditorTools
                 EditorUtility.DisplayDialog("After Hours", "Open the mall first (After Hours > 3 - Build Mall).", "OK");
                 return;
             }
-            if (!EditorUtility.DisplayDialog("After Hours - Bake Lighting",
+            int choice = EditorUtility.DisplayDialogComplex("After Hours - Bake Lighting",
                     "This pre-calculates all the mall's lighting, shadows and reflections.\n\n" +
                     "It can take a LONG time (30 minutes to a few hours on a laptop). You can keep using the computer, " +
-                    "but leave Unity open. Progress shows in the bottom-right corner of Unity.\n\nStart now?",
-                    "Start baking", "Cancel"))
-            {
-                return;
-            }
+                    "but leave Unity open. Progress shows in the bottom-right corner of Unity.\n\n" +
+                    "Moving shadows: Elliot, players and props still cast real shadows from the nearby lights (looks best).\n" +
+                    "Fastest: everything baked, moving things cast no shadows from the ceiling lights (for weak PCs).",
+                    "Bake with moving shadows", "Cancel", "Bake fastest");
+            if (choice == 1) return;
+            bool mixed = choice == 0;
 
             ApplyLightingSettings(true);
+            LightingSettings lsMode = Lightmapping.lightingSettings;
+            if (lsMode != null) { lsMode.mixedBakeMode = mixed ? MixedLightingMode.Shadowmask : MixedLightingMode.IndirectOnly; EditorUtility.SetDirty(lsMode); }
             int converted = 0;
             foreach (BakeableLight b in Object.FindObjectsByType<BakeableLight>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 Light l = b.GetComponent<Light>();
                 if (l == null) continue;
-                l.lightmapBakeType = LightmapBakeType.Baked;
+                l.lightmapBakeType = mixed ? LightmapBakeType.Mixed : LightmapBakeType.Baked;
                 l.shadows = LightShadows.Soft;
                 l.shadowRadius = 0.35f;
                 converted++;

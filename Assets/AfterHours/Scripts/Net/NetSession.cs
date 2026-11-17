@@ -40,6 +40,7 @@ namespace AfterHours.Net
             public byte id;
             public string name;
             public Color colour;
+            public string character = "";
             public PlayerController pc;
             public NetProxy proxy;
             public NetPeer peer;     // host only: the connection to this player
@@ -74,10 +75,6 @@ namespace AfterHours.Net
         EscapeRouteId countdownRoute;
         readonly List<(string, string)> changes = new List<(string, string)>();
 
-        static readonly Color[] Colours =
-        {
-            new Color(0.55f, 0.6f, 0.66f), new Color(0.62f, 0.52f, 0.42f), new Color(0.45f, 0.58f, 0.5f), new Color(0.6f, 0.5f, 0.6f)
-        };
 
         public NetPlayer Local => Players.Find(p => p.local);
         public float CountdownLeft => countdownEnd < 0f ? -1f : Mathf.Max(0f, countdownEnd - Time.unscaledTime);
@@ -86,6 +83,8 @@ namespace AfterHours.Net
         void Awake()
         {
             Instance = this;
+            // in co-op you are the person the host agreed (no two players the same)
+            PlayerBody.LocalCharacterOverride = () => Active && Local != null && !string.IsNullOrEmpty(Local.character) ? Local.character : null;
             Discovery = new LanDiscovery();
             Voice = new NetVoice();
             LocalName = "Player " + UnityEngine.Random.Range(100, 999);
@@ -109,7 +108,7 @@ namespace AfterHours.Net
             catch (Exception e) { Status = "Couldn't host: " + e.Message; transport = null; return; }
             Hook();
             Players.Clear();
-            Players.Add(new NetPlayer { id = 0, name = LocalName, colour = Colours[0], local = true });
+            Players.Add(new NetPlayer { id = 0, name = LocalName, colour = Color.gray, character = AfterHours.Settings.SettingsService.CurrentOrDefault.character, local = true });
             Discovery.StartAdvertising(LocalName, NetTransport.DefaultPort);
             Status = "Hosting. Waiting for players...";
         }
@@ -180,7 +179,9 @@ namespace AfterHours.Net
         {
             if (transport.IsHost)
             {
-                var np = new NetPlayer { id = peer.playerId, name = peer.name, colour = Colours[peer.playerId % Colours.Length], peer = peer };
+                var np = new NetPlayer { id = peer.playerId, name = peer.name, peer = peer };
+                np.colour = Color.gray;
+                np.character = FreeCharacter(PlayerCharacters.Default, np.id);
                 Players.Add(np);
                 // Tell the newcomer who's here, and everyone else about the newcomer.
                 w.Begin(MsgType.Welcome);
@@ -192,13 +193,16 @@ namespace AfterHours.Net
                 w.Byte(np.id);
                 w.Str(np.name);
                 transport.BroadcastReliable(w.ToArray(), peer);
+                // everyone's colours to the newcomer, and the newcomer's (for now) to everyone
+                foreach (NetPlayer p in Players) { w.Begin(MsgType.PlayerCharacter); w.Byte(p.id); w.Str(p.character); transport.SendReliable(peer, w.ToArray()); }
+                w.Begin(MsgType.PlayerCharacter); w.Byte(np.id); w.Str(np.character); transport.BroadcastReliable(w.ToArray(), peer);
                 Discovery.HostPlayers = Players.Count;
                 Status = $"Hosting. {Players.Count} player(s).";
                 if (phase == Phase.Playing)
                 {
                     // Joining a game in progress: start them off, show them to everyone, send the whole world.
                     PlayerController local = FindLocalPlayer();
-                    if (local != null) { np.proxy = NetProxy.Create(local, np.id, np.name, np.colour); np.pc = np.proxy.controller; }
+                    if (local != null) { np.proxy = NetProxy.Create(local, np.id, np.name, np.colour); np.pc = np.proxy.controller; SetCharacter(np, np.character); }
                     transport.SendReliable(peer, StartMessage());
                     world.ResendAll();
                 }
@@ -270,7 +274,7 @@ namespace AfterHours.Net
                 NetPlayer p = Players[i];
                 if (p.local) { index = i; continue; }
                 if (local == null) continue;
-                p.proxy = NetProxy.Create(local, p.id, p.name, p.colour);
+                p.proxy = NetProxy.Create(local, p.id, p.name, p.colour); SetCharacter(p, p.character);
                 p.pc = p.proxy.controller;
             }
             world.Build();
@@ -486,6 +490,27 @@ namespace AfterHours.Net
             }
         }
 
+        /// <summary>The wanted person, or the next one along that nobody else is playing.</summary>
+        string FreeCharacter(string want, byte forId)
+        {
+            PlayerCharacters.Entry[] all = PlayerCharacters.All;
+            if (all.Length == 0) return want;
+            int start = PlayerCharacters.IndexOf(want);
+            for (int k = 0; k < all.Length; k++)
+            {
+                string id = all[(start + k) % all.Length].id;
+                if (!Players.Exists(p => p.id != forId && p.character == id)) return id;
+            }
+            return want;
+        }
+
+        void SetCharacter(NetPlayer p, string id)
+        {
+            p.character = id;
+            PlayerBody b = p.proxy != null ? p.proxy.controller.GetComponent<PlayerBody>() : null;
+            if (b != null) b.characterId = id;
+        }
+
         void SendAll(NetWriter msg, bool reliable)
         {
             if (transport == null) return;
@@ -530,9 +555,12 @@ namespace AfterHours.Net
                     {
                         byte id = r.Byte();
                         string name = r.Str();
-                        Players.Add(new NetPlayer { id = id, name = name, colour = Colours[id % Colours.Length], local = id == me });
+                        Players.Add(new NetPlayer { id = id, name = name, colour = Color.gray, local = id == me });
                     }
-                    if (Players.Find(p => p.id == me) == null) Players.Add(new NetPlayer { id = me, name = LocalName, colour = Colours[me % Colours.Length], local = true });
+                    if (Players.Find(p => p.id == me) == null) Players.Add(new NetPlayer { id = me, name = LocalName, colour = Color.gray, local = true });
+                    // ask to be the person picked in Settings (the host picks someone else if they're taken)
+                    w.Begin(MsgType.PlayerCharacter); w.Byte(me); w.Str(AfterHours.Settings.SettingsService.CurrentOrDefault.character);
+                    transport.BroadcastReliable(w.ToArray());
                     break;
                 }
                 case MsgType.PlayerJoined:
@@ -541,10 +569,29 @@ namespace AfterHours.Net
                     string name = r.Str();
                     if (ById(id) == null)
                     {
-                        var np = new NetPlayer { id = id, name = name, colour = Colours[id % Colours.Length] };
+                        var np = new NetPlayer { id = id, name = name, colour = Color.gray };
                         Players.Add(np);
                         PlayerController local = FindLocalPlayer();
-                        if (phase == Phase.Playing && local != null) { np.proxy = NetProxy.Create(local, id, name, np.colour); np.pc = np.proxy.controller; }
+                        if (phase == Phase.Playing && local != null) { np.proxy = NetProxy.Create(local, id, name, np.colour); np.pc = np.proxy.controller; SetCharacter(np, np.character); }
+                    }
+                    break;
+                }
+                case MsgType.PlayerCharacter:
+                {
+                    byte id = r.Byte();
+                    string want = r.Str();
+                    if (host)
+                    {
+                        NetPlayer p = from != null ? ById(from.playerId) : null;
+                        if (p == null) break;
+                        SetCharacter(p, FreeCharacter(want, p.id));
+                        w.Begin(MsgType.PlayerCharacter); w.Byte(p.id); w.Str(p.character);
+                        transport.BroadcastReliable(w.ToArray());
+                    }
+                    else
+                    {
+                        NetPlayer p = ById(id);
+                        if (p != null) SetCharacter(p, want);
                     }
                     break;
                 }

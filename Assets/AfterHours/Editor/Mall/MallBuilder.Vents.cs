@@ -127,10 +127,43 @@ namespace AfterHours.EditorTools
                             InteractiveFactory.Vent(g, centre, outward, new Vector2(0.9f, H), st, grille);
                             // Dust streaks under the grille where air used to blow out.
                             DecalQuad(g, MallLayout.WingPoint(w, u, side * (MallLayout.CorridorOuter - 0.35f), y + 0.004f), Vector3.up, 1.1f, 0.6f, 0f, decalGrime);
+                            if (f == MallFloor.Ground && hh % 3 == 0) VentSigns(g, centre, outward, MallLayout.WingForward(w), H, y, hh);
                         }
                     }
                 }
             }
+        }
+
+        static Material dragSmear, scratchMat;
+
+        /// <summary>
+        /// Round the vents it uses: claw marks gouged into the wall either side of the opening, and an old dried
+        /// smear on the floor where something was dragged in.
+        /// </summary>
+        static void VentSigns(Transform g, Vector3 centre, Vector3 outward, Vector3 along, float H, float floorY, int h)
+        {
+            if (dragSmear == null) dragSmear = ArtLibrary.Decal("BloodSmear", "blood_smear", new Color(0.6f, 0.55f, 0.5f), 0.35f);
+            if (scratchMat == null) scratchMat = EditorBuild.Material(EditorBuild.Root + "/Materials/Art", "ClawScratch", new Color(0.09f, 0.085f, 0.08f), 0.1f);
+            var rng = new System.Random(h);
+            float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
+            Quaternion face = Quaternion.LookRotation(outward);
+            for (int set = 0; set < 2 + h % 2; set++)
+            {
+                float sideSign = set % 2 == 0 ? -1f : 1f;
+                Vector3 start = centre + along * (sideSign * R(0.5f, 0.75f)) + Vector3.up * R(-0.1f, H * 0.4f) + outward * 0.012f;
+                float ang = R(-35f, 35f) + (sideSign > 0 ? 180f : 0f);
+                float len = R(0.25f, 0.55f);
+                for (int k = 0; k < 4; k++)
+                {
+                    Vector3 off = face * (Quaternion.Euler(0f, 0f, ang) * new Vector3(0f, k * 0.03f, 0f));
+                    Quaternion rot = face * Quaternion.Euler(0f, 0f, ang);
+                    Detail("Claw marks", g, start + off, new Vector3(len * R(0.7f, 1f), 0.006f, 0.004f), scratchMat, rot);
+                }
+            }
+            // dragged in: a long, faded smear leading to the opening
+            Vector3 floorAt = new Vector3(centre.x, floorY + 0.006f, centre.z) + outward * 0.9f;
+            float yaw = Mathf.Atan2(outward.x, outward.z) * Mathf.Rad2Deg;
+            DecalQuad(g, floorAt, Vector3.up, 0.5f, 1.6f, yaw, dragSmear);
         }
     }
 }

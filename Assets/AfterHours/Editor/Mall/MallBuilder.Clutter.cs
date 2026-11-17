@@ -166,6 +166,14 @@ namespace AfterHours.EditorTools
                     if (Free(c, 0.3f)) WetFloorSign(g, c, R(0f, 360f));
                 }
 
+                // Things dropped by people who left in a hurry.
+                for (int k = 0; k < 6; k++)
+                {
+                    WingId w = MallLayout.Wings[rng.Next(4)];
+                    Vector3 c = MallLayout.WingPoint(w, R(20f, 95f), R(-4f, 4f), y);
+                    if (Free(c, 0.6f)) Abandoned(g, c, rng);
+                }
+
                 // Trolleys left where they rolled to a stop.
                 for (int k = 0; k < 4; k++)
                 {
@@ -280,6 +288,37 @@ namespace AfterHours.EditorTools
                 // One print per quad (the texture holds a pair, so use a narrow crop by scaling).
                 DecalQuad(g, p, Vector3.up, 0.18f, 0.42f, -yaw + (float)(rng.NextDouble() - 0.5) * 10f, decalPrintsBare);
             }
+        }
+
+        /// <summary>A dropped shopping bag with its things spilled out, a lone shoe, a phone lying face down.</summary>
+        static void Abandoned(Transform g, Vector3 floor, System.Random rng)
+        {
+            float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
+            Material bagMat = EditorBuild.Material(EditorBuild.Root + "/Materials/Art", rng.NextDouble() < 0.5 ? "Bag_Paper" : "Bag_Plastic",
+                rng.NextDouble() < 0.5 ? new Color(0.55f, 0.42f, 0.28f) : new Color(0.75f, 0.74f, 0.72f), 0.2f);
+            Material dark = EditorBuild.Material(EditorBuild.Root + "/Materials/Art", "Dropped_Dark", new Color(0.06f, 0.06f, 0.07f), 0.55f);
+            Material item = EditorBuild.Material(EditorBuild.Root + "/Materials/Art", "Dropped_Item", new Color(0.35f, 0.3f, 0.32f), 0.3f);
+            float yaw = R(0f, 360f);
+            // the bag, on its side
+            Prop(g, "Dropped shopping bag", floor, new Vector3(0.36f, 0.16f, 0.4f), 0.4f, bagMat, SurfaceType.Wood);
+            int n = 2 + rng.Next(4);
+            for (int i = 0; i < n; i++)
+            {
+                Vector3 p = floor + Quaternion.Euler(0f, yaw + R(-50f, 50f), 0f) * Vector3.forward * R(0.3f, 1.1f);
+                float sz = R(0.06f, 0.16f);
+                Prop(g, "Spilled shopping", p, new Vector3(sz, sz * R(0.4f, 0.9f), sz * R(0.6f, 1.4f)), 0.15f + sz * 2f, item, SurfaceType.Wood);
+            }
+            if (rng.NextDouble() < 0.5)
+            {
+                Vector3 p = floor + Quaternion.Euler(0f, R(0f, 360f), 0f) * Vector3.forward * R(1.2f, 2.5f);
+                Prop(g, "Lost shoe", p, new Vector3(0.1f, 0.09f, 0.27f), 0.4f, dark, SurfaceType.Carpet);
+            }
+            if (rng.NextDouble() < 0.4)
+            {
+                Vector3 p = floor + Quaternion.Euler(0f, R(0f, 360f), 0f) * Vector3.forward * R(0.5f, 1.6f);
+                Detail("Phone (face down, cracked)", g, p + Vector3.up * 0.005f, new Vector3(0.075f, 0.009f, 0.155f), dark, Quaternion.Euler(0f, R(0f, 360f), 0f));
+            }
+            if (rng.NextDouble() < 0.5) Cup(g, floor + Quaternion.Euler(0f, R(0f, 360f), 0f) * Vector3.forward * R(0.4f, 1.4f), rng);
         }
 
         static void Cup(Transform g, Vector3 floor, System.Random rng)

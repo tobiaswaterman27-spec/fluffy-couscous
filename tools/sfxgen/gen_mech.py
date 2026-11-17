@@ -387,6 +387,28 @@ def scrape(kind, rng):
     return loopify(soften(x, 6000).astype(np.float32), 0.3)
 
 
+def spark(rng):
+    """An electrical arc: a cluster of sharp snaps over a mains buzz that flares and dies."""
+    dur = rng.uniform(0.35, 0.9)
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    x = np.zeros(n, np.float32)
+    k = 0.0
+    while k < dur * 0.75:
+        i = int(k * SR)
+        L = int(rng.uniform(0.0008, 0.004) * SR)
+        if i + L < n:
+            burst = rng.normal(size=L).astype(np.float32) * np.exp(-np.arange(L) / (L * 0.25))
+            x[i:i + L] += burst * rng.uniform(0.4, 1.0)
+        k += rng.exponential(0.018)
+    x = hp(x, 900)
+    hum = np.sign(np.sin(2 * np.pi * 100 * t)) * 0.08 * np.exp(-t / (dur * 0.5))
+    fizz = bp(rng.normal(size=n).astype(np.float32), 2500, 7000) * 0.15 * np.exp(-t / 0.15)
+    y = x + lp(hum.astype(np.float32), 1500) + fizz
+    y /= np.abs(y).max() + 1e-9
+    return fade(reverb(y * 0.9, 0.25, 0.25, 0.06, 0.12, rng), 0.0005, 0.05)
+
+
 def render(out, rng):
     for i in range(4):
         out(f"sfx/sfx_latch_{i}", latch(rng))
@@ -419,3 +441,6 @@ def render(out, rng):
     out("sfx/sfx_phonering_0", phone_ring(rng))
     for k in ("metal", "concrete", "wood"):
         out(f"loops/scrape_{k}_0", scrape(k, rng))
+    srng = np.random.default_rng(4040)
+    for i in range(5):
+        out(f"sfx/sfx_spark_{i}", spark(srng))

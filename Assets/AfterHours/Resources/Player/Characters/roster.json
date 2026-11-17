@@ -1,0 +1,62 @@
+[
+ {
+  "id": "tom",
+  "name": "Tom Reid",
+  "role": "Hid in the toilets for a dare",
+  "bio": "Seventeen. His mates bet him he couldn't stay in the mall overnight. They went home."
+ },
+ {
+  "id": "marcus",
+  "name": "Marcus Hale",
+  "role": "Night security guard",
+  "bio": "Twelve years on nights. He has never once heard the building make that sound before."
+ },
+ {
+  "id": "priya",
+  "name": "Priya Sharma",
+  "role": "Phone shop assistant",
+  "bio": "Stayed late to finish a stock count. The shutters came down with her still inside."
+ },
+ {
+  "id": "ruth",
+  "name": "Ruth Okafor",
+  "role": "Night cleaner",
+  "bio": "Has cleaned these floors for twenty years. Knows every corridor, every cupboard, every vent."
+ },
+ {
+  "id": "dan",
+  "name": "Dan Kowalski",
+  "role": "Maintenance electrician",
+  "bio": "Called in to fix the lifts. Knows the breakers better than anyone, and that is about to matter."
+ },
+ {
+  "id": "leah",
+  "name": "Leah Brennan",
+  "role": "Urban explorer",
+  "bio": "Climbed in through the car park to film the empty mall. Her camera battery died an hour ago."
+ },
+ {
+  "id": "kenji",
+  "name": "Kenji Mori",
+  "role": "Delivery driver",
+  "bio": "Last drop of the night was to the loading bay. The bay door shut behind him."
+ },
+ {
+  "id": "sofia",
+  "name": "Sofia Mar\u00edn",
+  "role": "Caf\u00e9 barista",
+  "bio": "Locking up the caf\u00e9 at the far end of the food court when the lights went out."
+ },
+ {
+  "id": "arthur",
+  "name": "Arthur Pike",
+  "role": "Retired night watchman",
+  "bio": "Worked here when it opened in 1989. Came back for one last look before it's demolished."
+ },
+ {
+  "id": "jade",
+  "name": "Jade Thompson",
+  "role": "Student",
+  "bio": "Fell asleep in the cinema during the late showing. Woke up to the exit doors chained."
+ }
+]

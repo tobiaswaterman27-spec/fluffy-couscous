@@ -763,6 +763,29 @@ namespace AfterHours.Flow
             GUI.Label(new Rect(110f, 170f, 900f, 130f), "AFTER HOURS", titleStyle);
             GUI.color = Color.white;
 
+            // who you are: click to change
+            {
+                var settings = AfterHours.Settings.SettingsService.CurrentOrDefault;
+                AfterHours.Player.PlayerCharacters.Entry me = AfterHours.Player.PlayerCharacters.Get(settings.character);
+                Rect cr = new Rect(120f, 300f, 600f, 80f);
+                bool overC = cr.Contains(Event.current.mousePosition);
+                GUI.color = overC ? Color.white : new Color(0.75f, 0.73f, 0.7f);
+                GUI.Label(new Rect(122f, 300f, 600f, 40f), "You are " + (me != null ? me.name : settings.character) + "   \u25B8", smallStyle);
+                if (me != null) GUI.Label(new Rect(122f, 330f, 620f, 40f), me.role, smallStyle);
+                GUI.color = Color.white;
+                if (overC && Event.current.type == EventType.MouseDown && Event.current.button == 0)
+                {
+                    Event.current.Use();
+                    var all = AfterHours.Player.PlayerCharacters.All;
+                    if (all.Length > 0)
+                    {
+                        AfterHours.Settings.SettingsService service = AfterHours.Settings.SettingsService.Instance;
+                        string next = all[(AfterHours.Player.PlayerCharacters.IndexOf(settings.character) + 1) % all.Length].id;
+                        if (service != null) { service.Current.character = next; service.Save(); }
+                    }
+                }
+            }
+
             string[] items = { "New game", "Continue", "Settings", "Host LAN game", "Join LAN game", "Quit" };
             bool[] enabled = { true, hasSave, true, true, true, true };
             Vector2 mouse = Event.current.mousePosition;

@@ -197,6 +197,8 @@ namespace AfterHours.Interaction
         {
             blows++;
             InteractionFx.Play(ProceduralSounds.Sfx.Bang, HandlePosition, 1f, 24f, actor, NoiseKind.Door);
+            // the frame shakes: dust and grit sift down from the top of it, more with every blow
+            WorldFX.Dust(HandlePosition + Vector3.up * 1.0f, Vector3.down, 6 + blows * 4);
             // The wood splitting gets louder with every blow - you can hear the door giving up.
             if (blows >= 2) AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Crack), HandlePosition, Mathf.Clamp01(0.45f + 0.15f * blows), Random.Range(0.9f, 1.05f), 60f);
             // A second, deeper layer from the same spot carries much further through the building...
@@ -218,6 +220,9 @@ namespace AfterHours.Interaction
             // It gives way: the frame splits, the lock tears out, the door crashes back into the wall.
             InteractionFx.Play(ProceduralSounds.Sfx.DoorBreak, HandlePosition, 1f, 40f, actor, NoiseKind.Door);
             AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.DoorBreak), HandlePosition, 1f, 0.75f, 90f);
+            // splinters burst out of the frame where the lock was, away from him
+            Vector3 away = HandlePosition - fromPosition; away.y = 0f;
+            WorldFX.Splinters(HandlePosition, away.normalized + Vector3.up * 0.3f, 70);
             Camera cam = Camera.main;
             if (cam != null && Vector3.Distance(cam.transform.position, HandlePosition) < 12f)
             {

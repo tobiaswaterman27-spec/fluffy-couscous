@@ -37,8 +37,9 @@ def tangents(V, N, UV, F):
     for k in range(3):
         np.add.at(t1, F[:, k], sdir)
         np.add.at(t2, F[:, k], tdir)
+    t1 = np.nan_to_num(t1, nan=0.0, posinf=0.0, neginf=0.0); t2 = np.nan_to_num(t2, nan=0.0, posinf=0.0, neginf=0.0)
     t = t1 - N * np.sum(N * t1, 1, keepdims=True)
-    bad = np.linalg.norm(t, axis=1) < 1e-9
+    bad = ~np.isfinite(t).all(1) | (np.linalg.norm(t, axis=1) < 1e-9)
     t[bad] = np.cross(N[bad], [0.31, 0.9, 0.3])
     t /= np.linalg.norm(t, axis=1, keepdims=True)
     w = np.where(np.sum(np.cross(N, t) * t2, 1) < 0, -1.0, 1.0)

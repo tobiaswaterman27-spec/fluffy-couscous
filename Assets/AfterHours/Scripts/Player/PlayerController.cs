@@ -77,6 +77,12 @@ namespace AfterHours.Player
 
         void Start()
         {
+            // the real body (older scenes were built with only the debug capsule)
+            if (GetComponent<PlayerBody>() == null) gameObject.AddComponent<PlayerBody>().controller = this;
+            if (GetComponent<PlayerBodyAnimator>() == null) gameObject.AddComponent<PlayerBodyAnimator>().controller = this;
+            // shadows from the nearest mall lights follow your camera
+            if (isLocallyControlled && look != null && look.playerCamera != null && look.playerCamera.GetComponent<AfterHours.Rendering.ShadowBudget>() == null)
+                look.playerCamera.gameObject.AddComponent<AfterHours.Rendering.ShadowBudget>();
             if (isLocallyControlled && GetComponent<AfterHours.Audio.PlayerAudio>() == null)
             {
                 // Your breathing and heart, the music, and the building's random noises follow you.

@@ -15,7 +15,8 @@ namespace AfterHours.EditorTools
 
         void OnPreprocessTexture()
         {
-            if (!assetPath.Replace('\\', '/').StartsWith(Folder)) return;
+            string ap = assetPath.Replace('\\', '/');
+            if (!ap.StartsWith(Folder) && !ap.StartsWith(EditorBuild.Root + "/Resources/Player/")) return;
             Apply((TextureImporter)assetImporter, assetPath);
         }
 
@@ -28,7 +29,7 @@ namespace AfterHours.EditorTools
             TextureImporterType type = file.EndsWith("_N") ? TextureImporterType.NormalMap : TextureImporterType.Default;
             bool srgb = !file.EndsWith("_N") && !file.EndsWith("_M");
             bool decal = file.StartsWith("decal_");
-            bool creature = file.StartsWith("elliot_");   // Elliot's baked skin: a UV atlas, full resolution
+            bool creature = file.StartsWith("elliot_") || file.StartsWith("player_");   // baked character textures: UV atlases, full resolution
             TextureWrapMode wrap = decal || creature ? TextureWrapMode.Clamp : TextureWrapMode.Repeat;
 
             if (ti.textureType != type) { ti.textureType = type; changed = true; }

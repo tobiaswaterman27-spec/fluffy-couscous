@@ -73,6 +73,12 @@ namespace AfterHours.Net
                     r.sharedMaterial = mat;
                 }
             }
+            // with the real body, the debug capsule stays hidden; the body wears their colour
+            PlayerBody real = go.GetComponent<PlayerBody>();
+            if (real != null)
+            {
+                if (body != null) foreach (Renderer r in body.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+            }
             NetProxy proxy = go.AddComponent<NetProxy>();
             proxy.playerId = id;
             proxy.controller = pc;
@@ -83,6 +89,7 @@ namespace AfterHours.Net
             headGo.transform.SetParent(go.transform, false);
             headGo.transform.localScale = Vector3.one * 0.24f;
             if (mat != null) headGo.GetComponent<Renderer>().sharedMaterial = mat;
+            if (real != null) headGo.GetComponent<Renderer>().enabled = false;   // only a voice source now
             proxy.head = headGo.transform;
             proxy.voice = headGo.AddComponent<VoicePlayer>();
             // Something solid to bump into (a little slimmer than a real body, so squeezing past is possible).

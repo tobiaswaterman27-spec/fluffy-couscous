@@ -244,6 +244,7 @@ namespace AfterHours.EditorTools
                 fl.buzz = buzz;
                 fl.pattern = (FlickerPattern)(h % 3);
                 fl.seed = h;
+                if (h % 2 == 0) { var w = go.AddComponent<AfterHours.World.SparkingWire>(); w.seed = h; w.minInterval = 10f; w.maxInterval = 40f; }   // a burnt-out ballast
                 return;
             }
             Detail("Light panel", g, centre, size, trofferMat);
@@ -260,6 +261,14 @@ namespace AfterHours.EditorTools
                 Vector3 top = tileCentre + new Vector3(Rand(-0.22f, 0.22f), 0.05f, Rand(-0.22f, 0.22f));
                 Vector3 bottom = top + new Vector3(Rand(-0.25f, 0.25f), -Rand(0.4f, 1.3f), Rand(-0.25f, 0.25f));
                 Cyl("Hanging cable", g, top, bottom, Rand(0.008f, 0.016f), blackMat);
+                // some of them are still live
+                if (c == 0 && h % 4 == 0)
+                {
+                    var live = new GameObject("Live wire (sparks)");
+                    live.transform.SetParent(g, false);
+                    live.transform.localPosition = bottom;
+                    live.AddComponent<AfterHours.World.SparkingWire>().seed = h;
+                }
             }
             if (h % 3 == 0) Detail("Insulation scrap", g, tileCentre + new Vector3(0.1f, -0.12f, -0.05f), new Vector3(0.3f, 0.2f, 0.06f), yellowPaint, Quaternion.Euler(Rand(-30f, 30f), Rand(0f, 90f), Rand(60f, 100f)));
             if (h % 2 == 0)
@@ -519,6 +528,17 @@ namespace AfterHours.EditorTools
                         Detail("Exit sign", g, c, new Vector3(0.42f, 0.16f, 0.05f), exitSignMat, rot);
                         float yaw = Mathf.Atan2(-normal.x * side, -normal.z * side) * Mathf.Rad2Deg;
                         EditorBuild.Label(g, "EXIT", c + normal * (side * 0.03f), yaw, 0.03f);
+                        if (side == 1 || slot.kind == DoorKind.Fire)
+                        {
+                            // its own battery: a faint green glow on the frame and the floor, power or not
+                            var glow = new GameObject("Exit sign glow");
+                            glow.transform.SetParent(g, false);
+                            glow.transform.localPosition = c + normal * (side * 0.25f) + Vector3.down * 0.1f;
+                            Light gl = glow.AddComponent<Light>();
+                            gl.type = LightType.Point; gl.range = 2.8f; gl.intensity = 0.55f; gl.color = new Color(0.35f, 1f, 0.5f);
+                            gl.shadows = LightShadows.None;
+                            glow.AddComponent<BakeableLight>();
+                        }
                     }
                 }
             }

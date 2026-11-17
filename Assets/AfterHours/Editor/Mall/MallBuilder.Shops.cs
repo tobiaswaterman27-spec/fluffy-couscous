@@ -111,6 +111,48 @@ namespace AfterHours.EditorTools
             }
         }
 
+        static readonly string[] PosterText =
+        {
+            "CLOSING\nDOWN", "EVERYTHING\nMUST GO", "FINAL\nDAYS", "SALE\n70% OFF", "TO LET", "THANK YOU\nFOR 34 YEARS", "ALL STOCK\nREDUCED",
+            "STAFF\nWANTED", "CLOSED\nUNTIL FURTHER\nNOTICE", "LAST\nWEEK", "NO CASH\nKEPT ON\nPREMISES", "SALE"
+        };
+
+        /// <summary>
+        /// Paper posters taped to the inside of the shop window (or the shutter): closing-down notices, sales, "to let",
+        /// some faded by years of light, some peeling at a corner, a few on fluorescent card.
+        /// </summary>
+        static void ShopPosters(Transform parent, MallUnit u, WingId w, int side, float y, Vector3 intoShop)
+        {
+            int h = Mathf.Abs(MallLayout.Hash((int)(u.u0 * 10f), (int)(u.u1 * 10f), side, 977));
+            int count = h % 3;
+            if (count == 0) return;
+            float yaw = Mathf.Atan2(-intoShop.x, -intoShop.z) * Mathf.Rad2Deg;   // reads from the concourse
+            for (int i = 0; i < count; i++)
+            {
+                int k = Mathf.Abs(MallLayout.Hash(h, i, 3, 31));
+                float along = Mathf.Lerp(u.u0 + 0.9f, u.u1 - 0.9f, ((k % 1000) / 1000f));
+                float py = y + 1.25f + (k / 1000 % 40) / 100f;
+                Vector3 pos = MallLayout.WingPoint(w, along, side * (MallLayout.ConcourseHalf + 0.03f), py);
+                bool fluoro = k % 5 == 0, faded = k % 3 == 0;
+                Color paper = fluoro ? new Color(0.95f, 0.85f, 0.25f) : faded ? new Color(0.86f, 0.82f, 0.7f) : new Color(0.92f, 0.91f, 0.88f);
+                Material pm = EditorBuild.Material(EditorBuild.Root + "/Materials/Posters", fluoro ? "Poster_Fluoro" : faded ? "Poster_Faded" : "Poster_White", paper, 0.1f);
+                float roll = ((k / 7 % 9) - 4) * 1.5f;
+                Quaternion rot = Quaternion.Euler(0f, yaw, roll);
+                Vector3 size = new Vector3(0.6f, 0.82f, 0.003f);
+                Detail("Poster", parent, pos, size, pm, rot);
+                if (k % 4 == 0)
+                {
+                    // a corner peeling away from the glass
+                    Vector3 corner = pos + rot * new Vector3(0.24f, 0.35f, 0f);
+                    Detail("Poster corner (peeling)", parent, corner - intoShop * 0.02f, new Vector3(0.12f, 0.12f, 0.002f), pm, rot * Quaternion.Euler(-35f, 25f, 0f));
+                }
+                TextMesh t = EditorBuild.Label(parent, PosterText[k % PosterText.Length], pos - intoShop * 0.004f, yaw, 0.028f);
+                t.transform.rotation = rot;
+                t.color = k % 2 == 0 ? new Color(0.62f, 0.06f, 0.05f) : new Color(0.08f, 0.08f, 0.09f);
+                if (faded) t.color = Color.Lerp(t.color, paper, 0.45f);
+            }
+        }
+
         static void CorridorDoorSign(Transform parent, WingId w, int side, float y, float u0, float u1, string label, DoorKind kind, string lockId)
         {
             float mid = (u0 + u1) * 0.5f;
@@ -136,6 +178,7 @@ namespace AfterHours.EditorTools
             Sign(parent, u.name.ToUpperInvariant(), signCentre, intoShop, (u.u1 - u.u0) * 0.75f, Mathf.Clamp((u.u1 - u.u0) * 0.006f, 0.035f, 0.06f));
             EditorBuild.Label(parent, u.code, MallLayout.WingPoint(w, u.u0 + 0.6f, side * (MallLayout.ConcourseHalf - 0.15f), y + 2.9f),
                 Mathf.Atan2(intoShop.x, intoShop.z) * Mathf.Rad2Deg, 0.018f);
+            ShopPosters(parent, u, w, side, y, intoShop);
 
             if (!u.HasInterior) return;
 

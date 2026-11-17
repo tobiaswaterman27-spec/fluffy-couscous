@@ -60,7 +60,7 @@ namespace AfterHours.Net
 
     public enum MsgType : byte
     {
-        Hello = 1, Welcome = 2, PlayerJoined = 3, PlayerLeft = 4, StartGame = 5, HostLeaving = 6, Ping = 7,
+        Hello = 1, Welcome = 2, PlayerJoined = 3, PlayerLeft = 4, StartGame = 5, HostLeaving = 6, Ping = 7, PlayerCharacter = 8,
         PlayerState = 10, Voice = 11, Noise = 12,
         Creatures = 20, WorldDelta = 21, Sfx = 22, Interact = 23, HoldTick = 24, CatchStart = 25,
         EscapeCountdown = 26, EscapeNow = 27, Grip = 28, ItemDrop = 29, Respawned = 30, Stats = 31

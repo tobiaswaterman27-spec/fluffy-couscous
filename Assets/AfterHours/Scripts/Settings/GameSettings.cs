@@ -26,6 +26,7 @@ namespace AfterHours.Settings
         [Header("Content")]
         [Tooltip("Blood and gore in the death sequence.")]
         public bool gore = true;
+        public string character = "tom";        // which person you play as (PlayerCharacters)
 
         [Header("Audio")]
         public float masterVolume = 1f;
@@ -44,6 +45,7 @@ namespace AfterHours.Settings
             masterVolume = Mathf.Clamp01(masterVolume);
             musicVolume = Mathf.Clamp01(musicVolume);
             targetFrameRate = Mathf.Clamp(targetFrameRate, 0, 360);
+            if (string.IsNullOrEmpty(character)) character = "tom";
             // Future versions migrate older files here before stamping the new version.
             version = CurrentVersion;
         }

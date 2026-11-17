@@ -10,8 +10,17 @@ namespace AfterHours.EditorTools
     /// ambient occlusion (the soft darkening where things meet - corners, under shelves, around feet).
     /// Done through serialized properties and reflection so it keeps working across URP versions.
     /// </summary>
+    [InitializeOnLoad]
     public static class RenderQuality
     {
+        // once per editor session: keep the renderer settings current without needing a mall rebuild
+        static RenderQuality()
+        {
+            if (SessionState.GetBool("AfterHours.RenderQuality", false)) return;
+            SessionState.SetBool("AfterHours.RenderQuality", true);
+            EditorApplication.delayCall += () => { try { Apply(); } catch (Exception e) { Debug.LogWarning("[AfterHours] Render settings: " + e.Message); } };
+        }
+
         public static void Apply()
         {
             RenderPipelineAsset rp = GraphicsSettings.defaultRenderPipeline;
@@ -21,6 +30,17 @@ namespace AfterHours.EditorTools
             Set(so, "m_SoftShadowsSupported", true);
             SetF(so, "m_ShadowDistance", 60f);
             Set(so, "m_SupportsCameraDepthTexture", true);
+            // real-time shadows from the mall's own lights (ShadowBudget picks which)
+            Set(so, "m_MainLightShadowsSupported", true);
+            Set(so, "m_AdditionalLightShadowsSupported", true);
+            SetI(so, "m_AdditionalLightsRenderingMode", 1);
+            SetI(so, "m_AdditionalLightsShadowmapResolution", 4096);
+            SetI(so, "m_AdditionalLightsShadowResolutionTierLow", 256);
+            SetI(so, "m_AdditionalLightsShadowResolutionTierMedium", 512);
+            SetI(so, "m_AdditionalLightsShadowResolutionTierHigh", 1024);
+            SetI(so, "m_AdditionalLightsPerObjectLimit", 8);
+            SetI(so, "m_SoftShadowQuality", 2);
+            Set(so, "m_SupportsLightCookies", true);
             so.ApplyModifiedPropertiesWithoutUndo();
 
             SerializedProperty list = so.FindProperty("m_RendererDataList");
@@ -30,6 +50,7 @@ namespace AfterHours.EditorTools
         }
 
         static void Set(SerializedObject so, string name, bool v) { SerializedProperty p = so.FindProperty(name); if (p != null) p.boolValue = v; }
+        static void SetI(SerializedObject so, string name, int v) { SerializedProperty p = so.FindProperty(name); if (p != null) p.intValue = v; }
         static void SetF(SerializedObject so, string name, float v) { SerializedProperty p = so.FindProperty(name); if (p != null) p.floatValue = v; }
 
         static void AddAmbientOcclusion(UnityEngine.Object rendererData)

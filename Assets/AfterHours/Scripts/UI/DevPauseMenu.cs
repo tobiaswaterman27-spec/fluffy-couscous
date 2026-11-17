@@ -162,6 +162,22 @@ namespace AfterHours.UI
             s.cameraShake = GUILayout.Toggle(s.cameraShake, " Camera shake");
             s.gore = GUILayout.Toggle(s.gore, " Blood and gore");
             s.vSync = GUILayout.Toggle(s.vSync, " V-Sync");
+            // who you play as
+            GUILayout.Space(6);
+            PlayerCharacters.Entry me = PlayerCharacters.Get(s.character);
+            GUILayout.Label("You are: " + (me != null ? me.name + " - " + me.role : s.character));
+            if (me != null) GUILayout.Label(me.bio, rowLabel ?? GUI.skin.label);
+            PlayerCharacters.Entry[] all = PlayerCharacters.All;
+            for (int i = 0; i < all.Length; i += 2)
+            {
+                GUILayout.BeginHorizontal();
+                for (int k = i; k < Mathf.Min(i + 2, all.Length); k++)
+                {
+                    bool on = all[k].id == s.character;
+                    if (GUILayout.Toggle(on, all[k].name, GUI.skin.button, GUILayout.Height(26)) && !on) { s.character = all[k].id; GUI.changed = true; }
+                }
+                GUILayout.EndHorizontal();
+            }
             if (GUI.changed) service.ApplyRuntime();
         }
 

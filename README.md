@@ -116,6 +116,20 @@ sudo ufw allow 47799:47800/udp
 
 ---
 
+### 9. Who you play as
+Ten people were in the mall when it closed. Pick one on the main menu (click "You are ..." to go through them) or in
+Settings. In co-op everyone is a different person (if someone already has yours, you get the next one).
+
+| | | |
+|---|---|---|
+| Tom Reid - hid in the toilets for a dare | Marcus Hale - night security guard | Priya Sharma - phone shop assistant |
+| Ruth Okafor - night cleaner | Dan Kowalski - maintenance electrician | Leah Brennan - urban explorer |
+| Kenji Mori - delivery driver | Sofia Marin - cafe barista | Arthur Pike - retired night watchman |
+| Jade Thompson - student | | |
+
+You see your own arms, hands and legs in first person; your head isn't drawn for you but still casts your shadow.
+The characters are built by `tools/chargen` from MakeHuman's CC0 body (run `python3 fetch.py` there first).
+
 ## Getting new updates later
 
 In Unity: **After Hours > Get Latest Update**. (Or in a terminal, then click back into Unity:)
