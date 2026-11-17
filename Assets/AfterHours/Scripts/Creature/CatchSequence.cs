@@ -275,6 +275,8 @@ namespace AfterHours.Creature
             float dt = Time.deltaTime;
             t += dt;
             float u = t - intro;
+            // offsets for his head are measured from where his own pose puts it this frame (crawling, it's far lower)
+            if (anim != null && anim.NeutralHead.HasValue) headStart = anim.NeutralHead.Value;
 
             if (!released)
             {
@@ -524,7 +526,8 @@ namespace AfterHours.Creature
                     pose.lean = 65f * lower;
                     pose.look = chest;
                     float bite = Mathf.Abs(Mathf.Sin((u - FeedT) * 7.2f));
-                    pose.headPush = (chest + Vector3.up * (0.25f + 0.12f * bite) - headStart) * lower;
+                    float above = ctx == CatchContext.VentInside ? 0.09f + 0.09f * bite : 0.25f + 0.12f * bite;
+            pose.headPush = (chest + Vector3.up * above - headStart) * lower;
                     pose.jaw = 8f + 46f * bite;
                     pose.headShake = 14f * lower;
                     pose.handL = chest - right * 0.25f;
@@ -626,11 +629,11 @@ namespace AfterHours.Creature
                 shake = 0.75f;
             }
             else if (u < BiteT) { float k = Ease(RecoilT, BiteT, u); pose.jaw = Mathf.Lerp(52f, 78f, k); pose.headPush = faceAt(0.22f + 0.15f * k); shake = 0.2f; }
-            else if (u < ThrashT) { float k = Ease(BiteT, BiteHitT, u); pose.jaw = u < BiteHitT ? 80f : 8f; pose.headPush = Vector3.Lerp(faceAt(0.37f), eye - Vector3.up * 0.14f - headStart, k); shake = u < BiteHitT ? 0.3f : 1.4f; sharp = 30f; }
+            else if (u < ThrashT) { float k = Ease(BiteT, BiteHitT, u); pose.jaw = u < BiteHitT ? 80f : 8f; pose.headPush = Vector3.Lerp(faceAt(0.37f), eye + fwd * 0.15f + Vector3.up * 0.12f - headStart, k); shake = u < BiteHitT ? 0.3f : 1.4f; sharp = 30f; }   // over the back of your neck
             else if (u < DropT)
             {
                 // thrashed from side to side against the duct walls
-                pose.headPush = eye - Vector3.up * 0.14f - headStart;
+                pose.headPush = eye + fwd * 0.15f + Vector3.up * 0.12f - headStart;
                 pose.jaw = 10f;
                 pose.headShake = 30f;
                 Vector3 jerk = right * (Noise(9f, 1f) * 0.22f) + Vector3.up * (Noise(11f, 2f) * 0.05f);
@@ -652,8 +655,22 @@ namespace AfterHours.Creature
             pose.handR = Vector3.Lerp(pose.handR, ShoulderPoint(eye, body, 1f) + Vector3.up * 0.05f, grip);
         }
 
-        Vector3 ShoulderPoint(Vector3 eye, Quaternion body, float side) => eye + body * new Vector3(0.19f * side, -0.27f, 0.02f);
-        Vector3 AnklePoint(Vector3 eye, Quaternion body, float side) => eye + body * new Vector3(0.09f * side, -eyeH + 0.08f, 0f);
+        /// <summary>
+        /// Where Elliot's hand on HIS side 'side' (-1 left, +1 right) grips you: the outside of whichever of your
+        /// upper arms is on that side of him (so his arms never cross, and his hands close on you, not inside you).
+        /// </summary>
+        Vector3 ShoulderPoint(Vector3 eye, Quaternion body, float side)
+        {
+            Vector3 a = eye + body * new Vector3(0.27f, -0.33f, 0f), b = eye + body * new Vector3(-0.27f, -0.33f, 0f);
+            bool aIsHisRight = Vector3.Dot(a - b, right) > 0f;
+            return side > 0f ? (aIsHisRight ? a : b) : (aIsHisRight ? b : a);
+        }
+        Vector3 AnklePoint(Vector3 eye, Quaternion body, float side)
+        {
+            Vector3 a = eye + body * new Vector3(0.1f, -eyeH + 0.1f, 0f), b = eye + body * new Vector3(-0.1f, -eyeH + 0.1f, 0f);
+            bool aIsHisRight = Vector3.Dot(a - b, right) > 0f;
+            return side > 0f ? (aIsHisRight ? a : b) : (aIsHisRight ? b : a);
+        }
 
         void Apply(Vector3 eye, Quaternion body, Vector3 lookAt, float roll, float shake, float sharp, float dt)
         {

@@ -61,6 +61,8 @@ namespace AfterHours.Creature
             public float headShake;        // degrees of violent side-to-side thrash
         }
         public PuppetPose Puppet { get; set; }
+        /// <summary>Where his head would be this frame before a kill pushes it (kill head offsets are measured from here).</summary>
+        public Vector3? NeutralHead { get; private set; }
 
         /// <summary>Roughly where the mouth is (for bites, blood, camera framing).</summary>
         public Vector3 MouthPosition => head != null ? head.position + head.up * 0.075f + head.forward * 0.1f : transform.position + Vector3.up * 2.2f;
@@ -156,6 +158,8 @@ namespace AfterHours.Creature
             float speed = motor.Speed;
             Vector3 fwd = transform.forward, right = transform.right, up = Vector3.up;
             Vector3 root = transform.position;
+            // inside a duct (about a metre square) the body has to fold up tight: knees down, arms in, head under the roof
+            bool inDuct = AfterHours.World.VentDuct.Contains(root + Vector3.up * 0.3f);
 
             // ---------------- blend weights ----------------
             float k = 1f - Mathf.Exp(-5f * dt);
@@ -255,12 +259,38 @@ namespace AfterHours.Creature
                 // the knees bend when it's low, and the spine curls over to get there
                 Quaternion sr0 = yaw * Quaternion.Euler(lean + bend, 0f, 0f);
                 Vector3 h0 = pelvisPos + sr0 * up * spineLength + (sr0 * Quaternion.Euler(-lean * 0.7f, 0f, 0f)) * up * neckLength;
+                NeutralHead = h0;
                 reachT = h0 + pp.headPush * pp.weight;
+                if (inDuct) reachT.y = Mathf.Min(reachT.y, root.y + 0.8f);
                 float span = spineLength + neckLength;
                 pelvisPos.y -= Mathf.Clamp(pelvisPos.y - root.y - (reachT.y - root.y + 0.15f), 0f, 0.6f) * pp.weight;
                 Vector3 flat = reachT - pelvisPos; flat.y = 0f;
                 float dist = Vector3.Distance(pelvisPos, reachT);
+                Vector3 before = pelvisPos;
                 if (dist > span * 0.96f && flat.sqrMagnitude > 1e-4f) pelvisPos += flat.normalized * (Mathf.Min(dist - span * 0.96f, 0.8f) * pp.weight);
+                killStepGoal = pelvisPos - before; killStepGoal.y = 0f;
+                if (inDuct) pelvisPos.y = Mathf.Min(pelvisPos.y, root.y + 0.42f);
+            }
+            else killStepGoal = Vector3.zero;
+            // his feet step in under him as his body goes for you (a lead foot first, then the other), instead of
+            // staying planted while the body tips over like a plank
+            {
+                float g = killStepGoal.magnitude;
+                Vector3 dir = g > 1e-4f ? killStepGoal / g : fwd;
+                Vector3 goalR = killStepGoal + dir * (0.1f * Mathf.Clamp01(g / 0.3f)) + right * (0.16f * Mathf.Clamp01(g / 0.3f));    // lead foot steps in, out to the side (clear of your legs)
+                Vector3 goalL = killStepGoal - dir * (0.12f * Mathf.Clamp01(g / 0.3f));    // back foot a little behind
+                float rate = 2.2f * dt;
+                float remR = Vector3.Distance(killFoot[1], goalR);
+                killFoot[1] = Vector3.MoveTowards(killFoot[1], goalR, rate);
+                if (remR < 0.06f || pp == null) killFoot[0] = Vector3.MoveTowards(killFoot[0], goalL, rate);
+                killLift[1] = Mathf.Clamp01(Vector3.Distance(killFoot[1], goalR) * 4f) * 0.14f;
+                killLift[0] = Mathf.Clamp01(Vector3.Distance(killFoot[0], goalL) * 4f) * 0.14f;
+                if (pp == null && killFoot[0].sqrMagnitude + killFoot[1].sqrMagnitude > 0f)
+                {
+                    // the kill is over: where the feet ended up becomes where they're planted
+                    footPos[0] += killFoot[0]; footPos[1] += killFoot[1];
+                    killFoot[0] = killFoot[1] = Vector3.zero;
+                }
             }
             Quaternion pelvisRot = yaw * Quaternion.Euler(lean * Mathf.Lerp(0.35f, 0.85f, crawlW), twist, skitter);
             pelvis.SetPositionAndRotation(pelvisPos, pelvisRot);
@@ -268,10 +298,10 @@ namespace AfterHours.Creature
             // ---------------- legs (IK) ----------------
             Vector3 knee = fwd + up * 0.2f;
             // crawling, the knees point out and up like a spider's (the body hangs low between them)
-            Vector3 kneeL = Vector3.Lerp(knee, -right + up * 1.3f - fwd * 0.2f, crawlW);
-            Vector3 kneeR = Vector3.Lerp(knee, right + up * 1.3f - fwd * 0.2f, crawlW);
-            Leg(thighL, shinL, footL, pelvisPos - right * hipHalfWidth, footPos[0] + up * ankle, kneeL, yaw);
-            Leg(thighR, shinR, footR, pelvisPos + right * hipHalfWidth, footPos[1] + up * ankle, kneeR, yaw);
+            Vector3 kneeL = Vector3.Lerp(knee, inDuct ? -right * 0.3f - up - fwd * 0.4f : -right + up * 1.3f - fwd * 0.2f, crawlW);
+            Vector3 kneeR = Vector3.Lerp(knee, inDuct ? right * 0.3f - up - fwd * 0.4f : right + up * 1.3f - fwd * 0.2f, crawlW);
+            Leg(thighL, shinL, footL, pelvisPos - right * hipHalfWidth, footPos[0] + killFoot[0] + up * (ankle + killLift[0]), kneeL, yaw);
+            Leg(thighR, shinR, footR, pelvisPos + right * hipHalfWidth, footPos[1] + killFoot[1] + up * (ankle + killLift[1]), kneeR, yaw);
 
             // ---------------- spine, neck ----------------
             Quaternion spineRot = yaw * Quaternion.Euler(lean + bend, -twist * 1.4f, -skitter * 1.5f);
@@ -358,7 +388,7 @@ namespace AfterHours.Creature
                 {
                     handSwinging[i] = true;
                     handFrom[i] = handPlant[i];
-                    handTo[i] = Ground(chest + right * (shoulderHalfWidth * 2.4f * side) + fwd * 0.5f + (speed > 0.1f ? vel.normalized * stride * 0.5f : Vector3.zero));
+                    handTo[i] = Ground(chest + right * (shoulderHalfWidth * (inDuct ? 1.3f : 2.4f) * side) + fwd * 0.5f + (speed > 0.1f ? vel.normalized * stride * 0.5f : Vector3.zero));
                 }
                 if (handSwinging[i])
                 {
@@ -366,7 +396,7 @@ namespace AfterHours.Creature
                     handPlant[i] = Vector3.Lerp(handFrom[i], handTo[i], Mathf.SmoothStep(0f, 1f, t)) + up * Mathf.Sin(t * Mathf.PI) * 0.2f;
                     if (!inSwing || t >= 1f) { handSwinging[i] = false; handPlant[i] = handTo[i]; }
                 }
-                if (crawlW < 0.05f) handPlant[i] = Ground(chest + fwd * 0.5f + right * (shoulderHalfWidth * 2.4f * side));
+                if (crawlW < 0.05f) handPlant[i] = Ground(chest + fwd * 0.5f + right * (shoulderHalfWidth * (inDuct ? 1.3f : 2.4f) * side));
             }
             Vector3 handTargetL = Vector3.Lerp(hangL, handPlant[0] + up * 0.03f, crawlW);
             Vector3 handTargetR = Vector3.Lerp(hangR, handPlant[1] + up * 0.03f, crawlW);
@@ -481,6 +511,9 @@ namespace AfterHours.Creature
         }
 
         float dripTimer;
+        Vector3 killStepGoal;
+        readonly Vector3[] killFoot = new Vector3[2];
+        readonly float[] killLift = new float[2];
         float elliotBlinkAt = 3f;
 
         float ElliotBlink(float t, float jaw)

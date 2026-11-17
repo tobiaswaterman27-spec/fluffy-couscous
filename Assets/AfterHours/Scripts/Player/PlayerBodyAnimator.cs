@@ -224,7 +224,7 @@ namespace AfterHours.Player
                     {
                         // dangling, kicking: alternate legs drive forward and back, weaker as they give up
                         Vector3 bodyFwd = Vector3.ProjectOnPlane(headRot * Vector3.forward, Vector3.up).normalized;
-                        float kick = Mathf.Sin(t * 6.5f + s * Mathf.PI) * 0.26f * struggle;
+                        float kick = Mathf.Sin(t * 6.5f + s * Mathf.PI) * 0.15f * struggle;
                         float bend = Mathf.Max(0f, Mathf.Sin(t * 6.5f + s * Mathf.PI + 1.2f)) * 0.12f * struggle;
                         ft = hip + Vector3.down * (Thigh + Shin - 0.04f - bend) + bodyFwd * kick
                              + new Vector3(Mathf.Sin(t * 1.3f + s), 0f, Mathf.Cos(t * 1.1f + s)) * 0.03f;
