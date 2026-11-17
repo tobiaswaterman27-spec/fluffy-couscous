@@ -168,7 +168,7 @@ namespace AfterHours.Player
             float leanDeg = Mathf.Lerp(3f, 13f, runW * moveW) + 46f * crouch + 3f * moveW;
             Vector3 torsoDir = up * Mathf.Cos(leanDeg * Mathf.Deg2Rad) + fwd * Mathf.Sin(leanDeg * Mathf.Deg2Rad);
             float hipBob = Mathf.Abs(Mathf.Sin(phase * Mathf.PI * 2f)) * Mathf.Lerp(0.015f, 0.04f, runW) * moveW;
-            pelvisPos = headPos - torsoDir * (span * 0.995f) - up * (hipBob - breath * 0.004f);
+            pelvisPos = headPos - torsoDir * (span * 0.995f) - up * (hipBob - breath * 0.004f + 0.07f * runW * moveW);   // runners sit lower: knees stay bent
             // never higher than the legs can reach
             float maxHip = Vector3.Dot(root, up) + HipY;
             float overHip = Vector3.Dot(pelvisPos, up) - maxHip;
@@ -210,6 +210,8 @@ namespace AfterHours.Player
                     float ph = (phase + s * 0.5f) * Mathf.PI * 2f;
                     Vector3 basePos = root + right * (0.1f * side) + moveDir * (Mathf.Sin(ph) * stepLen * 0.5f);
                     float raise = Mathf.Max(0f, Mathf.Cos(ph)) * lift;
+                    // running: as the foot leaves the ground behind, the heel kicks up towards the backside
+                    raise += Mathf.Max(0f, -Mathf.Sin(ph)) * Mathf.Max(0f, Mathf.Cos(ph)) * 0.55f * runW * moveW;
                     float groundY = Vector3.Dot(root, up);
                     if (Physics.Raycast(basePos + up * 0.5f, -up, out RaycastHit hit, 1.0f, groundMask, QueryTriggerInteraction.Ignore)) groundY = Vector3.Dot(hit.point, up);
                     if (!l.grounded) raise += 0.15f;
