@@ -237,6 +237,7 @@ namespace AfterHours.EditorTools
                     ? new AreaRect(p + 0.3f, area.maxZ - 0.2f, p + 0.8f, area.maxZ - 0.02f)
                     : new AreaRect(area.maxX - 0.2f, p + 0.3f, area.maxX - 0.02f, p + 0.8f);
                 BoxRect("Cistern", g, cistern, y + 0.42f, y + 0.85f, porcelain, SurfaceType.Tile);
+                CubicleDoor(g, area, alongX, p, y, i);
             }
             float s0 = (alongX ? area.minX : area.minZ) + 1.5f;
             float s1 = Mathf.Min(s0 + 4f, (alongX ? area.maxX : area.maxZ) - 1.5f);
@@ -253,11 +254,59 @@ namespace AfterHours.EditorTools
                         : new AreaRect(area.minX, s0, area.minX + 0.02f, s1);
                     GameObject m = BoxRect("Mirror", g, mirror, y + 1.15f, y + 2.0f, mirrorMat, SurfaceType.Glass);
                     Object.DestroyImmediate(m.GetComponent<Collider>());
+                    // taps along the basin top, and in some rooms someone has put a fist through the mirror
+                    Material chrome = Mat("Tap chrome", new Color(0.75f, 0.76f, 0.78f), 0.85f, 1f);
+                    for (float t = s0 + 0.45f; t < s1 - 0.2f; t += 0.9f)
+                    {
+                        Vector3 tp = alongX ? new Vector3(t, y + 0.9f, area.minZ + 0.12f) : new Vector3(area.minX + 0.12f, y + 0.9f, t);
+                        Decor("Tap", g, tp - new Vector3(0.015f, 0f, 0.015f), tp + new Vector3(0.015f, 0.16f, 0.015f), chrome);
+                        Vector3 spout = tp + (alongX ? Vector3.forward : Vector3.right) * 0.07f + Vector3.up * 0.15f;
+                        Decor("Spout", g, tp + Vector3.up * 0.14f - new Vector3(0.012f, 0f, 0.012f), spout + new Vector3(0.012f, 0.02f, 0.012f), chrome);
+                    }
+                    int mh = Mathf.Abs(MallLayout.Hash((int)(area.minX * 10f), (int)(area.minZ * 10f), 2, 5));
+                    if (mh % 2 == 0)
+                    {
+                        Material crack = ArtLibrary.Decal("GlassCrack", "glass_crack", Color.white, 0.9f);
+                        float cpos = Mathf.Lerp(s0 + 0.4f, s1 - 0.4f, (mh % 100) / 100f);
+                        Vector3 cc = alongX ? new Vector3(cpos, y + 1.55f, area.minZ + 0.021f) : new Vector3(area.minX + 0.021f, y + 1.55f, cpos);
+                        DecalQuad(g, cc, alongX ? Vector3.forward : Vector3.right, 0.7f, 0.7f, mh % 360, crack);
+                    }
                     AreaRect dryer = alongX
                         ? new AreaRect(s1 + 0.4f, area.minZ, s1 + 0.7f, area.minZ + 0.22f)
                         : new AreaRect(area.minX, s1 + 0.4f, area.minX + 0.22f, s1 + 0.7f);
                     BoxRect("Hand dryer", g, dryer, y + 1.1f, y + 1.4f, whiteFixture, SurfaceType.Metal);
                 }
+            }
+        }
+    
+        /// <summary>
+        /// A cubicle door: hinged on the partition, standing open at whatever angle it was left. One cubicle per
+        /// room is shut and locked, its tab on red. Nobody answers if you knock.
+        /// </summary>
+        static void CubicleDoor(Transform g, AreaRect area, bool alongX, float p, float y, int i)
+        {
+            int h = Mathf.Abs(MallLayout.Hash((int)(area.minX * 10f), (int)(area.minZ * 10f), i, 13));
+            int lockedOne = Mathf.Abs(MallLayout.Hash((int)(area.minX * 10f), (int)(area.minZ * 10f), 0, 17)) % 3;
+            bool locked = i == lockedOne;
+            float width = 1.0f, height = 1.75f;
+            // hinge at the front edge of the partition; the door swings into the cubicle
+            Vector3 hinge = alongX ? new Vector3(p + 0.05f, y + 0.15f, area.maxZ - 1.6f) : new Vector3(area.maxX - 1.6f, y + 0.15f, p + 0.05f);
+            Vector3 along = alongX ? Vector3.right : Vector3.forward;
+            Vector3 inward = alongX ? Vector3.forward : Vector3.right;
+            float angle = locked ? 0f : (h % 4 == 0 ? 12f : 35f + h % 55);
+            var pivot = new GameObject("Cubicle door");
+            pivot.transform.SetParent(g, false);
+            pivot.transform.localPosition = hinge;
+            // rotate the leaf about the hinge, from 'along' towards 'inward'
+            float sign = Vector3.Cross(along, inward).y > 0f ? 1f : -1f;
+            pivot.transform.localRotation = Quaternion.AngleAxis(sign * angle, Vector3.up);
+            GameObject leaf = EditorBuild.Box("Door leaf", pivot.transform, along * (width * 0.5f) + Vector3.up * (height * 0.5f), new Vector3(alongX ? width : 0.03f, height, alongX ? 0.03f : width), toiletMat, SurfaceType.Tile);
+            leaf.transform.localPosition = along * (width * 0.5f) + Vector3.up * (height * 0.5f);
+            if (locked)
+            {
+                Material red = Mat("Engaged red", new Color(0.7f, 0.08f, 0.06f), 0.5f);
+                Vector3 tab = hinge + along * (width - 0.12f) + Vector3.up * 0.9f - inward * 0.02f;
+                Decor("Engaged tab", g, tab - new Vector3(0.025f, 0.012f, 0.025f), tab + new Vector3(0.025f, 0.012f, 0.025f), red);
             }
         }
     }
