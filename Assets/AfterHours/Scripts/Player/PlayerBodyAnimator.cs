@@ -405,6 +405,28 @@ namespace AfterHours.Player
                     palm = -up;
                     break;
                 }
+                case Gesture.Reach:
+                case Gesture.PickUp:
+                {
+                    if (s != 1) return false;
+                    // out to it, a press (or a grab: fingers close), and back
+                    float reach = Sm(0f, 0.35f, p) * (1f - Sm(0.65f, 1f, p));
+                    env = reach;
+                    want = g + n * (0.03f - 0.02f * Sm(0.3f, 0.45f, p));
+                    if ((want - shoulder).magnitude > (Upper + Fore) * 0.98f) want = shoulder + (want - shoulder).normalized * (Upper + Fore) * 0.98f;
+                    palm = actions.Current == Gesture.PickUp ? -up : -n;
+                    break;
+                }
+                case Gesture.Strike:
+                {
+                    if (s != 1) return false;
+                    // wind up over the shoulder, then bring it down hard
+                    Vector3 wind = shoulder + up * 0.35f - fwd * 0.1f + right * 0.1f;
+                    want = p < 0.35f ? Vector3.Lerp(shoulder + fwd * 0.3f, wind, Sm(0f, 0.35f, p)) : Vector3.Lerp(wind, g, Sm(0.35f, 0.5f, p));
+                    env = Sm(0f, 0.1f, p) * (1f - Sm(0.8f, 1f, p));
+                    palm = -right;
+                    break;
+                }
                 case Gesture.Drop:
                     env = Sm(0.1f, 0.3f, p) * (1f - Sm(0.7f, 0.9f, p));
                     want = headPos + fwd * 0.45f - up * 0.55f + right * (0.15f * side);

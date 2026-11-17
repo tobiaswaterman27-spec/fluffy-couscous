@@ -32,9 +32,22 @@ namespace AfterHours.Interaction
 
         void DoInteract(Interactable i)
         {
-            if (NetInteract != null && NetInteract(i, this) && !(i is AfterHours.Hiding.HidingSpot)) return;
-            i.Interact(this);
+            var hands = GetComponent<AfterHours.Player.PlayerActions>();
+            int before = hands != null ? hands.Stamp : 0;
+            bool sent = NetInteract != null && NetInteract(i, this) && !(i is AfterHours.Hiding.HidingSpot);
+            if (!sent) i.Interact(this);
+            // whatever it was, your hand goes to it (doors and vents animate the hands their own way)
+            if (hands != null && hands.Stamp == before && !hands.Climbing && !(i is AfterHours.Hiding.HidingSpot))
+            {
+                Camera cam = look != null ? look.playerCamera : null;
+                Vector3 f = cam != null ? cam.transform.forward : transform.forward, r = cam != null ? cam.transform.right : transform.right;
+                AfterHours.Player.Gesture g = i is AfterHours.Items.ItemPickup ? AfterHours.Player.Gesture.PickUp
+                    : i is AfterHours.Puzzles.ToolBreakable ? AfterHours.Player.Gesture.Strike : AfterHours.Player.Gesture.Reach;
+                hands.Play(g, lastHitPoint, -f, r, g == AfterHours.Player.Gesture.Strike ? 0.6f : 0.5f);
+            }
         }
+
+        Vector3 lastHitPoint;
 
         void DoHoldTick(Interactable i, float dt)
         {
@@ -113,6 +126,7 @@ namespace AfterHours.Interaction
             Ray ray = new Ray(cam.transform.position, cam.transform.forward);
             int mask = GameLayers.CharacterBlockingMask & ~(GameLayers.PlayerLayer >= 0 ? 1 << GameLayers.PlayerLayer : 0);
             if (!Physics.Raycast(ray, out RaycastHit hit, reach, mask, QueryTriggerInteraction.Collide)) return null;
+            lastHitPoint = hit.point;
             // A locker's door and the locker (hiding place) are both interactable: use the first that offers something.
             Interactable fallback = null;
             foreach (Interactable i in hit.collider.GetComponentsInParent<Interactable>())

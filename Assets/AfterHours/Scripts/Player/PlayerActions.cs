@@ -8,7 +8,7 @@ using AfterHours.World;
 namespace AfterHours.Player
 {
     /// <summary>What the hands are doing right now (drawn by PlayerBodyAnimator, in first person and for others).</summary>
-    public enum Gesture { None, Handle, LockedTry, Rattle, Push, Slam, Barge, Flinch, Grille, Climb, Drop }
+    public enum Gesture { None, Handle, LockedTry, Rattle, Push, Slam, Barge, Flinch, Grille, Climb, Drop, Reach, PickUp, Strike }
 
     /// <summary>
     /// The physical side of using the world, for one player:
@@ -53,8 +53,12 @@ namespace AfterHours.Player
             return a;
         }
 
+        /// <summary>Bumped every time a gesture starts (lets callers tell whether something already animated the hands).</summary>
+        public int Stamp { get; private set; }
+
         public void Play(Gesture g, Vector3 target, Vector3 normal, Vector3 along, float duration)
         {
+            Stamp++;
             Current = g; GestureT = 0f; GestureDuration = Mathf.Max(0.05f, duration);
             GestureTarget = target; GestureNormal = normal; GestureAlong = along;
         }
@@ -72,7 +76,26 @@ namespace AfterHours.Player
             }
             bargeCooldown -= dt;
             if (climb != null) { StepClimb(dt); return; }
-            if (pc != null && pc.isLocallyControlled && !pc.ControlLocked) CheckBarge();
+            if (pc != null && pc.isLocallyControlled && !pc.ControlLocked) { CheckBarge(); CheckWallHit(dt); }
+        }
+
+        float lastSpeed;
+
+        /// <summary>Sprinting flat out into a wall: you're stopped dead - a thud, a jolt, hands up.</summary>
+        void CheckWallHit(float dt)
+        {
+            if (motor == null) return;
+            float sp = motor.Locomotion.planarSpeed;
+            if (lastSpeed > 4.6f && sp < 1.2f && motor.Locomotion.grounded && bargeCooldown <= 0f && Current == Gesture.None)
+            {
+                bargeCooldown = 1f;
+                Vector3 at = transform.position + Vector3.up * 1.2f + transform.forward * 0.3f;
+                AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.Thud), at, 0.7f, Random.Range(0.9f, 1.1f), 25f);
+                NoiseBus.Emit(new NoiseEvent(at, 9f, NoiseKind.Landing, gameObject));
+                Play(Gesture.Flinch, at, -transform.forward, transform.right, 0.5f);
+                if (look != null) { look.Jolt(1.0f); look.OnLanded(6f); }
+            }
+            lastSpeed = sp;
         }
 
         // =====================================================================
