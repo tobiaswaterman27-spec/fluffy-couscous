@@ -21,6 +21,11 @@ namespace AfterHours.EditorTools
 
         static float VentInnerHeight(MallFloor f) => f == MallFloor.Ground ? 1.0f : 0.72f;
         static float VentInnerWidth(MallFloor f) => f == MallFloor.Ground ? 1.05f : 0.8f;
+        /// <summary>
+        /// How high the duct runs above the corridor floor. Ground floor: a knee-high sill Elliot can haul itself
+        /// over. Upper floors: chest-high - you climb up into them, and come tumbling out.
+        /// </summary>
+        public static float VentSill(MallFloor f) => f == MallFloor.Ground ? 0.55f : 1.15f;
 
         static float VentOpeningU(MallFloor f, WingId w, float u)
         {
@@ -36,7 +41,7 @@ namespace AfterHours.EditorTools
             foreach (float u0 in VentU)
             {
                 float u = VentOpeningU(f, w, u0);
-                list.Add((u - 0.45f, u + 0.45f, h));
+                list.Add((u - 0.45f, u + 0.45f, RaisedTop(VentSill(f), VentSill(f) + h)));
             }
             return list;
         }
@@ -47,7 +52,8 @@ namespace AfterHours.EditorTools
             Material grille = plantMat;
             foreach (MallFloor f in MallLayout.ShopFloors)
             {
-                float y = MallLayout.FloorY(f);
+                float floorY = MallLayout.FloorY(f);
+                float y = floorY + VentSill(f);              // the duct's own floor
                 float H = VentInnerHeight(f), W = VentInnerWidth(f);
                 const float t = 0.04f;
                 foreach (WingId w in MallLayout.Wings)
@@ -126,8 +132,10 @@ namespace AfterHours.EditorTools
                             Vector3 centre = MallLayout.WingPoint(w, u, side * (MallLayout.CorridorOuter + 0.0f), y + H * 0.5f);
                             InteractiveFactory.Vent(g, centre, outward, new Vector2(0.9f, H), st, grille);
                             // Dust streaks under the grille where air used to blow out.
-                            DecalQuad(g, MallLayout.WingPoint(w, u, side * (MallLayout.CorridorOuter - 0.35f), y + 0.004f), Vector3.up, 1.1f, 0.6f, 0f, decalGrime);
-                            if (f == MallFloor.Ground && hh % 3 == 0) VentSigns(g, centre, outward, MallLayout.WingForward(w), H, y, hh);
+                            DecalQuad(g, MallLayout.WingPoint(w, u, side * (MallLayout.CorridorOuter - 0.35f), floorY + 0.004f), Vector3.up, 1.1f, 0.6f, 0f, decalGrime);
+                            // scuffs on the wall under the sill where people (and it) have scrambled up
+                            DecalQuad(g, MallLayout.WingPoint(w, u, side * (MallLayout.CorridorOuter - 0.004f), floorY + VentSill(f) * 0.5f), outward, 0.8f, VentSill(f) * 0.8f, 0f, decalScuffs);
+                            if (f == MallFloor.Ground && hh % 3 == 0) VentSigns(g, centre, outward, MallLayout.WingForward(w), H, floorY, hh);
                         }
                     }
                 }

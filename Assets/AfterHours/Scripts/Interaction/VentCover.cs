@@ -58,6 +58,19 @@ namespace AfterHours.Interaction
             coverBody.mass = 2.5f;
             coverBody.isKinematic = state != State.Removed;
             if (cover.GetComponent<PhysicsProp>() == null) cover.gameObject.AddComponent<PhysicsProp>().material = SurfaceType.Metal;
+
+            // an invisible target filling the opening, so you can climb through it (or pull the cover back)
+            // from either side once the grille is off
+            Collider cc = cover.GetComponent<Collider>();
+            Vector3 size = cc != null ? cc.bounds.size : new Vector3(0.9f, 0.9f, 0.05f);
+            var opening = new GameObject("Vent opening (target)");
+            opening.transform.SetParent(transform, false);
+            opening.transform.SetPositionAndRotation(slotPos, slotRot);
+            opening.layer = cover.gameObject.layer;
+            BoxCollider box = opening.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            Vector3 local = Quaternion.Inverse(slotRot) * size;
+            box.size = new Vector3(Mathf.Max(0.3f, Mathf.Abs(local.x)), Mathf.Max(0.3f, Mathf.Abs(local.y)), 0.5f);
         }
 
         public override float HoldTime
@@ -76,11 +89,14 @@ namespace AfterHours.Interaction
         public override string GetPrompt(IInteractor who)
         {
             if (animT >= 0f) return null;
+            bool inside = VentDuct.Contains(who.Position + Vector3.up * 0.3f);
             switch (state)
             {
-                case State.Screwed: return who.Has(toolId) ? "Unscrew vent cover" : "Vent cover is screwed shut";
-                case State.Loose: return "Remove vent cover";
-                default: return CoverNearby() ? "Put vent cover back" : null;
+                case State.Screwed: return inside ? null : who.Has(toolId) ? "Unscrew vent cover" : "Vent cover is screwed shut";
+                case State.Loose: return inside ? "Push the vent cover off" : "Remove vent cover";
+                default:
+                    if (inside) return CoverNearby() && Vector3.Distance(cover.position, slotPos) > 0.05f && CoverReachableFromInside() ? "Pull the vent cover back" : "Climb out";
+                    return "Climb into the vent";
             }
         }
 
@@ -97,10 +113,18 @@ namespace AfterHours.Interaction
                     return;
                 case State.Loose:
                     Remove(who.Position, who.Actor);
+                    if (Player.PlayerActions.Of(who.Actor) is Player.PlayerActions pa)
+                        pa.Play(Player.Gesture.Grille, slotPos, Outward * (VentDuct.Contains(who.Position + Vector3.up * 0.3f) ? -1f : 1f), Vector3.Cross(Vector3.up, Outward), 0.8f);
                     return;
                 default:
-                    if (CoverNearby()) Replace(who.Actor);
+                {
+                    bool inside = VentDuct.Contains(who.Position + Vector3.up * 0.3f);
+                    var a = Player.PlayerActions.Of(who.Actor);
+                    if (inside && CoverNearby() && CoverReachableFromInside()) { Replace(who.Actor); return; }
+                    if (a == null) return;
+                    if (inside) a.ClimbOut(this); else a.ClimbIn(this);
                     return;
+                }
             }
         }
 
@@ -112,9 +136,27 @@ namespace AfterHours.Interaction
             coverBody.isKinematic = false;
             Vector3 away = (towards - cover.position);
             away.y = 0f;
+            // pushed off from inside, it falls out into the corridor instead
+            if (VentDuct.Contains(towards + Vector3.up * 0.3f)) away = Outward * 0.6f;
             coverBody.AddForce(away.normalized * 1.2f + Vector3.up * 0.5f, ForceMode.VelocityChange);
-            InteractionFx.Play(ProceduralSounds.Sfx.MetalClank, cover.position, 0.7f, 8f, actor, NoiseKind.Interaction);
+            InteractionFx.Play(ProceduralSounds.Sfx.GrillePull, cover.position, 0.75f, 8f, actor, NoiseKind.Interaction);
         }
+
+        /// <summary>Elliot tears it out of the wall and flings it aside.</summary>
+        public void RipOut(Vector3 from, GameObject actor)
+        {
+            if (state == State.Removed) return;
+            state = State.Removed;
+            coverBody.isKinematic = false;
+            Vector3 side = Vector3.Cross(Vector3.up, Outward) * (Random.value < 0.5f ? -1f : 1f);
+            coverBody.AddForce(Outward * 3.5f + side * 2.5f + Vector3.up * 1.5f, ForceMode.VelocityChange);
+            coverBody.AddTorque(Random.insideUnitSphere * 8f, ForceMode.VelocityChange);
+            InteractionFx.Play(ProceduralSounds.Sfx.GrilleRip, slotPos, 1f, 22f, actor, NoiseKind.Interaction);
+            WorldFX.Dust(slotPos, Outward, 18);
+        }
+
+        /// <summary>From inside you can only pull back a cover that is lying right by the opening.</summary>
+        bool CoverReachableFromInside() => Vector3.Distance(cover.position, slotPos) < 1.0f;
 
         /// <summary>Loading a save: the cover's state and (if off) where it lies.</summary>
         public void RestoreState(State s, Vector3 coverPos, Quaternion coverRot)

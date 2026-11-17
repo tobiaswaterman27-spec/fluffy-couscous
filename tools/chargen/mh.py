@@ -48,6 +48,9 @@ def tri(v):
     return {"min": 0.0, "average": 2 - v * 2, "max": v * 2 - 1}
 
 
+STANDARD_HEIGHT = 1.76   # metres, top of the head (None: keep MakeHuman's own height)
+
+
 class Human:
     """gender 0 female .. 1 male; age in years (18-80); muscle/weight/height 0..1 (0.5 average);
     race = (african, asian, caucasian) proportions; details = {"nose/nose-scale-horiz-incr": 0.4, ...}"""
@@ -90,6 +93,10 @@ class Human:
         V[:, 0] *= -1
         body_idx = sorted({v for i, g in enumerate(self.groups) if g == "body" for v in self.faces[i][0]})
         V[:, 1] -= V[body_idx, 1].min()          # feet on the ground
+        # every playable character stands the same height (the game's player capsule is one size); build,
+        # proportions and shape still differ
+        if STANDARD_HEIGHT:
+            V *= STANDARD_HEIGHT / V[body_idx, 1].max()
         self.V = V
         self.body_faces = [i for i, g in enumerate(self.groups) if g == "body"]
 

@@ -153,20 +153,87 @@ namespace AfterHours.Interaction
                 }
                 else
                 {
-                    InteractionFx.Play(ProceduralSounds.Sfx.Rattle, HandlePosition, 0.8f, 7f * who.Urgency, who.Actor, NoiseKind.Door);
+                    // a calm try: one firm press of the handle that won't give. In a panic: you rattle it like mad.
+                    bool panic = who.Urgency > 1.3f;
+                    InteractionFx.Play(panic ? ProceduralSounds.Sfx.Rattle : ProceduralSounds.Sfx.LockedTry, HandlePosition, panic ? 0.85f : 0.6f,
+                        (panic ? 9f : 4f) * who.Urgency, who.Actor, NoiseKind.Door);
+                    Hands(who, panic ? Player.Gesture.Rattle : Player.Gesture.LockedTry, panic ? 1.0f : 0.6f);
                 }
+                if (!locked) Hands(who, Player.Gesture.Handle, 0.5f);
                 return;
             }
-            if (IsOpen) Close(who.Urgency, who.Actor);
-            else Open(who.Position, who.Urgency, who.Actor);
+            if (IsOpen)
+            {
+                Hands(who, who.Urgency > 1.4f ? Player.Gesture.Slam : Player.Gesture.Push, who.Urgency > 1.4f ? 0.4f : 0.5f);
+                Close(who.Urgency, who.Actor);
+            }
+            else
+            {
+                Hands(who, Player.Gesture.Handle, Mathf.Lerp(0.7f, 0.4f, Mathf.InverseLerp(0.4f, 1.8f, who.Urgency)));
+                Open(who.Position, who.Urgency, who.Actor);
+            }
         }
 
+        /// <summary>Where the handle is (the free edge of the leaf, at hand height).</summary>
+        public Vector3 HandleWorld
+        {
+            get
+            {
+                if (leaf == null) return transform.position + Vector3.up;
+                Vector3 lp = leaf.localPosition;
+                float edge = Mathf.Abs(lp.x) > 0.01f ? lp.x + Mathf.Sign(lp.x) * (width * 0.5f - 0.08f) : lp.x;
+                return transform.TransformPoint(new Vector3(edge, lp.y - height * 0.5f + 1.0f, lp.z));
+            }
+        }
+
+        void Hands(IInteractor who, Player.Gesture g, float duration)
+        {
+            Player.PlayerActions a = Player.PlayerActions.Of(who.Actor);
+            if (a == null) return;
+            Vector3 handle = HandleWorld;
+            Vector3 n = who.Position - handle; n.y = 0f;
+            Vector3 normal = n.sqrMagnitude > 1e-4f ? n.normalized : -transform.forward;
+            a.Play(g, handle + normal * 0.05f, normal, (leaf != null ? leaf.position - transform.position : transform.right).normalized, duration);
+        }
+
+        /// <summary>
+        /// Someone sprinted into this door: it bursts open away from them and smashes into the wall.
+        /// Returns false if it's locked (they just hit it).
+        /// </summary>
+        public bool Barge(Vector3 fromPosition, GameObject actor)
+        {
+            if (locked || !interactable) return false;
+            barged = true;
+            InteractionFx.Play(ProceduralSounds.Sfx.DoorBarge, HandlePosition, 1f, 20f, actor, NoiseKind.Door);
+            bool ok = OpenSilently(fromPosition, 2.5f);
+            return ok;
+        }
+
+        /// <summary>Someone ran full tilt into this door and it didn't open.</summary>
+        public void BodyHit(GameObject actor)
+        {
+            InteractionFx.Play(ProceduralSounds.Sfx.BodyDoor, HandlePosition, 1f, 16f, actor, NoiseKind.Door);
+            WorldFX.Dust(HandlePosition + Vector3.up * 1.0f, Vector3.down, 6);
+        }
+
+        bool barged;
+
         Vector3 HandlePosition => leaf != null ? leaf.position : transform.position;
+
+        bool OpenSilently(Vector3 fromPosition, float urgency)
+        {
+            Vector3 normal = transform.parent != null ? transform.parent.rotation * closedRotation * Vector3.forward : closedRotation * Vector3.forward;
+            float side = fixedSide != 0 ? fixedSide : (Vector3.Dot(fromPosition - transform.position, normal) >= 0f ? 1f : -1f);
+            faultTriggered = true;
+            StartMove(side * maxAngle, urgency);
+            return true;
+        }
 
         /// <summary>Opens away from 'fromPosition'. urgency: 0.4 careful .. 1 normal .. 2 forceful.</summary>
         public bool Open(Vector3 fromPosition, float urgency, GameObject actor)
         {
             if (locked) return false;
+            barged = false;
             Vector3 normal = transform.parent != null ? transform.parent.rotation * closedRotation * Vector3.forward : closedRotation * Vector3.forward;
             float side = fixedSide != 0 ? fixedSide : (Vector3.Dot(fromPosition - transform.position, normal) >= 0f ? 1f : -1f);
             float goal = side * maxAngle;
@@ -275,6 +342,10 @@ namespace AfterHours.Interaction
             if (Mathf.Approximately(angle, target))
             {
                 moving = false;
+                // flung open hard: it crashes into the wall (a barge has that crash in its own sound)
+                if (Mathf.Abs(target) >= maxAngle - 0.5f && urgency > 1.6f && !barged)
+                    InteractionFx.Play(ProceduralSounds.Sfx.WallHit, HandlePosition, 0.9f, 14f, gameObject, NoiseKind.Door);
+                barged = false;
                 if (Mathf.Abs(target) < 0.01f)
                 {
                     // Closing: a gentle latch, or a slam if it was swung shut hard.

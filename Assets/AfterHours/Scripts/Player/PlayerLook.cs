@@ -100,6 +100,15 @@ namespace AfterHours.Player
             transform.rotation = Quaternion.Euler(0f, lookYaw, 0f);
         }
 
+        float jolt, joltSeed;
+
+        /// <summary>A jarring knock to the view (barging a door, hitting one that won't open, dropping out of a vent).</summary>
+        public void Jolt(float strength)
+        {
+            jolt = Mathf.Max(jolt, strength);
+            joltSeed = Random.value * 100f;
+        }
+
         public void OnLanded(float fallSpeed)
         {
             landVelocity -= Mathf.Clamp(fallSpeed * 0.05f, 0f, 0.6f);
@@ -155,7 +164,12 @@ namespace AfterHours.Player
             playerCamera.transform.localPosition = thirdPerson
                 ? debugCameraOffset
                 : new Vector3(lateral, vertical + landOffset, 0f);
-            playerCamera.transform.localRotation = Quaternion.Euler(0f, 0f, thirdPerson ? 0f : roll);
+            jolt = Mathf.MoveTowards(jolt, 0f, dt * 2.5f);
+            float js = s.cameraShake ? jolt : jolt * 0.3f;
+            Quaternion joltRot = Quaternion.Euler((Mathf.PerlinNoise(joltSeed, Time.time * 18f) - 0.5f) * 9f * js,
+                                                  (Mathf.PerlinNoise(joltSeed + 7f, Time.time * 16f) - 0.5f) * 7f * js,
+                                                  (Mathf.PerlinNoise(joltSeed + 13f, Time.time * 14f) - 0.5f) * 10f * js);
+            playerCamera.transform.localRotation = Quaternion.Euler(0f, 0f, thirdPerson ? 0f : roll) * joltRot;
             playerCamera.fieldOfView = s.fieldOfView + fovBoost;
         }
     }

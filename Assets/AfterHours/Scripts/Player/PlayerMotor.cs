@@ -350,6 +350,15 @@ namespace AfterHours.Player
             Locomotion = l;
         }
 
+        /// <summary>Places the body in a given stance (after climbing into a duct: crawling; after dropping out: crouched).</summary>
+        public void WarpStance(Vector3 position, float yaw, Stance stance)
+        {
+            Warp(position, yaw);
+            currentHeight = HeightFor(stance);
+            CurrentStance = DesiredStance = stance;
+            ApplyDimensions(currentHeight);
+        }
+
         public void Warp(Vector3 position, float yaw)
         {
             controller.enabled = false;

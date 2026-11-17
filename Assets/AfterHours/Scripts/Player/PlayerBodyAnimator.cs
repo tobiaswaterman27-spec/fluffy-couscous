@@ -209,9 +209,12 @@ namespace AfterHours.Player
                 if (runW > 0.3f) target += up * (0.12f * runW) + fwd * 0.05f;
                 if (carrying) target = shoulder + fwd * 0.42f - up * 0.12f - right * (0.05f * side);
                 if (caught) target = shoulder + (headRot * new Vector3(side * 0.4f, -0.1f, 0.3f)) + new Vector3(Mathf.Sin(t * 14f + s), Mathf.Sin(t * 17f + s * 2f), Mathf.Sin(t * 12f + s * 3f)) * 0.22f;
-                ArmIK(s, shoulder, target, -fwd + right * (0.3f * side) - up * 0.3f, -right * side - fwd * 0.3f);
+                Vector3 palm = -right * side - fwd * 0.3f;
+                if (!caught && GestureArm(s, side, shoulder, headPos, fwd, up, right, ref target, ref palm)) handGrip[s] = true;
+                else handGrip[s] = false;
+                ArmIK(s, shoulder, target, -fwd + right * (0.3f * side) - up * 0.3f, palm);
             }
-            Fingers(caught ? 0.8f : carrying ? 0.6f : 0.25f + 0.2f * runW);
+            Fingers(caught ? 0.8f : carrying ? 0.6f : (handGrip[0] || handGrip[1]) ? 0.7f : 0.25f + 0.2f * runW);
             if (jaw != null) jaw.localRotation = Quaternion.Euler(caught ? 18f + Mathf.Sin(t * 20f) * 6f : 1f + exertion * 6f * Mathf.Max(0f, breath), 0f, 0f);
         }
 
@@ -291,6 +294,95 @@ namespace AfterHours.Player
             Vector3 f = Vector3.ProjectOnPlane(pole, dir);
             if (f.sqrMagnitude < 1e-6f) f = Vector3.ProjectOnPlane(Vector3.forward, dir);
             seg.SetPositionAndRotation(from, Quaternion.LookRotation(f.normalized, -dir));
+        }
+
+        readonly bool[] handGrip = new bool[2];
+        PlayerActions actions;
+        bool actionsLooked;
+
+        static float Sm(float a, float b, float x) => Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((x - a) / Mathf.Max(1e-4f, b - a)));
+
+        /// <summary>
+        /// Hands doing something (PlayerActions): reaching for a handle and pressing it, jiggling a locked one,
+        /// shoving a door, bracing to barge through one, flinching from an impact, pulling a grille off,
+        /// gripping a sill to climb. Blends over the normal arm swing; returns false when this arm is free.
+        /// </summary>
+        bool GestureArm(int s, float side, Vector3 shoulder, Vector3 headPos, Vector3 fwd, Vector3 up, Vector3 right, ref Vector3 target, ref Vector3 palm)
+        {
+            if (!actionsLooked) { actions = GetComponent<PlayerActions>(); actionsLooked = true; }
+            if (actions == null || actions.Current == Gesture.None) return false;
+            float p = actions.Progress;
+            Vector3 g = actions.GestureTarget, n = actions.GestureNormal, along = actions.GestureAlong;
+            float env = Sm(0f, 0.18f, p) * (1f - Sm(0.82f, 1f, p));
+            Vector3 want;
+            switch (actions.Current)
+            {
+                case Gesture.Handle:
+                case Gesture.LockedTry:
+                case Gesture.Rattle:
+                {
+                    if (s != 1) return false;                                   // right hand on the handle
+                    float press;
+                    Vector3 shove = Vector3.zero;
+                    if (actions.Current == Gesture.Handle)
+                    {
+                        press = Sm(0.25f, 0.4f, p);
+                        shove = -n * 0.22f * Sm(0.45f, 0.95f, p);                // through the doorway with the door
+                    }
+                    else if (actions.Current == Gesture.LockedTry) press = Sm(0.25f, 0.4f, p) * (1f - Sm(0.6f, 0.75f, p));
+                    else
+                    {
+                        press = Mathf.Abs(Mathf.Sin(p * Mathf.PI * 6f));
+                        shove = -n * (Mathf.Sin(p * Mathf.PI * 10f) * 0.035f);   // yanking it back and forth
+                    }
+                    want = g - up * (0.035f * press) + shove;
+                    palm = -up * 0.6f - n * 0.4f;
+                    break;
+                }
+                case Gesture.Push:
+                case Gesture.Slam:
+                {
+                    if (actions.Current == Gesture.Push && s != 1) return false;
+                    float reach = actions.Current == Gesture.Slam ? Sm(0.05f, 0.4f, p) : Sm(0.1f, 0.5f, p);
+                    want = shoulder + (Vector3.ProjectOnPlane(g - shoulder, up).normalized * 0.55f + up * 0.05f) * (0.6f + 0.4f * reach) + right * (0.08f * side);
+                    palm = -n;
+                    break;
+                }
+                case Gesture.Barge:
+                    env = Sm(0f, 0.08f, p) * (1f - Sm(0.7f, 1f, p));
+                    want = shoulder + fwd * 0.42f + up * 0.06f - right * (0.1f * side) + (s == 0 ? fwd * 0.06f : Vector3.zero);
+                    palm = fwd;
+                    break;
+                case Gesture.Flinch:
+                    env = Sm(0f, 0.06f, p) * (1f - Sm(0.6f, 1f, p));
+                    want = headPos + fwd * 0.22f - up * 0.08f + right * (0.1f * side);
+                    palm = fwd;
+                    break;
+                case Gesture.Grille:
+                {
+                    float pull = Sm(0.35f, 0.75f, p);
+                    want = g + along * (0.33f * side) + n * (0.04f + 0.35f * pull) - up * 0.05f;
+                    palm = -n;
+                    break;
+                }
+                case Gesture.Climb:
+                {
+                    env = Sm(0f, 0.15f, p) * (1f - Sm(0.78f, 0.95f, p));
+                    Vector3 sill = g - up * 0.42f + n * 0.04f;                  // the bottom edge of the opening
+                    want = sill + along * (0.28f * side);
+                    palm = -up;
+                    break;
+                }
+                case Gesture.Drop:
+                    env = Sm(0.1f, 0.3f, p) * (1f - Sm(0.7f, 0.9f, p));
+                    want = headPos + fwd * 0.45f - up * 0.55f + right * (0.15f * side);
+                    palm = -up;
+                    break;
+                default:
+                    return false;
+            }
+            target = Vector3.Lerp(target, want, env);
+            return env > 0.5f;
         }
 
         AfterHours.Audio.PlayerAudio ownAudio;

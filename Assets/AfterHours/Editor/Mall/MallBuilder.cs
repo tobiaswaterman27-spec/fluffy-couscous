@@ -431,14 +431,24 @@ namespace AfterHours.EditorTools
 
         struct Opening
         {
-            public float s0, s1, top;
+            public float s0, s1, top, bottom;
             public Opening(float s0, float s1, float top)
             {
                 this.s0 = Mathf.Min(s0, s1);
                 this.s1 = Mathf.Max(s0, s1);
-                this.top = top;
+                // a raised opening (a vent with a sill) arrives encoded by RaisedTop: sill in cm x 1000 + top
+                if (top >= 1000f)
+                {
+                    int cm = Mathf.FloorToInt(top / 1000f);
+                    bottom = cm * 0.01f;
+                    this.top = top - cm * 1000f;
+                }
+                else { bottom = 0f; this.top = top; }
             }
         }
+
+        /// <summary>An opening whose bottom is 'sill' above the floor (packed into the usual 'top' value).</summary>
+        static float RaisedTop(float sill, float top) => Mathf.Round(sill * 100f) * 1000f + top;
 
         /// <summary>
         /// A straight, axis-aligned wall from p0 to p1 (its centre line), y0..y1 high, with doorway/window openings.
@@ -473,6 +483,7 @@ namespace AfterHours.EditorTools
                 float a = Mathf.Clamp(o.s0, 0f, length);
                 float b = Mathf.Clamp(o.s1, 0f, length);
                 if (a > cursor) Segment(cursor, a, y0, y1);
+                if (o.bottom > 0f) Segment(a, b, y0, y0 + o.bottom);
                 if (y0 + o.top < y1) Segment(a, b, y0 + o.top, y1);
                 cursor = Mathf.Max(cursor, b);
             }

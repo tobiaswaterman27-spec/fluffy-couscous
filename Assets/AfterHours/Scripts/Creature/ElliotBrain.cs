@@ -777,7 +777,9 @@ namespace AfterHours.Creature
                         if (checkCertain || Random.value < 0.25f + Mathf.Min(0.4f, memory.NoiseHeatAt(slot) * 0.5f))
                         {
                             animator.PlayAction(ElliotAction.PullOpen, slot, 0.8f);
-                            checkVent.Remove(transform.position, gameObject);
+                            // when it knows you're in there it tears the grille out; otherwise it just pulls it off
+                            if (checkCertain) checkVent.RipOut(transform.position, gameObject);
+                            else checkVent.Remove(transform.position, gameObject);
                             Pause(0.8f);
                         }
                         else { EndCheck(); break; }
