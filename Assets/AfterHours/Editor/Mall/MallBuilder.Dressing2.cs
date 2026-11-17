@@ -311,8 +311,22 @@ namespace AfterHours.EditorTools
             Material rideMat = ArtLibrary.Plain("KiddieRide", new Color(0.85f, 0.3f, 0.2f), 0.7f);
             Vector3 k = new Vector3(4f, 0f, 20f);
             EditorBuild.Box("Kiddie ride base", parent, k + Vector3.up * 0.2f, new Vector3(1.2f, 0.4f, 0.9f), darkPanel, SurfaceType.Metal);
-            EditorBuild.Box("Kiddie ride car", parent, k + Vector3.up * 0.75f, new Vector3(1.0f, 0.6f, 0.6f), rideMat, SurfaceType.Metal);
+            GameObject rideCar = EditorBuild.Box("Kiddie ride car", parent, k + Vector3.up * 0.75f, new Vector3(1.0f, 0.6f, 0.6f), rideMat, SurfaceType.Metal, null, false);
             Detail("Kiddie ride coin box", parent, k + new Vector3(0.55f, 0.95f, 0f), new Vector3(0.12f, 0.25f, 0.15f), metal);
+            var bulbGo = new GameObject("Kiddie ride bulbs");
+            bulbGo.transform.SetParent(parent, false);
+            bulbGo.transform.localPosition = k + Vector3.up * 1.3f;
+            Light bl = bulbGo.AddComponent<Light>();
+            bl.type = LightType.Point; bl.range = 4f; bl.intensity = 1.2f; bl.color = new Color(1f, 0.75f, 0.4f);
+            bl.shadows = LightShadows.None; bl.lightmapBakeType = LightmapBakeType.Realtime;
+            // the component rocks the car, so it lives on a parent at the same spot
+            var pivot = new GameObject("Kiddie ride");
+            pivot.transform.SetParent(parent, false);
+            pivot.transform.localPosition = k;
+            rideCar.transform.SetParent(pivot.transform, true);
+            var ride = pivot.AddComponent<KiddieRide>();
+            ride.car = rideCar.transform;
+            ride.bulbs = bl;
         }
 
         static void Plant(Transform g, Vector3 top, int h)
