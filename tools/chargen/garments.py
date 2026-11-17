@@ -212,3 +212,66 @@ def smooth_edges(part, iters=10, select=None):
     for _ in range(3):
         avg = (Afull @ P) / np.maximum(dfull, 1)[:, None]
         P[ring] += 0.4 * (avg[ring] - P[ring])
+
+
+def unfold(part, iters=12):
+    """Find triangles folded back over their neighbours (tiny base-mesh details such as nipples or a navel can
+    flip when the cloth is offset and smoothed) and relax their corners until the surface lies flat."""
+    P, F = part.V, part.F
+    n = len(P)
+    A = neighbours(F, n); deg = np.asarray(A.sum(1)).ravel()
+    for _ in range(iters):
+        fn = np.cross(P[F[:, 1]] - P[F[:, 0]], P[F[:, 2]] - P[F[:, 0]])
+        fn /= np.linalg.norm(fn, axis=1, keepdims=True) + 1e-12
+        vn = np.zeros_like(P); np.add.at(vn, F.ravel(), np.repeat(fn, 3, axis=0))
+        vn /= np.linalg.norm(vn, axis=1, keepdims=True) + 1e-12
+        agree = np.sum(fn * vn[F].mean(1), 1)
+        bad = agree < 0.5
+        if not bad.any(): break
+        sel = np.zeros(n, bool); sel[F[bad].ravel()] = True
+        # grow by one ring so the neighbourhood relaxes with it
+        sel = sel | (np.asarray(A @ sel.astype(float)).ravel() > 0)
+        avg = (A @ P) / np.maximum(deg, 1)[:, None]
+        P[sel] += 0.8 * (avg[sel] - P[sel])
+
+
+def flatten_dense_patches(part, region, max_area=4e-6, r_in=0.024, r_out=0.034):
+    """Base-mesh details modelled with tiny triangles (nipples, the navel) crumple when cloth is laid over them.
+    Find each cluster of tiny faces inside 'region' (a vertex mask), and re-lay the cloth there as a smooth
+    disc: heights from a plane fitted to the ring around it, positions relaxed in that plane with the ring
+    fixed (which can't fold), then eased into the surroundings."""
+    P, F = part.V, part.F
+    fn = np.cross(P[F[:, 1]] - P[F[:, 0]], P[F[:, 2]] - P[F[:, 0]])
+    area = np.linalg.norm(fn, axis=1) / 2
+    tiny = (area < max_area) & region[F].all(1)
+    if not tiny.any(): return
+    cents = P[F[tiny]].mean(1)
+    done = np.zeros(len(cents), bool)
+    A = neighbours(F, len(P)); deg = np.asarray(A.sum(1)).ravel()
+    for k in range(len(cents)):
+        if done[k]: continue
+        c = cents[(np.linalg.norm(cents - cents[k], axis=1) < 0.03)].mean(0)
+        done |= np.linalg.norm(cents - c, axis=1) < 0.035
+        d = np.linalg.norm(P - c, axis=1)
+        inner = d < r_in
+        ring = (d >= r_in) & (d < r_out)
+        if ring.sum() < 6 or inner.sum() < 3: continue
+        # plane through the ring
+        R = P[ring]; m = R.mean(0)
+        _, _, vt = np.linalg.svd(R - m)
+        nrm = vt[2]
+        # in-plane relaxation with the ring fixed
+        for _ in range(60):
+            avg = (A @ P) / np.maximum(deg, 1)[:, None]
+            P[inner] = avg[inner]
+        # onto the plane (slightly domed so it isn't dead flat)
+        rel = P[inner] - m
+        h = rel @ nrm
+        dome = 0.002 * (1 - (d[inner] / r_in) ** 2)
+        P[inner] -= np.outer(h, nrm)
+        P[inner] += np.outer(dome, nrm * np.sign(np.dot(nrm, [0, 0, 1]) + 1e-9))
+        # blend the seam between the re-laid disc and the cloth around it
+        band = (d >= r_in - 0.008) & (d < r_out + 0.012)
+        for _ in range(10):
+            avg = (A @ P) / np.maximum(deg, 1)[:, None]
+            P[band] += 0.5 * (avg[band] - P[band])

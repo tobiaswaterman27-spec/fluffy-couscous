@@ -73,6 +73,7 @@ def build(spec):
         for s, side in (("L", -1), ("R", 1)):
             leg = (pb.V[:, 0] * side > 0.01) & (pb.V[:, 1] < hipY - 0.06)
             hang(pb, P("Thigh" + s) + [0, -0.05, 0], P("Foot" + s), leg, window=0.32 if bot != "jeans" else 0.26, loose=0.65 if bot != "jeans" else 0.6)
+    unfold(pb)
     parts.append(pb)
     covered |= m_bot & (y < waistY - 0.03) & (y > hem + 0.03)
 
@@ -142,6 +143,8 @@ def build(spec):
             dd = np.sum((pt.V - Bb) * Nb, 1)
             push = np.maximum(0, floor_d - dd) * sel
             pt.V += Nb * push[:, None]
+        flatten_dense_patches(pt, (V[:, 2] > P("Spine")[2])[pt.src] & (pt.V[:, 1] > hipY - 0.05) & (pt.V[:, 1] < neckY - 0.02) & (np.abs(pt.V[:, 0]) < 0.2))
+        unfold(pt)
         smooth_edges(pt, iters=14)
         parts.append(pt)
         covered |= (torso > 0.5) & (y > hemY + 0.04) & (y < neckY - 0.02) & (fore_t < sleeve_end - 0.05) & (headw < 0.2) & (handw < 0.1)
@@ -234,7 +237,9 @@ def build(spec):
         hadd(ellipsoid(np.array([0, eyeY + 0.11, face_z - 0.045]), [0.04, 0.025, 0.03]), "wrap", k=0.02)
     if "beanie" in spec["extras"]:
         def f(p):
-            return np.maximum(scalp(p) - 0.03 - 0.002 * np.sin(np.arctan2(p[:, 0], p[:, 2]) * 60), hairline(p, front_up=0.07, back_down=-0.01) - p[:, 1])
+            edge = hairline(p, front_up=0.05, back_down=-0.01)
+            cuff = smoothstep(0.045, 0.03, p[:, 1] - edge)                 # the folded-up brim, a bit thicker
+            return np.maximum(scalp(p) - 0.03 - 0.006 * cuff - 0.002 * np.sin(np.arctan2(p[:, 0], p[:, 2]) * 60), edge - p[:, 1])
         hadd(Prim("beanie", hj - 0.25, hj + 0.3, f), "beanie")
     if "glasses" in spec["extras"]:
         for e in (sk.eye_l, sk.eye_r):
@@ -489,7 +494,7 @@ def colours(c, p, n, tagw, ao, head_frame):
     put("beard", beardc * strands[:, None], 0.3)
     put("band", np.tile([0.1, 0.1, 0.1], (N, 1)), 0.4)
     put("wrap", mix(np.tile([0.45, 0.2, 0.1], (N, 1)), [0.75, 0.55, 0.15], (np.sin(x * 120 + y * 90) > 0.3) * 0.7), 0.15)
-    put("beanie", np.tile([0.13, 0.13, 0.12], (N, 1)) * (0.9 + 0.15 * np.abs(np.sin(np.arctan2(x, z) * 60)))[:, None], 0.1)
+    put("beanie", np.tile([0.3, 0.25, 0.13], (N, 1)) * (0.85 + 0.2 * np.abs(np.sin(np.arctan2(x, z) * 60)))[:, None], 0.1)
     put("glasses", np.tile([0.05, 0.04, 0.035], (N, 1)), 0.75)
     put("strap", np.tile([0.1, 0.12, 0.2], (N, 1)), 0.25)
     put("card", id_card(c, p), 0.5)
