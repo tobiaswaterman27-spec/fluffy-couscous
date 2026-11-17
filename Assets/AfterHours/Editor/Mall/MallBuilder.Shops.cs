@@ -172,6 +172,8 @@ namespace AfterHours.EditorTools
             Vector3 b = MallLayout.WingPoint(w, u.u1 - 0.3f, frontLineV, y);
 
             BuildClosure(parent, u.code, a, b, y, u.access, u.name);
+            if (u.access == UnitAccess.LockedGlass && Mathf.Abs(MallLayout.Hash(u.code.GetHashCode(), 3, 9, 27)) % 3 == 0)
+                GlassImpact(parent, u, a, b, y, toConcourse);
 
             // Fascia sign above the shopfront, readable from the concourse.
             float mid = (u.u0 + u.u1) * 0.5f;
@@ -368,6 +370,37 @@ namespace AfterHours.EditorTools
             box.emission = faceCol * 1.4f + new Color(0.15f, 0.15f, 0.15f);
             box.seed = h;
             box.state = state;
+        }
+            /// <summary>
+        /// Something hit this window hard: a spider-web crack (seen from both sides), a second smaller one
+        /// sometimes, and glass fragments on the concourse floor below.
+        /// </summary>
+        static void GlassImpact(Transform parent, MallUnit u, Vector3 a, Vector3 b, float y, Vector3 toConcourse)
+        {
+            Material crack = ArtLibrary.Decal("GlassCrack", "glass_crack", Color.white, 0.9f);
+            Material glassBit = Mat("Glass fragment", new Color(0.75f, 0.85f, 0.85f), 0.95f);
+            int h = Mathf.Abs(MallLayout.Hash(u.code.GetHashCode(), 5, 1, 77));
+            var rng = new System.Random(h);
+            float R(float lo, float hi) => lo + (float)rng.NextDouble() * (hi - lo);
+            int hits = 1 + (h % 4 == 0 ? 1 : 0);
+            for (int k = 0; k < hits; k++)
+            {
+                Vector3 p = Vector3.Lerp(a, b, R(0.15f, 0.85f)) + Vector3.up * (R(0.5f, 1.7f));
+                float size = k == 0 ? R(0.7f, 1.2f) : R(0.3f, 0.5f);
+                float spin = R(0f, 360f);
+                foreach (int sd in new[] { -1, 1 })
+                    DecalQuad(parent, p + toConcourse * (0.021f * sd), toConcourse * sd, size, size, spin, crack);
+                // fragments that fell on the concourse side
+                int bits = 6 + rng.Next(10);
+                Vector3 floor = new Vector3(p.x, y, p.z);
+                for (int i = 0; i < bits; i++)
+                {
+                    GameObject f = Decor("Glass fragment", parent, Vector3.zero, new Vector3(R(0.01f, 0.05f), 0.003f, R(0.01f, 0.04f)), glassBit);
+                    Vector3 along = (b - a).normalized;
+                    f.transform.localPosition = floor + toConcourse * R(0.05f, 0.9f) + along * R(-0.4f, 0.4f) + Vector3.up * 0.0035f;
+                    f.transform.localRotation = Quaternion.Euler(R(-6f, 6f), R(0f, 360f), R(-6f, 6f));
+                }
+            }
         }
     }
 }

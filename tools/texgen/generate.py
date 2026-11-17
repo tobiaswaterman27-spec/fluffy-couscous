@@ -621,6 +621,35 @@ def missing_tile_decal():
     save_decal("missing_tile", rgb, a)
 
 
+def glass_crack_decal():
+    """An impact on a shop window: a crushed white centre, long radial cracks that fork, and broken
+    concentric rings between them. White on transparent (it's the light catching the fractures)."""
+    n = 512
+    x, y = coords(n)
+    cx = cy = n / 2
+    dx, dy = x - cx, y - cy
+    r = np.hypot(dx, dy) / (n / 2)
+    ang = np.arctan2(dy, dx)
+    rng = np.random.default_rng(951)
+    a = np.zeros((n, n))
+    # radial cracks: wobbling lines from the centre, some forking
+    for k in range(17):
+        th0 = rng.uniform(-np.pi, np.pi); L = rng.uniform(0.45, 0.98)
+        wob = rng.uniform(0.02, 0.07)
+        th = th0 + wob * np.sin(r * rng.uniform(8, 20) + rng.uniform(0, 6)) + 0.05 * (fnoise(n, 2.0, 952 + k) - 0.5)
+        d = np.abs(np.angle(np.exp(1j * (ang - th)))) * r * (n / 2)
+        a = np.maximum(a, smoothstep(1.6, 0.3, d) * smoothstep(L, L * 0.8, r) * smoothstep(0.0, 0.03, r) * rng.uniform(0.6, 1.0))
+    # rings, broken into arcs
+    for rr in (0.12, 0.2, 0.31, 0.45):
+        arcs = (np.sin(ang * rng.integers(3, 7) + rng.uniform(0, 6)) > rng.uniform(-0.3, 0.3))
+        ring = smoothstep(1.4, 0.2, np.abs(r - rr - 0.01 * np.sin(ang * 13)) * (n / 2)) * arcs
+        a = np.maximum(a, ring * 0.8)
+    # crushed centre
+    a = np.maximum(a, smoothstep(0.07, 0.0, r) * (0.6 + 0.4 * fnoise(n, 1.2, 960)))
+    a *= smoothstep(1.0, 0.85, r)
+    save_decal("glass_crack", np.ones((n, n, 3)) * col([235, 240, 242]), np.clip(a, 0, 1) * 0.85)
+
+
 if __name__ == "__main__":
     print("Generating textures into", os.path.abspath(OUT))
     for fn in (floor_tile, terrazzo, ceiling_tile, wall_paint, wall_block, concrete, carpark_floor, floor_vinyl,
@@ -629,5 +658,6 @@ if __name__ == "__main__":
     decals()
     wear_decal()
     missing_tile_decal()
+    glass_crack_decal()
     blood_decals()
     print("Done.")
