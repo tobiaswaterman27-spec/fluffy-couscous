@@ -223,11 +223,14 @@ def build(spec):
     beard = spec.get("beard", "none")
     if beard in ("short", "grey"):
         def f(p):
-            d = scalp(p) - 0.006 - 0.002 * fbm(p, 120, 2, seed=8)
             zf = (p[:, 2] - back_z) / max(face_z - back_z, 1e-3)
             q = p[:, 1]
             region = np.maximum(np.maximum((q - (eyeY - 0.045)), 0.55 - zf), (neckY - 0.01) - q)
             mouth = 0.012 - np.hypot(np.abs(p[:, 0]) / 2.2, q - (eyeY - 0.075))   # keep the lips clear
+            # thick in the middle, thinning to nothing at its edges, so it grows out of the skin, not sits on it
+            inside = -np.maximum(region, mouth)
+            thick = 0.0012 + 0.0055 * smoothstep(0.0, 0.018, inside)
+            d = scalp(p) - thick - 0.0018 * fbm(p, 120, 2, seed=8) * smoothstep(0.0, 0.01, inside)
             return np.maximum(np.maximum(d, region), mouth)
         hadd(Prim("beard", hj - 0.2, hj + 0.2, f), "beard")
     if "headwrap" in spec["extras"]:
@@ -355,18 +358,19 @@ def build(spec):
         # a proper collar: a band of cloth standing round the neck, higher at the back, open at the front zip
         ring = V[(np.abs(y - (neckY + 0.02)) < 0.012) & (np.abs(V[:, 0]) < 0.1) & (headw < 0.5) & (np.abs(V[:, 2] - nk[2]) < 0.12)]
         ccx, ccz = float(np.median(ring[:, 0])), float((ring[:, 2].max() + ring[:, 2].min()) / 2)
-        crx = float(np.percentile(np.abs(ring[:, 0] - ccx), 95)) + tthick + 0.006
-        crz = float((ring[:, 2].max() - ring[:, 2].min()) / 2) + tthick + 0.006
+        crx = float(np.percentile(np.abs(ring[:, 0] - ccx), 90)) + 0.012
+        crz = float((ring[:, 2].max() - ring[:, 2].min()) / 2) + 0.012
         open_front = top in ("workjacket", "jacket", "coat")
         cy0 = neckY - 0.005
         def collar_fn(p, ccx=ccx, ccz=ccz, crx=crx, crz=crz, cy0=cy0, open_front=open_front):
             dx, dz = p[:, 0] - ccx, p[:, 2] - ccz
             r = np.sqrt((dx / crx) ** 2 + (dz / crz) ** 2)
-            wall = np.abs((r - 1) * min(crx, crz)) - 0.0035
+            wall = np.abs((r - 1) * min(crx, crz)) - 0.0025
             back = smoothstep(0.3, -0.9, dz / crz)                       # 0 front .. 1 back
-            h = 0.022 + 0.022 * back                                      # 2 cm high at the front, 4.5 at the back
-            mid = cy0 + h * 0.5 + 0.012 * back
-            band = np.abs(p[:, 1] - mid) - h * 0.5
+            h = (0.012 + 0.016 * back) * (1.0 if open_front else 0.8)    # a low band: 1-1.5 cm at the front, ~3 at the back
+            # the band runs down into the garment's neckline, so there's no gap under it
+            lo_y, hi_y = cy0 - 0.03, cy0 + h + 0.008 * back
+            band = np.abs(p[:, 1] - (lo_y + hi_y) / 2) - (hi_y - lo_y) / 2
             d = np.maximum(wall, band)
             if open_front:
                 d = np.maximum(d, np.where(dz > 0, 0.006 - np.abs(dx), -1))
@@ -435,13 +439,20 @@ def colours(c, p, n, tagw, ao, head_frame):
         sk = mix(sk, np.array(spec["skin"]) * 0.75, lid * 0.4)
     lips = np.exp(-((x / 2.6) ** 2 + (y - (eyeY - 0.075)) ** 2) / 0.00012) * face
     sk = mix(sk, np.array(spec["skin"]) * [0.95, 0.68, 0.68], lips * 0.6)
+    if spec.get("beard") in ("short", "grey"):
+        # the skin under a beard is shadowed with it, so its thinning edge blends instead of looking cut out
+        under = smoothstep(eyeY - 0.035, eyeY - 0.055, y) * (y > c["neckY"] - 0.02) * face
+        mouthc = smoothstep(0.012, 0.018, np.hypot(np.abs(x) / 2.2, y - (eyeY - 0.075)))
+        bc = np.array(spec["hair"]["colour"]) if spec.get("beard") != "grey" else np.array([0.6, 0.59, 0.56])
+        sk = mix(sk, bc * 0.8 + np.array(spec["skin"]) * 0.2, under * mouthc * (0.55 + 0.25 * fbm(p, 400, 1, seed=53)))
     if spec.get("beard") == "stubble":
         stub = smoothstep(eyeY - 0.05, eyeY - 0.07, y) * (y > c["neckY"] - 0.02) * face
         sk = mix(sk, np.array(spec["skin"]) * 0.62, stub * smoothstep(0.1, 0.5, fbm(p, 900, 1, seed=52) + 0.3) * 0.5)
     if spec["hair"]["style"] not in ("wrap",):
         d_line = c["hairline_fn"](p) - p[:, 1] if c.get("hairline_fn") else np.full(N, 1.0)
-        band = smoothstep(0.02, -0.002, d_line) * (y > c["neckY"]) * smoothstep(0.1, 0.5, fbm(p, 250, 2, seed=57) + 0.4)
-        sk = mix(sk, np.array(spec["hair"]["colour"]) * 0.9 + np.array(spec["skin"]) * 0.1, band * 0.55)
+        # short fine hairs at the hairline: a soft graded shadow, not dots
+        band = smoothstep(0.016, -0.002, d_line) * (y > c["neckY"]) * (0.75 + 0.25 * fbm(p, 120, 2, seed=57))
+        sk = mix(sk, np.array(spec["hair"]["colour"]) * 0.7 + np.array(spec["skin"]) * 0.3, band * 0.32)
     put("skin", sk, 0.36)
     # the coloured garment: neutral, the material tints it
     top = spec["top"]
@@ -501,6 +512,8 @@ def colours(c, p, n, tagw, ao, head_frame):
     put("pack", np.tile([0.14, 0.15, 0.13], (N, 1)) * (0.9 + 0.1 * fbm(p, 50, 2, seed=61))[:, None], 0.2)
     put("apron", np.tile([0.16, 0.12, 0.09], (N, 1)) * (0.9 + 0.1 * fbm(p, 40, 2, seed=62))[:, None], 0.25)
     put("apron_tie", np.tile([0.16, 0.12, 0.09], (N, 1)), 0.25)
+    hairish = T["hair"] + T["beanie"] + T["wrap"]
+    ao = np.maximum(ao, hairish * smoothstep(-0.2, -0.7, n[:, 1]) * 0.75)   # undersides of hair/hats: no black rim
     col *= (0.5 + 0.5 * ao)[:, None]
     return np.clip(col, 0, 1), np.clip(sm, 0, 1)
 
