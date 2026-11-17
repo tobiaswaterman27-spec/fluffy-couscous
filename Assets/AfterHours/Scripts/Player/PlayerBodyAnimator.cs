@@ -237,7 +237,7 @@ namespace AfterHours.Player
                     footPitch -= 22f * crouch * (1f - moveW);                   // a deep squat rises onto the balls of the feet
                     raise += 0.035f * crouch * (1f - moveW);
                     float behind = Mathf.Max(0f, -Vector3.Dot(pelvisPos - headPos, fwd));
-                    Vector3 basePos = root - fwd * (behind * 0.95f * crouch - 0.05f * crouch) + right * ((0.1f + 0.07f * crouch) * side) + moveDir * off;
+                    Vector3 basePos = root - fwd * (behind * (0.9f + 0.05f * crouch) - 0.05f * crouch)   /* feet under the hips, not under the head */ + right * ((0.1f + 0.07f * crouch) * side) + moveDir * off;
                     float groundY = Vector3.Dot(root, up);
                     if (Physics.Raycast(basePos + up * 0.5f, -up, out RaycastHit hit, 1.0f, groundMask, QueryTriggerInteraction.Ignore)) groundY = Vector3.Dot(hit.point, up);
                     if (!l.grounded) raise += 0.15f;
