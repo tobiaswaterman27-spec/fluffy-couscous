@@ -241,6 +241,13 @@ namespace AfterHours.EditorTools
                         box.faces = new[] { front.GetComponent<Renderer>() };
                         box.emission = new Color(0.45f, 0.6f, 0.85f) * 1.6f;
                         box.glow = vl;
+                        if (vh % 2 == 0)
+                        {
+                            var mg = new GameObject("Moths");
+                            mg.transform.SetParent(g, false);
+                            mg.transform.localPosition = vm + Vector3.up * 1.3f + inward * 0.6f;
+                            var mo = mg.AddComponent<AfterHours.World.Moths>(); mo.count = 4; mo.radius = 0.3f;
+                        }
                         box.seed = vh;
                         box.state = vh % 6 == 0 ? SignLightbox.State.Dead : vh % 6 == 1 ? SignLightbox.State.Failing : SignLightbox.State.Lit;
                         if (box.state != SignLightbox.State.Dead)

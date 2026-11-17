@@ -124,6 +124,7 @@ namespace AfterHours.EditorTools
                 Progress("Detail: pipes, trays, handrails", 0.64f);
                 DressServices(Group("Services", details));
                 DressNotices(Group("Notices", details));
+                DressRats(Group("Rats", mall));
                 Progress("Detail: car park", 0.67f);
                 DressCarPark(carPark);
 

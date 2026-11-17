@@ -251,6 +251,7 @@ namespace AfterHours.EditorTools
                 fl.pattern = (FlickerPattern)(h % 3);
                 fl.seed = h;
                 if (h % 2 == 0) { var w = go.AddComponent<AfterHours.World.SparkingWire>(); w.seed = h; w.minInterval = 10f; w.maxInterval = 40f; }   // a burnt-out ballast
+                if (h % 3 != 2) { var mg = new GameObject("Moths"); mg.transform.SetParent(go.transform, false); mg.transform.localPosition = Vector3.down * 0.3f; mg.AddComponent<AfterHours.World.Moths>(); }
                 return;
             }
             Detail("Light panel", g, centre, size, trofferMat);

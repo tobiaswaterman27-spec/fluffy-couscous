@@ -84,5 +84,30 @@ namespace AfterHours.EditorTools
                     }
             }
         }
+    
+        /// <summary>Rats along the service corridor walls (about one corridor in two).</summary>
+        static void DressRats(Transform parent)
+        {
+            foreach (MallFloor f in MallLayout.ShopFloors)
+            {
+                float y = MallLayout.FloorY(f) + 0.012f;
+                foreach (WingId w in MallLayout.Wings)
+                    foreach (int side in new[] { -1, 1 })
+                    {
+                        int h = Mathf.Abs(MallLayout.Hash((int)f, (int)w, side + 3, 919));
+                        if (h % 2 == 0) continue;
+                        float u = 44f + (h % 40);
+                        Vector3 p = MallLayout.WingPoint(w, u, side * (MallLayout.CorridorOuter - 0.12f), y);
+                        var go = new GameObject("Rat");
+                        go.transform.SetParent(parent, false);
+                        go.transform.localPosition = p;
+                        Vector3 along = MallLayout.WingForward(w) * ((h >> 3) % 2 == 0 ? 1f : -1f);
+                        go.transform.localRotation = Quaternion.LookRotation(Quaternion.Euler(0f, (h % 60) - 30f, 0f) * along);
+                        var rat = go.AddComponent<AfterHours.World.Rat>();
+                        rat.runDir = MallLayout.WingForward(w);
+                        rat.seed = h;
+                    }
+            }
+        }
     }
 }
