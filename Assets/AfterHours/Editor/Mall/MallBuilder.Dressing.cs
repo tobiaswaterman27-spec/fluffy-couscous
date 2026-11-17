@@ -113,8 +113,11 @@ namespace AfterHours.EditorTools
         // CCTV domes, missing / hanging / water-stained tiles.
         // =====================================================================
 
+        static readonly List<Vector3> paSpeakers = new List<Vector3>();
+
         static void DressCeilings(Transform parent)
         {
+            paSpeakers.Clear();
             const float T = 1.2f;
             foreach (MallFloor f in MallLayout.ShopFloors)
             {
@@ -162,6 +165,7 @@ namespace AfterHours.EditorTools
                         else if (publicArea && Mod(i, 8) == 4 && Mod(j, 8) == 4)
                         {
                             Cyl("Speaker", g, c, c + Vector3.down * 0.02f, 0.24f, whiteFixture);
+                            paSpeakers.Add(c + Vector3.down * 0.05f);
                         }
                         else if (Mod(i, 5) == 2 && Mod(j, 4) == 2)
                         {

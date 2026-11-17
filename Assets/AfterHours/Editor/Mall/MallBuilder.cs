@@ -91,6 +91,11 @@ namespace AfterHours.EditorTools
                 PrepareDressing();
                 Progress("Detail: ceilings (lights, sprinklers, vents, CCTV...)", 0.32f);
                 DressCeilings(Group("Ceilings", details));
+                {
+                    var pa = new GameObject("PA system");
+                    pa.transform.SetParent(mall, false);
+                    pa.AddComponent<AfterHours.Audio.PASystem>().speakers = paSpeakers.ToArray();
+                }
                 Progress("Detail: walls (skirting, sockets, extinguishers, adverts...)", 0.42f);
                 DressWalls(Group("Walls", details));
                 Progress("Detail: floors (stains, scuffs, gum, cracks...)", 0.5f);
