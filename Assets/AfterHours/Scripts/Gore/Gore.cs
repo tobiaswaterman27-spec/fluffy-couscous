@@ -11,6 +11,7 @@ namespace AfterHours.Gore
         public Material spatterMaterial;
         public Material smearMaterial;
         public Material dropMaterial;
+        public Material printMaterial;        // Elliot's bloody footprint
         public Texture2D lensTexture;
 
         static GoreKit instance;

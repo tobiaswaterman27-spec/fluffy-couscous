@@ -267,6 +267,7 @@ namespace AfterHours.EditorTools
             kit.poolMaterial = ArtLibrary.Decal("BloodPool", "blood_pool", Color.white, 0.85f);
             kit.spatterMaterial = ArtLibrary.Decal("BloodSpatter", "blood_spatter", Color.white, 0.7f);
             kit.smearMaterial = ArtLibrary.Decal("BloodSmear", "blood_smear", Color.white, 0.55f);
+            kit.printMaterial = ArtLibrary.Decal("ElliotPrint", "elliot_print", Color.white, 0.6f);
             kit.lensTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(EditorBuild.Root + "/Textures/Generated/decal_blood_lens.png");
 
             EditorBuild.EnsureFolder(MatFolder);

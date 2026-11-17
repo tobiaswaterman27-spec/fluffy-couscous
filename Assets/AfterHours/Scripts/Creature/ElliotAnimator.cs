@@ -218,7 +218,9 @@ namespace AfterHours.Creature
                     {
                         swinging[i] = false;
                         footPos[i] = footTo[i];
-                        if (audioOut != null) audioOut.Footstep(footPos[i], SurfaceAt(footPos[i]), Mathf.Lerp(0.55f, 1f, runW) * (1f - crawlW * 0.6f));
+                        SurfaceType surf = SurfaceAt(footPos[i]);
+                        if (audioOut != null) audioOut.Footstep(footPos[i], surf, Mathf.Lerp(0.55f, 1f, runW) * (1f - crawlW * 0.6f));
+                        if (Application.isPlaying) ElliotFootprints.Stamp(footPos[i], fwd, surf, i == 0);
                     }
                 }
             }

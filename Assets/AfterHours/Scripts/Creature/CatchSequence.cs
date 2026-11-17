@@ -502,6 +502,7 @@ namespace AfterHours.Creature
             Vector3 eye = curEye;
             bool goreOn = SettingsService.CurrentOrDefault.gore;
             GoreKit kit = goreOn ? GoreKit.Instance : null;
+            ElliotFootprints.Resoak();
 
             // Openings.
             if (Fire(12, -intro, u))

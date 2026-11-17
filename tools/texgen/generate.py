@@ -650,6 +650,35 @@ def glass_crack_decal():
     save_decal("glass_crack", np.ones((n, n, 3)) * col([235, 240, 242]), np.clip(a, 0, 1) * 0.85)
 
 
+def elliot_print_decal():
+    """Elliot's bloody footprint: long narrow heel, a splayed ball, five long toes ending in claw scrapes. Patchy
+    where the blood didn't transfer. Toes point up the texture (+v); roughly symmetric so it serves both feet."""
+    n = 256
+    x, y = coords(n)
+    u = (x / n - 0.5) * 2; v = 1 - y / n * 2           # v: -1 heel .. +1 toes
+    a = np.zeros((n, n))
+    heel = np.exp(-((u / 0.3) ** 2 + ((v + 0.58) / 0.28) ** 2) * 2.0)
+    # the outer edge of the sole carries weight from heel to ball; the arch side barely touches
+    lateral = np.exp(-(((u - 0.1 - 0.05 * (v + 0.2)) / 0.13) ** 2) * 2.2) * smoothstep(-0.65, -0.4, v) * smoothstep(0.25, 0.05, v)
+    ball = np.exp(-((u / 0.34) ** 2 + ((v - 0.12) / 0.17) ** 2) * 2.2)
+    a = np.maximum(np.maximum(heel, lateral * 0.85), ball)
+    for k, (tx, ang, L) in enumerate([(-0.27, -0.42, 0.34), (-0.13, -0.18, 0.42), (0.0, 0.0, 0.46), (0.13, 0.18, 0.42), (0.26, 0.42, 0.34)]):
+        dx, dy = u - tx * 0.8, v - 0.22
+        ca, sa = np.cos(ang), np.sin(ang)
+        along = dx * sa + dy * ca; across = dx * ca - dy * sa
+        width = 0.055 - 0.015 * smoothstep(0.0, L, along)
+        toe = smoothstep(width, width - 0.03, np.abs(across)) * smoothstep(-0.05, 0.02, along) * smoothstep(L, L - 0.06, along)
+        pad = np.exp(-((across / 0.065) ** 2 + ((along - L + 0.08) / 0.07) ** 2) * 2)
+        claw = smoothstep(0.014, 0.0, np.abs(across)) * smoothstep(L - 0.02, L + 0.03, along) * smoothstep(L + 0.17, L + 0.08, along)
+        a = np.maximum(a, np.maximum(toe * 0.7, pad))
+        a = np.maximum(a, claw * 0.75)
+    patchy = smoothstep(0.3, 0.65, fnoise(n, 1.8, 971)) * (0.7 + 0.3 * fnoise(n, 1.2, 972))
+    a = smoothstep(0.35, 0.6, a) * (0.35 + 0.65 * patchy)
+    rgb = np.ones((n, n, 3)) * col([70, 8, 6])
+    rgb *= (0.75 + 0.35 * fnoise(n, 2.0, 973))[..., None]
+    save_decal("elliot_print", rgb, np.clip(a, 0, 1) * 0.92)
+
+
 if __name__ == "__main__":
     print("Generating textures into", os.path.abspath(OUT))
     for fn in (floor_tile, terrazzo, ceiling_tile, wall_paint, wall_block, concrete, carpark_floor, floor_vinyl,
@@ -659,5 +688,6 @@ if __name__ == "__main__":
     wear_decal()
     missing_tile_decal()
     glass_crack_decal()
+    elliot_print_decal()
     blood_decals()
     print("Done.")
