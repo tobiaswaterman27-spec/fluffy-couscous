@@ -465,7 +465,22 @@ namespace AfterHours.Creature
                 }
             }
             lastChestDelta = dc;
+
+            // he drips: from the jaw (more after a kill, more with his mouth open) and now and then a claw
+            dripTimer -= dt;
+            if (dripTimer <= 0f && Application.isPlaying)
+            {
+                dripTimer = Random.Range(0.6f, 2.4f) / (1f + vp.jaw * 2f);
+                if (AfterHours.Settings.SettingsService.CurrentOrDefault.gore)
+                {
+                    float r = Random.value;
+                    Vector3 at = r < 0.6f || handL == null ? MouthPosition + Vector3.down * 0.06f : (r < 0.8f ? handL.position : (handR != null ? handR.position : handL.position));
+                    AfterHours.World.WorldFX.Drip(at + Random.insideUnitSphere * 0.02f);
+                }
+            }
         }
+
+        float dripTimer;
 
         float lastChest, lastChestDelta, fogCool;
 

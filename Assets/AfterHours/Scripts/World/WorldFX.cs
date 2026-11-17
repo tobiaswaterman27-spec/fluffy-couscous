@@ -13,7 +13,7 @@ namespace AfterHours.World
     /// </summary>
     public static class WorldFX
     {
-        enum Kind { Spark, Dust, Splinter, Breath }
+        enum Kind { Spark, Dust, Splinter, Breath, Drip }
         static readonly Dictionary<Kind, ParticleSystem> systems = new Dictionary<Kind, ParticleSystem>();
         static Transform root;
         static Texture2D dot, puff;
@@ -113,6 +113,19 @@ namespace AfterHours.World
                     var bd = ps.limitVelocityOverLifetime; bd.enabled = true; bd.drag = 3.5f;
                     var bn = ps.noise; bn.enabled = true; bn.strength = 0.08f; bn.frequency = 0.8f; bn.scrollSpeed = 0.3f;
                     break;
+                case Kind.Drip:
+                    main.startLifetime = new ParticleSystem.MinMaxCurve(1.2f, 2f);
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.006f, 0.012f);
+                    main.gravityModifier = 1f;
+                    main.startColor = new Color(0.22f, 0.02f, 0.02f, 0.95f);
+                    r.renderMode = ParticleSystemRenderMode.Stretch;
+                    r.velocityScale = 0.02f; r.lengthScale = 1.6f;
+                    r.sharedMaterial = Mat(dot, false);
+                    g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                              new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.9f), new GradientAlphaKey(0f, 1f) });
+                    var cd = ps.collision; cd.enabled = true; cd.type = ParticleSystemCollisionType.World; cd.bounce = 0f; cd.lifetimeLoss = 1f;
+                    cd.quality = ParticleSystemCollisionQuality.Low;
+                    break;
                 case Kind.Splinter:
                     main.startLifetime = new ParticleSystem.MinMaxCurve(1.2f, 2.5f);
                     main.startSize3D = true;
@@ -190,6 +203,14 @@ namespace AfterHours.World
                 p.applyShapeToPosition = false;
                 ps.Emit(p, 1);
             }
+        }
+
+        /// <summary>A drop of blood (or worse) falling from Elliot's jaw or claws.</summary>
+        public static void Drip(Vector3 at)
+        {
+            Camera c = Camera.main;
+            if (c == null || (c.transform.position - at).sqrMagnitude > 15f * 15f) return;
+            Emit(Kind.Drip, at, Vector3.down, 1, 0.05f, 0.2f);
         }
 
         /// <summary>Wood splinters flung from a breaking door, plus dust.</summary>
