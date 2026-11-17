@@ -363,21 +363,84 @@ namespace AfterHours.EditorTools
             }
         }
 
+        static readonly string[] MannequinVariants = { "female_top", "male_bare", "female_dressed", "male_top" };
+        static readonly Dictionary<string, Mesh> mannequinMeshes = new Dictionary<string, Mesh>();
+        static readonly Color[] MannequinClothes =
+        {
+            new Color(0.12f, 0.12f, 0.14f), new Color(0.3f, 0.12f, 0.1f), new Color(0.6f, 0.58f, 0.52f), new Color(0.14f, 0.2f, 0.28f),
+        };
+
+        /// <summary>
+        /// The mannequin meshes (tools/chargen/mannequins.py writes them as .bytes; here they become Unity mesh
+        /// assets, so the scene keeps them). Null if the file is missing.
+        /// </summary>
+        static Mesh MannequinMesh(string variant)
+        {
+            if (mannequinMeshes.TryGetValue(variant, out Mesh cached) && cached != null) return cached;
+            string dir = EditorBuild.Root + "/Models/Mannequin";
+            var src = UnityEditor.AssetDatabase.LoadAssetAtPath<TextAsset>(dir + "/mannequin_" + variant + ".bytes");
+            if (src == null) return null;
+            byte[] b = src.bytes;
+            if (b.Length < 8 || b[0] != (byte)'M' || b[1] != (byte)'N' || b[2] != (byte)'Q' || b[3] != (byte)'1') return null;
+            int o = 4;
+            int nv = System.BitConverter.ToInt32(b, o); o += 4;
+            var pos = new Vector3[nv]; var nrm = new Vector3[nv];
+            for (int i = 0; i < nv; i++) { pos[i] = new Vector3(System.BitConverter.ToSingle(b, o), System.BitConverter.ToSingle(b, o + 4), System.BitConverter.ToSingle(b, o + 8)); o += 12; }
+            for (int i = 0; i < nv; i++) { nrm[i] = new Vector3(System.BitConverter.ToSingle(b, o), System.BitConverter.ToSingle(b, o + 4), System.BitConverter.ToSingle(b, o + 8)); o += 12; }
+            int ns = System.BitConverter.ToInt32(b, o); o += 4;
+            var mesh = new Mesh { name = "Mannequin " + variant, indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+            mesh.vertices = pos; mesh.normals = nrm;
+            mesh.subMeshCount = ns;
+            for (int s = 0; s < ns; s++)
+            {
+                int n = System.BitConverter.ToInt32(b, o); o += 4;
+                var idx = new int[n];
+                for (int i = 0; i < n; i++) { idx[i] = (int)System.BitConverter.ToUInt32(b, o); o += 4; }
+                mesh.SetTriangles(idx, s);
+            }
+            mesh.RecalculateBounds();
+            EditorBuild.EnsureFolder(dir + "/Generated");
+            string path = dir + "/Generated/mannequin_" + variant + ".asset";
+            UnityEditor.AssetDatabase.DeleteAsset(path);
+            UnityEditor.AssetDatabase.CreateAsset(mesh, path);
+            mannequinMeshes[variant] = mesh;
+            return mesh;
+        }
+
+        /// <summary>
+        /// A fibreglass shop mannequin on its glass plate: a real figure (egg head, glossy finish), some dressed.
+        /// Falls back to a simple stand-and-torso if the mesh files aren't there.
+        /// </summary>
         static void Mannequin(Transform g, Vector3 floor, Quaternion face)
         {
-            Cyl("Mannequin stand", g, floor, floor + Vector3.up * 0.9f, 0.04f, metal);
-            Detail("Mannequin base", g, floor + Vector3.up * 0.01f, new Vector3(0.35f, 0.02f, 0.35f), metal, face);
-            GameObject torso = Cyl("Mannequin torso", g, floor + Vector3.up * 0.95f, floor + Vector3.up * 1.55f, 0.36f, whiteFixture, true);
-            torso.transform.localScale = new Vector3(0.36f, 0.3f, 0.22f);
-            torso.transform.localRotation = face;
-            GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            head.name = "Mannequin head";
-            head.transform.SetParent(g, false);
-            head.transform.localPosition = floor + Vector3.up * 1.72f;
-            head.transform.localScale = new Vector3(0.2f, 0.25f, 0.21f);
-            Object.DestroyImmediate(head.GetComponent<Collider>());
-            head.GetComponent<Renderer>().sharedMaterial = whiteFixture;
-            head.isStatic = true;
+            int h = Mathf.Abs(MallLayout.Hash((int)(floor.x * 10f), (int)(floor.z * 10f), (int)floor.y, 61));
+            string variant = MannequinVariants[h % MannequinVariants.Length];
+            Mesh mesh = MannequinMesh(variant);
+            if (mesh == null)
+            {
+                Cyl("Mannequin stand", g, floor, floor + Vector3.up * 0.9f, 0.04f, metal);
+                Detail("Mannequin base", g, floor + Vector3.up * 0.01f, new Vector3(0.35f, 0.02f, 0.35f), metal, face);
+                GameObject torso = Cyl("Mannequin torso", g, floor + Vector3.up * 0.95f, floor + Vector3.up * 1.55f, 0.36f, whiteFixture, true);
+                torso.transform.localScale = new Vector3(0.36f, 0.3f, 0.22f);
+                torso.transform.localRotation = face;
+                return;
+            }
+            // glass base plate and the steel rod up into the calf
+            Detail("Mannequin plate", g, floor + Vector3.up * 0.008f, new Vector3(0.42f, 0.016f, 0.42f), darkGlass, face);
+            var go = new GameObject("Mannequin (" + variant + ")");
+            go.transform.SetParent(g, false);
+            go.transform.localPosition = floor + Vector3.up * 0.016f;
+            // most face the window; a few are turned a little, one or two look somewhere else entirely
+            float turn = h % 7 == 0 ? (h % 2 == 0 ? 120f : -150f) : ((h >> 3) % 31 - 15);
+            go.transform.localRotation = face * Quaternion.Euler(0f, turn, 0f);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            Material glass = Mat("Mannequin fibreglass", new Color(0.86f, 0.84f, 0.8f), 0.78f);
+            Material cloth = Mat("Mannequin clothes " + (h % MannequinClothes.Length), MannequinClothes[h % MannequinClothes.Length], 0.15f);
+            mr.sharedMaterials = mesh.subMeshCount > 1 ? new[] { glass, cloth } : new[] { glass };
+            var col = go.AddComponent<CapsuleCollider>();
+            col.center = new Vector3(0f, 0.9f, 0f); col.height = 1.8f; col.radius = 0.2f;
+            go.AddComponent<MannequinWatch>().seed = h;
         }
 
         static void SecurityGates(Transform g, MallUnit u, float y)
