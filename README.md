@@ -96,7 +96,13 @@ After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the cam
 ### Things to know when playing
 - **Hide**: open a locker or cupboard, look inside, hold **E**. **E** again to get out.
   While hidden, **hold Shift to hold your breath** (panting can be heard; hold it too long and you gasp).
-- **Vents**: hold **Ctrl** to crawl through the low grilles in the service corridors.
+- **Vents**: the grilles in the service corridors sit off the floor (knee-high downstairs, chest-high upstairs).
+  Pull a loose grille off, then look at the opening and press **E** to climb in (you crawl inside). From inside,
+  **E** at an opening climbs out - from an upstairs duct you tumble out onto the floor. You can push a grille off
+  from inside, or pull it back behind you to hide.
+- **Doors**: **E** opens with the handle (quietly if you're crouched). Locked: one try of the handle - or, if
+  you're panicking (sprinting), you rattle it, which is loud. **Sprint straight into a closed door** to barge it open
+  (very loud, it smashes into the wall) - but if it's locked, you'll hit it hard instead.
 - **Lifts**: call button beside the doors, floor buttons inside. No power = stuck. The alarm bell is very loud.
 - **Power cuts**: breakers trip now and then; the area goes dark. The switchboard is in the car park plant room.
 - **Escalators**: the red button at the bottom stops them (and restarts them).
