@@ -371,7 +371,8 @@ namespace AfterHours.EditorTools
             box.seed = h;
             box.state = state;
         }
-            /// <summary>
+
+        /// <summary>
         /// Something hit this window hard: a spider-web crack (seen from both sides), a second smaller one
         /// sometimes, and glass fragments on the concourse floor below.
         /// </summary>
