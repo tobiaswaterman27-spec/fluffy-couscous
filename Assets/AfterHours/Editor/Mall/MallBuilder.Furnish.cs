@@ -35,7 +35,7 @@ namespace AfterHours.EditorTools
                     Rows(g, area, y, 8f, 1.0f, 1.8f, 3.0f, 2.2f, metal, SurfaceType.Metal, keepClear, stockGrocery, seed);
                     break;
                 case FurnishStyle.Food:
-                    PlaceGrid(g, area, y, 0.9f, 0.9f, 0.75f, 2.9f, woodMat, SurfaceType.Wood, keepClear, (centre) => { Chairs(g, centre, y); Leftovers(g, centre + Vector3.up * 0.75f); });
+                    PlaceGrid(g, area, y, 0.9f, 0.9f, 0.75f, 2.9f, woodMat, SurfaceType.Wood, keepClear, (centre) => { if (!Chairs(g, centre, y)) Leftovers(g, centre + Vector3.up * 0.75f); });
                     break;
                 case FurnishStyle.Office:
                     PlaceGrid(g, area, y, 1.6f, 0.8f, 0.75f, 3.4f, woodMat, SurfaceType.Wood, keepClear, (centre) =>
@@ -114,7 +114,8 @@ namespace AfterHours.EditorTools
             }
         }
 
-        static void Chairs(Transform g, Vector3 tableCentre, float y)
+        /// <returns>true if the table was cleared and the chairs put up on it.</returns>
+        static bool Chairs(Transform g, Vector3 tableCentre, float y)
         {
             int h = Mathf.Abs(MallLayout.Hash((int)(tableCentre.x * 10f), (int)(tableCentre.z * 10f), 7, 3));
             if (h % 5 < 2)
@@ -123,11 +124,12 @@ namespace AfterHours.EditorTools
                 // the backs hang down over the table's edges
                 ChairProp(g, tableCentre + new Vector3(-0.27f, 0.75f, 0f), 90f + (h % 9 - 4), true);
                 ChairProp(g, tableCentre + new Vector3(0.27f, 0.75f, 0f), -90f + (h % 7 - 3), true);
-                return;
+                return true;
             }
             ChairProp(g, tableCentre + new Vector3(0f, 0f, 0.8f), 180f + (h % 25 - 12), false);
             if (h % 7 == 3) ChairTipped(g, tableCentre + new Vector3(0.3f, 0f, -1.0f), h);   // knocked over as someone ran
             else ChairProp(g, tableCentre + new Vector3((h % 3 - 1) * 0.15f, 0f, -0.8f - (h % 4) * 0.06f), (h % 31 - 15), false);
+            return false;
         }
 
         /// <summary>
