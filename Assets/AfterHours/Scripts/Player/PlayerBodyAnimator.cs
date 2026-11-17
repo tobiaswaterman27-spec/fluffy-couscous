@@ -152,7 +152,7 @@ namespace AfterHours.Player
                     Vector3 ft = Vector3.Lerp(straight, drawn, k * 0.9f);
                     ft = ft - up * Vector3.Dot(ft - root, up) + up * 0.05f;
                     Vector3 toes = Vector3.Lerp(legsDir, -legsRight * side, k * 0.5f).normalized;
-                    LegIK(s, hip, ft, legsRight * side - up * 0.6f, Quaternion.LookRotation(toes, -up));
+                    LegIK(s, hip, ft, legsRight * side - up * 0.6f, Quaternion.LookRotation(toes, up));   // tops of the feet on the floor
                 }
                 // arms: forearms flat on the floor, elbows out; each forearm in turn reaches forward, plants and drags the body up
                 Vector3 chest = pelvisPos + spineRot * Vector3.up * Spine;
@@ -184,14 +184,15 @@ namespace AfterHours.Player
             // the torso hangs from the head at a natural lean: barely forward when walking, more when running,
             // well forward when crouched (the legs then bend to reach the floor). The hips dip on each step.
             float span = Spine + Neck;
-            float leanDeg = Mathf.Lerp(3f, 13f, runW * moveW) + 46f * crouch + 3f * moveW;
+            float leanDeg = Mathf.Lerp(3f, 13f, runW * moveW) + 14f * crouch + 3f * moveW;
             Vector3 torsoDir = up * Mathf.Cos(leanDeg * Mathf.Deg2Rad) + fwd * Mathf.Sin(leanDeg * Mathf.Deg2Rad);
-            float hipBob = Mathf.Abs(Mathf.Sin(phase * Mathf.PI * 2f)) * Mathf.Lerp(0.015f, 0.04f, runW) * moveW;
-            pelvisPos = headPos - torsoDir * (span * 0.995f) - up * (hipBob - breath * 0.004f + 0.07f * runW * moveW);   // runners sit lower: knees stay bent
+            float hipBob = (0.5f + 0.5f * Mathf.Cos(phase * Mathf.PI * 4f)) * Mathf.Lerp(0.025f, 0.05f, runW) * moveW + 0.02f * moveW;   // lowest at each heel strike
+            pelvisPos = headPos - torsoDir * (span * 0.995f) - fwd * (0.06f * crouch) - up * (hipBob - breath * 0.004f + 0.07f * runW * moveW);   // runners sit lower: knees stay bent
             // never higher than the legs can reach
             float maxHip = Vector3.Dot(root, up) + HipY;
             float overHip = Vector3.Dot(pelvisPos, up) - maxHip;
             if (overHip > 0f) pelvisPos -= up * overHip;
+            if (!caught) pelvisPos -= right * (Mathf.Sin(phase * Mathf.PI * 2f) * 0.025f * moveW * (1f - runW));   // weight over the planted foot
             // held: the torso hangs from where it's gripped, under gravity (from the shoulders, or by the ankles)
             Vector3 gripL = Vector3.zero, gripR = Vector3.zero; float struggle = 0f; bool upside = false;
             if (caught) CatchSequence.VictimPose(controller, out gripL, out gripR, out struggle, out upside);
@@ -201,16 +202,21 @@ namespace AfterHours.Player
             neckRot = Aim(e2 - m2, fwd);
             float twist = Mathf.Sin(phase * Mathf.PI * 2f) * Mathf.Lerp(4f, 9f, runW) * moveW;
             spineRot = spineRot * Quaternion.Euler(0f, -twist, 0f);
-            Quaternion pelvisRot = (caught ? headRot : rot) * Quaternion.Euler(Mathf.Lerp(4f, 20f, crouch), twist, 0f);
+            Quaternion pelvisRot = (caught ? headRot : rot) * Quaternion.Euler(Mathf.Lerp(4f, 20f, crouch), twist, -Mathf.Sin(phase * Mathf.PI * 2f) * 4f * moveW * (1f - runW));
             SetBody(pelvisPos, pelvisRot, spineRot, neckRot, headRot, up);
 
             // legs: step in time with the footsteps, onto the real ground
-            float lift = Mathf.Lerp(0.07f, 0.2f, runW) * moveW;
+            // gait: each foot is planted (moving back under the body at walking speed, so it never slides) for ~60% of
+            // the cycle walking / ~36% running, then swings: heel peels up, knee folds, foot clears and reaches heel-first
+            float duty = Mathf.Lerp(0.62f, 0.36f, runW);
+            float reach = Mathf.Clamp(duty * 2f * stepLen, 0f, Mathf.Lerp(0.68f, 1.3f, runW));
+            float clear = Mathf.Lerp(0.1f, 0.34f, runW) * moveW;
             for (int s = 0; s < 2; s++)
             {
                 float side = s == 0 ? -1f : 1f;
                 Vector3 hip = pelvisPos + pelvisRot * new Vector3(HipW * side, HipOff.y, HipOff.z);
                 Vector3 ft;
+                float footPitch = 0f;
                 if (caught)
                 {
                     if (upside) ft = (s == 0 ? gripL : gripR);                  // held by the ankles
@@ -226,23 +232,20 @@ namespace AfterHours.Player
                 }
                 else
                 {
-                    float ph = (phase + s * 0.5f) * Mathf.PI * 2f;
+                    float u = Mathf.Repeat(phase + s * 0.5f, 1f);
+                    GaitFoot(u, duty, reach, clear, moveW, out float off, out float raise, out footPitch);
+                    footPitch -= 22f * crouch * (1f - moveW);                   // a deep squat rises onto the balls of the feet
+                    raise += 0.035f * crouch * (1f - moveW);
                     float behind = Mathf.Max(0f, -Vector3.Dot(pelvisPos - headPos, fwd));
-                    Vector3 basePos = root - fwd * (behind * 0.6f * crouch) + right * ((0.1f + 0.07f * crouch) * side) + moveDir * (Mathf.Sin(ph) * stepLen * 0.5f);
-                    float raise = Mathf.Max(0f, Mathf.Cos(ph)) * lift;
-                    // running: as the foot leaves the ground behind, the heel kicks up towards the backside
-                    raise += Mathf.Max(0f, -Mathf.Sin(ph)) * Mathf.Max(0f, Mathf.Cos(ph)) * 0.55f * runW * moveW;
+                    Vector3 basePos = root - fwd * (behind * 0.95f * crouch - 0.05f * crouch) + right * ((0.1f + 0.07f * crouch) * side) + moveDir * off;
                     float groundY = Vector3.Dot(root, up);
                     if (Physics.Raycast(basePos + up * 0.5f, -up, out RaycastHit hit, 1.0f, groundMask, QueryTriggerInteraction.Ignore)) groundY = Vector3.Dot(hit.point, up);
                     if (!l.grounded) raise += 0.15f;
                     ft = basePos - up * (Vector3.Dot(basePos, up) - groundY) + up * (AnkleH + raise);
                 }
-                // the foot rolls: toe lifts as it reaches forward to strike with the heel, heel lifts as it pushes off behind
-                float fph = (phase + s * 0.5f) * Mathf.PI * 2f;
-                float footPitch = (Mathf.Max(0f, -Mathf.Sin(fph)) * Mathf.Max(0f, Mathf.Cos(fph)) * 70f - Mathf.Max(0f, Mathf.Sin(fph)) * Mathf.Max(0f, Mathf.Cos(fph)) * 30f) * moveW * Mathf.Lerp(0.7f, 1.2f, runW);
                 Vector3 hangF = Vector3.ProjectOnPlane(headRot * Vector3.forward, Vector3.up);
                 Quaternion dangle = (hangF.sqrMagnitude > 1e-4f ? Quaternion.LookRotation(hangF.normalized) : rot) * Quaternion.Euler(upside ? -40f : 45f, 0f, 0f);
-                LegIK(s, hip, ft, fwd + up * 0.2f + right * (0.55f * side * crouch), caught ? dangle : rot * Quaternion.Euler(footPitch, side * (6f + 14f * crouch), 0f));
+                LegIK(s, hip, ft, fwd + up * 0.2f + right * (0.55f * side * crouch), caught ? dangle : rot * Quaternion.Euler(-footPitch, side * (6f + 14f * crouch), 0f));
             }
 
             // arms: swing against the legs; out in front when carrying; flailing when caught
@@ -255,7 +258,7 @@ namespace AfterHours.Player
                 Vector3 shoulder = chestPos + spineRot * new Vector3(ShW * side, ShoulderOff.y, ShoulderOff.z)
                                    + up * (Mathf.Max(0f, breath) * Mathf.Lerp(0.006f, 0.02f, exertion) * (1f - moveW * 0.5f));
                 // arms swing against the legs; the elbow bends more as the hand comes forward, and a lot when running
-                float swing = Mathf.Sin((phase + s * 0.5f + 0.5f) * Mathf.PI * 2f) * Mathf.Lerp(0.2f, 0.42f, runW) * moveW;
+                float swing = Mathf.Sin((phase + s * 0.5f + 0.5f) * Mathf.PI * 2f) * Mathf.Lerp(0.28f, 0.42f, runW) * moveW;
                 float reachLen = (Upper + Fore) * (0.95f - 0.12f * Mathf.Max(0f, swing) - 0.2f * runW);
                 Vector3 target = shoulder + (-up * 0.55f + right * (0.05f * side) + fwd * (swing + 0.05f + 0.12f * crouch)).normalized * reachLen;
                 if (runW > 0.3f) target += up * (0.1f * runW) - right * (0.04f * side * runW);
@@ -284,7 +287,7 @@ namespace AfterHours.Player
                     }
                     target = Vector3.Lerp(hang, fight, struggle);
                 }
-                Vector3 palm = Vector3.Lerp(-right * side - fwd * 0.3f, -right * (side * 0.4f) - up, crouch);
+                Vector3 palm = Vector3.Lerp(-right * (0.4f * side) - fwd, -right * (0.4f * side) - up - fwd * 0.3f, crouch);   // relaxed: palms face back and a little in
                 if (!caught && GestureArm(s, side, shoulder, headPos, fwd, up, right, ref target, ref palm)) handGrip[s] = true;
                 else handGrip[s] = false;
                 ArmIK(s, shoulder, target, -fwd * (1f - 0.6f * crouch) + right * ((0.3f + 0.7f * crouch) * side) - up * 0.3f, palm);
@@ -342,6 +345,25 @@ namespace AfterHours.Player
                     if (t != null) t.localRotation = fingerRest[s, 12 + j] * Quaternion.Euler(-25f * curl, 0f, 0f);
                 }
             }
+        }
+
+        static float Sm01(float a, float b, float x) => Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((x - a) / Mathf.Max(1e-4f, b - a)));
+
+        /// <summary>One foot through the gait cycle (u 0..1): offset along the movement, height, toe pitch (deg, + = toe up).</summary>
+        static void GaitFoot(float u, float duty, float reach, float clear, float moveW, out float off, out float raise, out float pitch)
+        {
+            if (u < duty)
+            {
+                float k = u / duty, heel = Sm01(0.6f, 1f, k);
+                off = (0.5f - k) * reach;
+                raise = heel * 0.07f * moveW;
+                pitch = (14f * (1f - Sm01(0f, 0.18f, k)) - 38f * heel) * moveW;
+                return;
+            }
+            float q = (u - duty) / (1f - duty), e = q * q * (3f - 2f * q);
+            off = (-0.5f + e) * reach;
+            raise = Mathf.Sin(Mathf.PI * Mathf.Pow(q, 0.65f)) * clear + 0.07f * moveW * (1f - Sm01(0f, 0.3f, q));
+            pitch = (-38f * (1f - Sm01(0f, 0.35f, q)) + 14f * Sm01(0.7f, 1f, q)) * moveW;
         }
 
         static Quaternion Aim(Vector3 dir, Vector3 forward)

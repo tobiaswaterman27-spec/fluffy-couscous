@@ -141,7 +141,8 @@ namespace AfterHours.Player
         public bool CrawlBlocked { get; private set; }
         public float CurrentHeight => currentHeight;
         public float CurrentRadius => controller != null ? controller.radius : standRadius;
-        public float EyeHeight => currentHeight - eyeBelowTop;
+        // a real crouch is a deep squat: the eyes sit lower in the crouch capsule than when standing
+        public float EyeHeight => currentHeight - eyeBelowTop - 0.15f * Mathf.Clamp01(Mathf.InverseLerp(standHeight, crouchHeight, currentHeight)) * (currentHeight >= crouchHeight - 0.01f ? 1f : Mathf.InverseLerp(crawlHeight, crouchHeight, currentHeight));
         public float CrawlBlend => 1f - Mathf.InverseLerp(crawlHeight, crouchHeight, currentHeight);
         public bool IsGrounded => grounded;
         public SurfaceType GroundSurface { get; private set; } = SurfaceType.Tile;
