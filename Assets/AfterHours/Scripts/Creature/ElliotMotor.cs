@@ -79,6 +79,46 @@ namespace AfterHours.Creature
         /// <summary>Turn to face a point even while standing still (null = face the way it moves).</summary>
         public void Face(Vector3? point) => faceTarget = point;
 
+        // ---------------- scripted moves (hauling itself up into a duct, slithering out of one) ----------------
+        Vector3[] scriptPath;
+        float scriptT, scriptDur, scriptYaw;
+
+        /// <summary>True while it's being moved along a scripted path.</summary>
+        public bool Scripted => scriptPath != null;
+
+        /// <summary>
+        /// Moves along the given points over 'seconds' (eased), ignoring collisions, turning to 'yaw'. Its
+        /// velocity is reported as normal so the legs and arms animate the climb.
+        /// </summary>
+        public void ScriptedMove(Vector3[] points, float seconds, float yaw)
+        {
+            if (points == null || points.Length < 2) return;
+            scriptPath = points;
+            scriptT = 0f;
+            scriptDur = Mathf.Max(0.1f, seconds);
+            scriptYaw = yaw;
+            controller.enabled = false;
+        }
+
+        void StepScript(float dt)
+        {
+            scriptT += dt;
+            float u = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(scriptT / scriptDur));
+            float f = u * (scriptPath.Length - 1);
+            int i = Mathf.Min(scriptPath.Length - 2, Mathf.FloorToInt(f));
+            Vector3 p = Vector3.Lerp(scriptPath[i], scriptPath[i + 1], f - i);
+            Vector3 before = transform.position;
+            transform.position = p;
+            velocity = (p - before) / Mathf.Max(dt, 1e-4f);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0f, scriptYaw, 0f), 360f * dt);
+            if (scriptT >= scriptDur)
+            {
+                scriptPath = null;
+                controller.enabled = !remote;
+                velocity = Vector3.zero;
+            }
+        }
+
         /// <summary>Holds position for a while (actions, staring).</summary>
         public void Freeze(float seconds) => frozenUntil = Mathf.Max(frozenUntil, Time.time + seconds);
 
@@ -165,6 +205,7 @@ namespace AfterHours.Creature
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0f, remoteYaw, 0f), k);
                 return;
             }
+            if (scriptPath != null) { StepScript(dt); return; }
             UpdateHeight(dt);
             bool frozen = Time.time < frozenUntil;
             float maxSpeed = frozen ? 0f : MaxSpeedFor(Gait) * desiredSpeedFactor;

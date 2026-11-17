@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using AfterHours.Audio;
 using AfterHours.Core;
 using AfterHours.Hiding;
 using AfterHours.Interaction;
@@ -837,11 +838,31 @@ namespace AfterHours.Creature
             Vector3 aim;
             switch (crawlStep)
             {
-                case 0: // into the opening
+                case 0: // into the opening: up to the wall, then haul itself over the sill and in
+                {
                     aim = slot + inward * 0.9f;
-                    if (crawlDuct.ContainsPoint(transform.position + Vector3.up * 0.3f)) { crawlStep = 1; stepTime = 0f; }
-                    else if (stepTime > 5f) { crawlStep = 2; stepTime = 0f; } // can't get in
+                    if (motor.Scripted) return;
+                    if (crawlDuct.ContainsPoint(transform.position + Vector3.up * 0.3f)) { crawlStep = 1; stepTime = 0f; break; }
+                    Vector3 outward = -inward;
+                    float floorY = transform.position.y;
+                    BoxCollider db = crawlDuct.GetComponent<BoxCollider>();
+                    float ductFloor = crawlDuct.transform.position.y - db.size.y * 0.5f;
+                    Vector3 atWall = new Vector3(slot.x, floorY, slot.z) + outward * 0.75f;
+                    if (Vector3.Distance(Flat(transform.position), Flat(atWall)) < 1.2f)
+                    {
+                        Vector3 lip = new Vector3(slot.x, ductFloor + 0.05f, slot.z) + outward * 0.15f;
+                        Vector3 inside = new Vector3(slot.x, ductFloor, slot.z) + inward * 0.9f;
+                        float yaw = Mathf.Atan2(inward.x, inward.z) * Mathf.Rad2Deg;
+                        motor.ScriptedMove(new[] { transform.position, atWall, atWall + Vector3.up * (ductFloor - floorY) * 0.6f, lip, inside }, 1.5f, yaw);
+                        animator.PlayAction(ElliotAction.PullOpen, slot, 1.5f);
+                        audioOut?.Footstep(slot, SurfaceType.VentMetal, 1f);
+                        AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.DuctBuckle), slot - outward * 0.5f, 0.8f, 0.8f, 35f);
+                        crawlStep = 1; stepTime = 0f;
+                        return;
+                    }
+                    if (stepTime > 6f) { crawlStep = 2; stepTime = 0f; } // can't get to it
                     break;
+                }
                 case 1: // along the duct towards the last sound
                 {
                     Vector3 axis = crawlDuct.transform.forward;
@@ -858,8 +879,22 @@ namespace AfterHours.Creature
                     }
                     break;
                 }
-                default: // back out
+                default: // back out: along the duct to the opening, then out head first and down onto the floor
+                    if (motor.Scripted) return;
                     aim = crawlDuct != null && crawlDuct.ContainsPoint(transform.position + Vector3.up * 0.3f) ? slot : crawlEntry;
+                    if (crawlDuct != null && crawlDuct.ContainsPoint(transform.position + Vector3.up * 0.3f) && Vector3.Distance(Flat(transform.position), Flat(slot)) < 1.1f)
+                    {
+                        Vector3 outward = -inward;
+                        Vector3 floorOut = crawlEntry;
+                        Vector3 lip = new Vector3(slot.x, transform.position.y + 0.05f, slot.z) + outward * 0.1f;
+                        Vector3 down = new Vector3(slot.x, crawlEntry.y + 0.25f, slot.z) + outward * 0.7f;
+                        float yaw = Mathf.Atan2(outward.x, outward.z) * Mathf.Rad2Deg;
+                        motor.ScriptedMove(new[] { transform.position, lip, down, floorOut }, 1.1f, yaw);
+                        AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.VentDrop), slot + outward * 0.5f, 0.9f, 0.75f, 40f);
+                        crawlDuct = null;
+                        Pause(1.2f);
+                        return;
+                    }
                     if (!VentDuct.Contains(transform.position + Vector3.up * 0.3f) && Vector3.Distance(Flat(transform.position), Flat(crawlEntry)) < 0.8f || stepTime > 25f)
                     {
                         crawlDuct = null;

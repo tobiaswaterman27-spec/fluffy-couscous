@@ -85,6 +85,7 @@ namespace AfterHours.Player
         void LateUpdate()
         {
             if (controller == null || controller.Motor == null || !Find()) return;
+            if (PlayerRagdoll.IsActive(body)) return;          // limp: physics has the body now
             PlayerMotor motor = controller.Motor;
             LocomotionState l = motor.Locomotion;
             float dt = Mathf.Max(Time.deltaTime, 1e-4f), t = Time.time;
@@ -125,7 +126,9 @@ namespace AfterHours.Player
 
             Vector3 pelvisPos;
             Quaternion spineRot, neckRot;
-            if (crawl > 0.5f && !caught)
+            bool proneCaught = false;
+            if (caught) CatchSequence.VictimPose(controller, out _, out _, out _, out _, out proneCaught);
+            if (crawl > 0.5f && (!caught || proneCaught))
             {
                 // ---------------- crawling: flat on the belly ----------------
                 Vector3 legsDir = motor.LegsActive ? motor.LegsDirection : -fwd;
@@ -164,7 +167,10 @@ namespace AfterHours.Player
             float back = dy < span ? Mathf.Sqrt(Mathf.Max(0f, span * span - dy * dy)) * 0.92f : 0f;   // hips go back so the head can come forward
             Vector3 headFlat = headPos - up * Vector3.Dot(headPos - root, up);
             pelvisPos = headFlat - fwd * (back + 0.02f + 0.06f * runW) + up * hipY;
-            if (caught) pelvisPos = headPos - (headRot * Vector3.up) * (span * 0.98f);
+            // held: the torso hangs from where it's gripped, under gravity (from the shoulders, or by the ankles)
+            Vector3 gripL = Vector3.zero, gripR = Vector3.zero; float struggle = 0f; bool upside = false;
+            if (caught) CatchSequence.VictimPose(controller, out gripL, out gripR, out struggle, out upside);
+            if (caught) pelvisPos = headPos + (upside ? Vector3.up : Vector3.down) * (span * 0.97f) + (headRot * Vector3.back) * 0.05f;
             Vector3 m2 = SolveIK(pelvisPos, headPos, Spine, Neck, (caught ? headRot * Vector3.back : -fwd) + up * 0.2f, out Vector3 e2);
             spineRot = Aim(m2 - pelvisPos, fwd);
             neckRot = Aim(e2 - m2, fwd);
@@ -182,7 +188,16 @@ namespace AfterHours.Player
                 Vector3 ft;
                 if (caught)
                 {
-                    ft = hip - (headRot * Vector3.up) * (Thigh + Shin - 0.05f) + new Vector3(Mathf.Sin(t * 11f + s * 2f), Mathf.Sin(t * 13f + s), Mathf.Sin(t * 9f + s * 3f)) * 0.15f;
+                    if (upside) ft = (s == 0 ? gripL : gripR);                  // held by the ankles
+                    else
+                    {
+                        // dangling, kicking: alternate legs drive forward and back, weaker as they give up
+                        Vector3 bodyFwd = Vector3.ProjectOnPlane(headRot * Vector3.forward, Vector3.up).normalized;
+                        float kick = Mathf.Sin(t * 6.5f + s * Mathf.PI) * 0.26f * struggle;
+                        float bend = Mathf.Max(0f, Mathf.Sin(t * 6.5f + s * Mathf.PI + 1.2f)) * 0.12f * struggle;
+                        ft = hip + Vector3.down * (Thigh + Shin - 0.04f - bend) + bodyFwd * kick
+                             + new Vector3(Mathf.Sin(t * 1.3f + s), 0f, Mathf.Cos(t * 1.1f + s)) * 0.03f;
+                    }
                 }
                 else
                 {
@@ -208,14 +223,31 @@ namespace AfterHours.Player
                 Vector3 target = shoulder + (-up * 0.52f + right * (0.07f * side) + fwd * (swing + 0.04f + 0.1f * crouch)).normalized * ((Upper + Fore) * 0.96f);
                 if (runW > 0.3f) target += up * (0.12f * runW) + fwd * 0.05f;
                 if (carrying) target = shoulder + fwd * 0.42f - up * 0.12f - right * (0.05f * side);
-                if (caught) target = shoulder + (headRot * new Vector3(side * 0.4f, -0.1f, 0.3f)) + new Vector3(Mathf.Sin(t * 14f + s), Mathf.Sin(t * 17f + s * 2f), Mathf.Sin(t * 12f + s * 3f)) * 0.22f;
+                if (caught)
+                {
+                    float armLen = (Upper + Fore) * 0.96f;
+                    Vector3 hang = shoulder + Vector3.down * armLen + new Vector3(Mathf.Sin(t * 0.9f + s), 0f, Mathf.Cos(t * 0.8f + s)) * 0.04f;
+                    Vector3 fight;
+                    if (upside)
+                        // upside down: arms hang to the floor, clawing at it
+                        fight = shoulder + Vector3.down * armLen * 0.9f + new Vector3(Mathf.Sin(t * 5f + s * 2f), 0f, Mathf.Cos(t * 4.3f + s)) * 0.18f;
+                    else
+                    {
+                        // clutching at the wrists of the hands that hold them, tugging
+                        Vector3 grip = s == 0 ? gripL : gripR;
+                        Vector3 toward = headRot * Vector3.forward;
+                        fight = grip + toward * 0.1f - Vector3.up * 0.05f + toward * (Mathf.Sin(t * 7f + s * 1.7f) * 0.04f);
+                        if ((fight - shoulder).magnitude > armLen) fight = shoulder + (fight - shoulder).normalized * armLen;
+                    }
+                    target = Vector3.Lerp(hang, fight, struggle);
+                }
                 Vector3 palm = -right * side - fwd * 0.3f;
                 if (!caught && GestureArm(s, side, shoulder, headPos, fwd, up, right, ref target, ref palm)) handGrip[s] = true;
                 else handGrip[s] = false;
                 ArmIK(s, shoulder, target, -fwd + right * (0.3f * side) - up * 0.3f, palm);
             }
             Fingers(caught ? 0.8f : carrying ? 0.6f : (handGrip[0] || handGrip[1]) ? 0.7f : 0.25f + 0.2f * runW);
-            if (jaw != null) jaw.localRotation = Quaternion.Euler(caught ? 18f + Mathf.Sin(t * 20f) * 6f : 1f + exertion * 6f * Mathf.Max(0f, breath), 0f, 0f);
+            if (jaw != null) jaw.localRotation = Quaternion.Euler(caught ? 8f + 14f * struggle + Mathf.Sin(t * 20f) * 4f * struggle : 1f + exertion * 6f * Mathf.Max(0f, breath), 0f, 0f);
         }
 
         void SetBody(Vector3 pelvisPos, Quaternion pelvisRot, Quaternion spineRot, Quaternion neckRot, Quaternion headRot, Vector3 up)
