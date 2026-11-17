@@ -6,7 +6,7 @@ namespace AfterHours.Player
     /// <summary>The people you can play as (built by tools/chargen; the list is Resources/Player/Characters/roster.json).</summary>
     public static class PlayerCharacters
     {
-        [Serializable] public class Entry { public string id, name, role, bio; }
+        [Serializable] public class Entry { public string id, name; }
         [Serializable] class Wrapper { public Entry[] items; }
 
         public const string Default = "tom";

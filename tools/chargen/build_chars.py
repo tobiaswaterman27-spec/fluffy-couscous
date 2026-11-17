@@ -868,7 +868,7 @@ def main():
         log(f"building {spec['name']}")
         c = build(spec)
         export(c, size)
-    roster = [{k: s[k] for k in ("id", "name", "role", "bio")} for s in CHARACTERS]
+    roster = [{k: s[k] for k in ("id", "name")} for s in CHARACTERS]
     json.dump(roster, open(os.path.join(OUT, "roster.json"), "w"), indent=1)
     if VIEWER:
         json.dump(roster, open(os.path.join(VIEWER, "roster.json"), "w"), indent=1)

@@ -771,7 +771,6 @@ namespace AfterHours.Flow
                 bool overC = cr.Contains(Event.current.mousePosition);
                 GUI.color = overC ? Color.white : new Color(0.75f, 0.73f, 0.7f);
                 GUI.Label(new Rect(122f, 300f, 600f, 40f), "You are " + (me != null ? me.name : settings.character) + "   \u25B8", smallStyle);
-                if (me != null) GUI.Label(new Rect(122f, 330f, 620f, 40f), me.role, smallStyle);
                 GUI.color = Color.white;
                 if (overC && Event.current.type == EventType.MouseDown && Event.current.button == 0)
                 {

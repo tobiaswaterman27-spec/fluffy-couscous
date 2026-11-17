@@ -165,8 +165,7 @@ namespace AfterHours.UI
             // who you play as
             GUILayout.Space(6);
             PlayerCharacters.Entry me = PlayerCharacters.Get(s.character);
-            GUILayout.Label("You are: " + (me != null ? me.name + " - " + me.role : s.character));
-            if (me != null) GUILayout.Label(me.bio, rowLabel ?? GUI.skin.label);
+            GUILayout.Label("You are: " + (me != null ? me.name : s.character));
             PlayerCharacters.Entry[] all = PlayerCharacters.All;
             for (int i = 0; i < all.Length; i += 2)
             {
