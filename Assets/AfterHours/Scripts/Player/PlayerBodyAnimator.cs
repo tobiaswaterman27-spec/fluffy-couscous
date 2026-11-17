@@ -131,33 +131,52 @@ namespace AfterHours.Player
             if (caught) CatchSequence.VictimPose(controller, out _, out _, out _, out _, out proneCaught);
             if (crawl > 0.5f && (!caught || proneCaught))
             {
-                // ---------------- crawling: flat on the belly ----------------
+                // ---------------- crawling: a belly crawl ----------------
+                // hips and belly on the floor, chest raised on the forearms, head up to see ahead
                 Vector3 legsDir = motor.LegsActive ? motor.LegsDirection : -fwd;
-                pelvisPos = root + legsDir * (motor.CurrentRadius * 0.8f + 0.25f) + up * 0.14f;
-                Vector3 mid = SolveIK(pelvisPos, headPos, Spine, Neck, up * 1f + fwd * 0.2f, out Vector3 end);
+                pelvisPos = root + legsDir * 0.66f + up * 0.12f;
+                Vector3 mid = SolveIK(pelvisPos, headPos, Spine, Neck, up - fwd * 0.4f, out Vector3 end);
                 spineRot = Aim(mid - pelvisPos, -up);
                 neckRot = Aim(end - mid, -up);
                 SetBody(pelvisPos, Aim(-legsDir, -up), spineRot, neckRot, headRot, up);
-                // legs: hips to the knees and feet the movement code drags along behind
+                Vector3 legsRight = Vector3.Cross(up, -legsDir).normalized;
+                // legs: frog kick - each knee in turn draws up along the floor to the side, then pushes back straight
                 for (int s = 0; s < 2; s++)
                 {
                     float side = s == 0 ? -1f : 1f;
-                    Vector3 hip = pelvisPos + right * (HipW * side) - up * 0.02f;
-                    Vector3 kick = Mathf.Sin((phase + s * 0.5f) * Mathf.PI * 2f) * 0.06f * moveW * up;
-                    Vector3 ft = (motor.LegsActive ? motor.FeetPosition : hip + legsDir * (Thigh + Shin)) + right * (0.07f * side) + up * 0.1f + kick;
-                    LegIK(s, hip, ft, -up + right * (0.3f * side), Quaternion.LookRotation(-up * 0.6f + legsDir * 0.4f, legsDir));
+                    float cyc = (phase + s * 0.5f) * Mathf.PI * 2f;
+                    Vector3 hip = pelvisPos + legsRight * (HipW * side) - up * 0.02f;
+                    float k = Mathf.Max(0f, Mathf.Sin(cyc + Mathf.PI)) * moveW;
+                    Vector3 straight = hip + legsDir * (Thigh + Shin - 0.03f) + legsRight * (0.06f * side);
+                    Vector3 drawn = hip + legsDir * 0.38f + legsRight * (0.36f * side);
+                    Vector3 ft = Vector3.Lerp(straight, drawn, k * 0.9f);
+                    ft = ft - up * Vector3.Dot(ft - root, up) + up * 0.05f;
+                    Vector3 toes = Vector3.Lerp(legsDir, -legsRight * side, k * 0.5f).normalized;
+                    LegIK(s, hip, ft, legsRight * side - up * 0.6f, Quaternion.LookRotation(toes, -up));
                 }
-                // arms: elbows out, hands working forward along the floor in turn
+                // arms: forearms flat on the floor, elbows out; each forearm in turn reaches forward, plants and drags the body up
                 Vector3 chest = pelvisPos + spineRot * Vector3.up * Spine;
                 for (int s = 0; s < 2; s++)
                 {
                     float side = s == 0 ? -1f : 1f;
+                    float cyc = (phase + s * 0.5f) * Mathf.PI * 2f;
                     Vector3 shoulder = chest + spineRot * new Vector3(ShW * side, ShoulderOff.y, ShoulderOff.z);
-                    float c = Mathf.Sin((phase + s * 0.5f) * Mathf.PI * 2f) * moveW;
-                    Vector3 target = shoulder + fwd * (0.22f + 0.14f * c) + right * (0.14f * side) - up * (Vector3.Dot(shoulder - root, up) - 0.03f - Mathf.Max(0f, c) * 0.05f);
-                    ArmIK(s, shoulder, target, -up * 0.3f + right * side - fwd * 0.4f, -up);
+                    float c = Mathf.Sin(cyc) * moveW, swing = Mathf.Max(0f, Mathf.Cos(cyc)) * moveW;
+                    float sh = Vector3.Dot(shoulder - root, up) - 0.035f;
+                    float armLift = swing * 0.07f;
+                    float flat = Mathf.Sqrt(Mathf.Max(0.0025f, Upper * Upper - (sh - armLift) * (sh - armLift)));
+                    Vector3 outDir = (fwd * (0.55f + 0.4f * c) + right * (0.8f * side)).normalized;
+                    Vector3 shoulderFloor = shoulder - up * Vector3.Dot(shoulder - root, up);
+                    Vector3 elbow = shoulderFloor + up * (0.035f + armLift) + outDir * flat;
+                    Vector3 handDir = (fwd * 0.92f - right * (0.4f * side)).normalized;
+                    Vector3 handP = elbow + handDir * Fore;
+                    handP = handP - up * Vector3.Dot(handP - root, up) + up * (0.03f + armLift);
+                    Place(upper[s], shoulder, elbow, -up);
+                    Place(fore[s], elbow, handP, -up);
+                    Vector3 hd = (handP - elbow).normalized;
+                    if (hand[s] != null) hand[s].SetPositionAndRotation(handP, Quaternion.LookRotation(Vector3.ProjectOnPlane(-up, hd).normalized, -hd));
                 }
-                Fingers(0.2f);
+                Fingers(0.35f);
                 return;
             }
 
@@ -208,7 +227,8 @@ namespace AfterHours.Player
                 else
                 {
                     float ph = (phase + s * 0.5f) * Mathf.PI * 2f;
-                    Vector3 basePos = root + right * (0.1f * side) + moveDir * (Mathf.Sin(ph) * stepLen * 0.5f);
+                    float behind = Mathf.Max(0f, -Vector3.Dot(pelvisPos - headPos, fwd));
+                    Vector3 basePos = root - fwd * (behind * 0.6f * crouch) + right * ((0.1f + 0.07f * crouch) * side) + moveDir * (Mathf.Sin(ph) * stepLen * 0.5f);
                     float raise = Mathf.Max(0f, Mathf.Cos(ph)) * lift;
                     // running: as the foot leaves the ground behind, the heel kicks up towards the backside
                     raise += Mathf.Max(0f, -Mathf.Sin(ph)) * Mathf.Max(0f, Mathf.Cos(ph)) * 0.55f * runW * moveW;
@@ -222,7 +242,7 @@ namespace AfterHours.Player
                 float footPitch = (Mathf.Max(0f, -Mathf.Sin(fph)) * Mathf.Max(0f, Mathf.Cos(fph)) * 70f - Mathf.Max(0f, Mathf.Sin(fph)) * Mathf.Max(0f, Mathf.Cos(fph)) * 30f) * moveW * Mathf.Lerp(0.7f, 1.2f, runW);
                 Vector3 hangF = Vector3.ProjectOnPlane(headRot * Vector3.forward, Vector3.up);
                 Quaternion dangle = (hangF.sqrMagnitude > 1e-4f ? Quaternion.LookRotation(hangF.normalized) : rot) * Quaternion.Euler(upside ? -40f : 45f, 0f, 0f);
-                LegIK(s, hip, ft, fwd + up * 0.2f, caught ? dangle : rot * Quaternion.Euler(footPitch, side * 6f, 0f));
+                LegIK(s, hip, ft, fwd + up * 0.2f + right * (0.55f * side * crouch), caught ? dangle : rot * Quaternion.Euler(footPitch, side * (6f + 14f * crouch), 0f));
             }
 
             // arms: swing against the legs; out in front when carrying; flailing when caught
@@ -239,6 +259,12 @@ namespace AfterHours.Player
                 float reachLen = (Upper + Fore) * (0.95f - 0.12f * Mathf.Max(0f, swing) - 0.2f * runW);
                 Vector3 target = shoulder + (-up * 0.55f + right * (0.05f * side) + fwd * (swing + 0.05f + 0.12f * crouch)).normalized * reachLen;
                 if (runW > 0.3f) target += up * (0.1f * runW) - right * (0.04f * side * runW);
+                if (crouch > 0.01f)
+                {
+                    // crouched: forearms forward over the knees, hands loose in front of them
+                    Vector3 rest = shoulder + fwd * (0.3f + swing * 0.3f) - up * 0.36f + right * (0.02f * side);
+                    target = Vector3.Lerp(target, rest, crouch);
+                }
                 if (carrying) target = shoulder + fwd * 0.42f - up * 0.12f - right * (0.05f * side);
                 if (caught)
                 {
@@ -258,10 +284,10 @@ namespace AfterHours.Player
                     }
                     target = Vector3.Lerp(hang, fight, struggle);
                 }
-                Vector3 palm = -right * side - fwd * 0.3f;
+                Vector3 palm = Vector3.Lerp(-right * side - fwd * 0.3f, -right * (side * 0.4f) - up, crouch);
                 if (!caught && GestureArm(s, side, shoulder, headPos, fwd, up, right, ref target, ref palm)) handGrip[s] = true;
                 else handGrip[s] = false;
-                ArmIK(s, shoulder, target, -fwd + right * (0.3f * side) - up * 0.3f, palm);
+                ArmIK(s, shoulder, target, -fwd * (1f - 0.6f * crouch) + right * ((0.3f + 0.7f * crouch) * side) - up * 0.3f, palm);
             }
             Fingers(caught ? 0.8f : carrying ? 0.6f : (handGrip[0] || handGrip[1]) ? 0.7f : 0.25f + 0.2f * runW);
             // the mouth: open with fright when caught, panting when out of breath, and moving with your voice
