@@ -159,6 +159,11 @@ def perp(v, d):
     return v / np.linalg.norm(v)
 
 
+def smooth(a, b, x):
+    t = np.clip((x - a) / (b - a), 0, 1)
+    return t * t * (3 - 2 * t)
+
+
 class Skeleton:
     """The game's joints placed on this person (rest pose), plus per-vertex weights merged from MakeHuman's."""
 
@@ -221,6 +226,8 @@ class Skeleton:
             add(f"Toes{s}", f"Foot{s}", np.mean([head(f"toe{t}-1.{s}") for t in range(1, 6)], 0))
         self.eye_l, self.eye_r = h.joint("l-eye"), h.joint("r-eye")
         add("EyeL", "Head", self.eye_l); add("EyeR", "Head", self.eye_r)     # not weighted: they tell the game where the eyes are
+        # upper eyelids: pivot on the eyeball's centre, so rotating them sweeps the lid down over the eye (blinking)
+        add("LidL", "Head", self.eye_l); add("LidR", "Head", self.eye_r)
         # weights: MakeHuman's, summed into the game's bones
         mw = json.load(open(os.path.join(DATA, "default_weights.mhw")))["weights"]
         n = len(h.V)
@@ -230,4 +237,15 @@ class Skeleton:
             a = np.array(pairs)
             W[a[:, 0].astype(int), b] += a[:, 1]
         W /= np.maximum(W.sum(1, keepdims=True), 1e-9)
+        # the upper lid skin (just above and in front of each eyeball) moves with its lid bone
+        V = h.V
+        hb = self.index["Head"]
+        for nm, e in (("LidL", self.eye_l), ("LidR", self.eye_r)):
+            rel = V - e
+            d = np.linalg.norm(rel, axis=1)
+            dy, dz = rel[:, 1], rel[:, 2]
+            g = (smooth(0.0225, 0.012, d) * smooth(-0.003, 0.003, dy) * (1 - smooth(0.011, 0.017, dy)) * smooth(-0.004, 0.004, dz))
+            mv = np.clip(g, 0, 1) * W[:, hb]
+            W[:, hb] -= mv
+            W[:, self.index[nm]] += mv
         self.W = W

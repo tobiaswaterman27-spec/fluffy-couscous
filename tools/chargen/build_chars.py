@@ -63,9 +63,9 @@ def build(spec):
     # ---------------- bottoms
     bot = spec["bottom"]
     waistY = hipY + (0.12 if bot != "leggings" else 0.1)
-    hem = ankleY + {"jeans": 0.03, "trousers": 0.025, "cargo": 0.04, "joggers": 0.05, "leggings": 0.06}[bot]
+    hem = ankleY + {"jeans": 0.01, "trousers": 0.005, "cargo": 0.03, "joggers": 0.045, "leggings": 0.05}[bot]
     m_bot = (w("Pelvis", "Spine", "ThighL", "ThighR", "ShinL", "ShinR") > 0.5) & (y < waistY) & (y > hem) & (footw < 0.4)
-    thick = {"jeans": 0.011, "trousers": 0.016, "cargo": 0.02, "joggers": 0.018, "leggings": 0.0025}[bot]
+    thick = {"jeans": 0.011, "trousers": 0.015, "cargo": 0.016, "joggers": 0.016, "leggings": 0.0025}[bot]
     pb = shell(body, m_bot, lambda p: np.full(len(p), thick) + 0.006 * smoothstep(hipY + 0.05, hipY - 0.15, p[:, 1]) * (bot in ("cargo", "joggers", "trousers")),
                "bottom", hem=hem, smooth=22 if bot != "leggings" else 3, folds=trouser_folds(kneeY, 0.0025 if bot != "leggings" else 0.0008))
     if bot != "leggings":
@@ -97,6 +97,7 @@ def build(spec):
     thighw = w("ThighL", "ThighR")
     if top != "coat":
         hemY = max(hemY, hipY - 0.035)            # a hem goes straight across, it doesn't dip between the legs
+    torso = torso + (thighw > 0.2) * (y > hemY) * (top != "coat")                    # the hips too, so the hem runs straight round
     m_top = (torso > 0.5) & (y > hemY) & (y < neckY + (0.035 if top != "tabard" else 0.02)) & (headw < 0.3) & (handw < 0.3) & (fore_t < sleeve_end)
     tthick = {"hoodie": 0.03, "cardigan": 0.016, "security": 0.02, "workjacket": 0.028, "jacket": 0.026, "tabard": 0.012, "coat": 0.032}[top]
     def top_thick(p):
@@ -286,10 +287,30 @@ def build(spec):
         def sadd(prim, tag, k=0.0):
             prim.bone, prim.tag, prim.op, prim.k = "Foot" + s, tag, "add", k
             sm.add(prim)
-        sadd(rbox([c[0], 0.03 + 0.0, c[2]], [wid, 0.03, length / 2], R, 0.028), "shoe", 0.02)
-        sadd(ellipsoid(np.array([c[0], 0.04, c[2]]) + fwd * (length * 0.22), [wid * 0.95, 0.035, length * 0.3], R=R), "shoe", 0.02)
-        sadd(cone(a - fwd * 0.02 + [0, -0.03, 0], a - fwd * 0.01 + [0, hgt - 0.06, 0], 0.047, 0.044), "shoe", 0.025)
-        sadd(rbox([c[0], 0.012, c[2]], [wid + 0.004, 0.012, length / 2 + 0.004], R, 0.01), "sole" if kind != "boots" else "boot_sole", 0.004)
+        # a real shoe shape: the outline narrows at the heel, widens across the ball, rounds at the toe;
+        # the upper rises to a collar round the ankle and slopes down to a low toe box; the sole follows the outline
+        def footprint(p, heel=heel, fwd=fwd, side=side, length=length, wid=wid, grow=0.0):
+            # one tapered outline from heel to toe (narrow heel, wide ball, rounded toe)
+            q = p - heel
+            u = q @ side; t = (q @ fwd) / length
+            tc = np.clip(t, 0.12, 0.9)
+            r = np.interp(tc, [0.12, 0.45, 0.68, 0.9], [wid * 0.8, wid * 0.92, wid * 1.08, wid * 0.7])
+            d = np.hypot(u, (t - tc) * length) - (r + grow)
+            return d, t
+        def upper_fn(p, footprint=footprint, hgt=hgt):
+            d2, t = footprint(p)
+            top = hgt + 0.02 - (hgt - 0.045) * smoothstep(0.22, 0.62, t) - 0.012 * smoothstep(0.8, 1.0, t)
+            dy = p[:, 1] - top
+            r = 0.018
+            qx, qy = np.maximum(d2 + r, 0), np.maximum(dy + r, 0)
+            return np.hypot(qx, qy) + np.minimum(np.maximum(d2 + r, dy + r), 0) - r
+        def sole_fn(p, footprint=footprint):
+            d2, _ = footprint(p, grow=0.004)
+            return np.maximum(np.maximum(d2, p[:, 1] - 0.024), -p[:, 1]) - 0.002
+        lo = np.minimum(heel, tip) - 0.12; hi = np.maximum(heel, tip) + 0.12
+        lo[1] = -0.01; hi[1] = hgt + 0.06
+        sadd(Prim("upper", lo, hi, upper_fn), "shoe", 0.006)
+        sadd(Prim("sole", lo, hi, sole_fn), "sole" if kind != "boots" else "boot_sole", 0.003)
     shoe_part = sdf_part(sm, np.array([-0.4, -0.01, -0.3]), np.array([0.4, 0.25, 0.4]), "shoe", fine=0.003 if not QUICK else 0.004, target=6000, src_tree=tree)
     if shoe_part is not None:
         _, lst = sm.evaluate(shoe_part.V, per_prim=True)
@@ -348,10 +369,12 @@ def build(spec):
             eadd(cone(np.array([sgn * 0.17, hipY + 0.14, zt - 0.03]), np.array([sgn * 0.12, hipY + 0.13, P("Pelvis")[2] - 0.15]), 0.005, 0.005), "apron_tie", bone="Pelvis")
     if top == "hoodie":
         # hood bunched behind the neck, drawstrings, kangaroo pocket
-        eadd(ellipsoid(np.array([0, nk[1] + 0.02, nk[2] - 0.085]), [0.14, 0.055, 0.065]), "top", k=0.03)
+        backZ = V[(torso > 0.5) & (np.abs(y - (nk[1] - 0.06)) < 0.02) & (np.abs(V[:, 0]) < 0.05)][:, 2].min() - tthick
+        # the hood, down: a soft folded pad of cloth lying over the upper back, its rim rolled at the neck
+        eadd(ellipsoid(np.array([0, nk[1] - 0.06, backZ + 0.015]), [0.115, 0.085, 0.022]), "top", bone="Chest", k=0.03)
+        eadd(ellipsoid(np.array([0, nk[1] - 0.005, backZ + 0.03]), [0.11, 0.025, 0.025]), "top", bone="Neck", k=0.025)
         fz = V[(torso > 0.5) & (np.abs(y - (hipY + 0.1)) < 0.04) & (np.abs(V[:, 0]) < 0.08)][:, 2].max() + tthick
-        if "apron" not in spec["extras"]:
-            eadd(rbox(np.array([0, hipY + 0.1, fz + 0.001]), [0.12, 0.07, 0.003], np.eye(3), 0.003), "top", bone="Spine", k=0.0)
+        # (the kangaroo pocket is sewn flat onto the front: painted, not a slab stuck on)
         for sgn in (-1, 1):
             a = np.array([sgn * 0.035, nk[1] - 0.005, nk[2] + 0.07])
             cz = V[(torso > 0.5) & (np.abs(y - (nk[1] - 0.17)) < 0.03) & (np.abs(V[:, 0] - sgn * 0.04) < 0.02)][:, 2].max() + tthick + 0.006
@@ -492,7 +515,7 @@ def colours(c, p, n, tagw, ao, head_frame):
     else:
         b = np.tile([0.12, 0.12, 0.13], (N, 1)) * (0.92 + 0.08 * fbm(p, 60, 2, seed=36))[:, None]; bs = 0.2
     dirt = smoothstep(0.2, 0.55, fbm(p, 20, 3, seed=37) + 0.4) * np.exp(-((y - (c["hipY"] - 0.4)) / 0.07) ** 2) * smoothstep(0.0, 0.05, z)
-    b = mix(b, [0.3, 0.27, 0.23], dirt * 0.5)
+    b = mix(b, [0.3, 0.27, 0.23], dirt * 0.22)
     put("bottom", b, bs)
     put("undershirt", np.tile([0.22, 0.24, 0.26], (N, 1)), 0.15)
     shoe = {"trainers": [0.12, 0.12, 0.13], "boots": [0.13, 0.09, 0.06], "work": [0.05, 0.05, 0.05], "flats": [0.06, 0.06, 0.07]}[spec["shoes"]]

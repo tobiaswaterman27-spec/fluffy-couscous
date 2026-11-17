@@ -87,6 +87,8 @@ namespace AfterHours.Net
             PlayerBody.LocalCharacterOverride = () => Active && Local != null && !string.IsNullOrEmpty(Local.character) ? Local.character : null;
             Discovery = new LanDiscovery();
             Voice = new NetVoice();
+            // your own mouth moves with your microphone (seen by the others, and by you in a mirror or third person)
+            AfterHours.Player.VoiceMouth.LocalSource = () => Voice != null && Voice.Talking ? Voice.Level : 0f;
             LocalName = "Player " + UnityEngine.Random.Range(100, 999);
         }
 

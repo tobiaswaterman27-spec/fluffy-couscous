@@ -481,6 +481,16 @@ namespace AfterHours.Creature
         }
 
         float dripTimer;
+        float elliotBlinkAt = 3f;
+
+        float ElliotBlink(float t, float jaw)
+        {
+            if (t > elliotBlinkAt + 0.6f) elliotBlinkAt = t + Random.Range(5f, 14f);
+            if (jaw > 0.4f) return 0f;
+            float u = t - elliotBlinkAt;
+            if (u < 0f || u > 0.55f) return 0f;
+            return u < 0.2f ? Mathf.SmoothStep(0f, 1f, u / 0.2f) : u < 0.3f ? 1f : Mathf.SmoothStep(1f, 0f, (u - 0.3f) / 0.25f);
+        }
 
         float lastChest, lastChestDelta, fogCool;
 
@@ -530,8 +540,12 @@ namespace AfterHours.Creature
             noseL.localScale = ns; noseR.localScale = ns;
             noseL.localPosition = noseLRest + new Vector3(-0.0013f * n, 0f, 0f);
             noseR.localPosition = noseRRest + new Vector3(0.0013f * n, 0f, 0f);
-            browL.localPosition = browLRest + new Vector3(0.002f * vp.brow, -0.0045f * vp.brow, 0.001f * Mathf.Max(0f, vp.brow));
-            browR.localPosition = browRRest + new Vector3(-0.002f * vp.brow, -0.0045f * vp.brow, 0.001f * Mathf.Max(0f, vp.brow));
+            // his 'blink': no lids, so every 5-14 s the brows squeeze slowly down over the sockets and lift again
+            // (one side a beat behind the other); never while he's screaming
+            float bl = ElliotBlink(Time.time, vp.jaw);
+            browL.localPosition = browLRest + new Vector3(0.002f * vp.brow, -0.0045f * vp.brow - 0.006f * bl, 0.001f * Mathf.Max(0f, vp.brow) + 0.0015f * bl);
+            float br = ElliotBlink(Time.time - 0.06f, vp.jaw);
+            browR.localPosition = browRRest + new Vector3(-0.002f * vp.brow, -0.0045f * vp.brow - 0.006f * br, 0.001f * Mathf.Max(0f, vp.brow) + 0.0015f * br);
             throatJ.localPosition = throatRest + new Vector3(0f, vp.throat * 0.003f, vp.throat * 0.005f);
             chestJ.localScale = new Vector3(1f + 0.03f * vp.chest, 1f + 0.012f * vp.chest, 1f + 0.06f * vp.chest);
             tongueJ.localPosition = tongueRest + new Vector3(0f, 0f, vp.tongue * 0.045f);

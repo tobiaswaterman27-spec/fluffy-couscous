@@ -218,7 +218,9 @@ namespace AfterHours.Player
                 // the foot rolls: toe lifts as it reaches forward to strike with the heel, heel lifts as it pushes off behind
                 float fph = (phase + s * 0.5f) * Mathf.PI * 2f;
                 float footPitch = (Mathf.Max(0f, -Mathf.Sin(fph)) * Mathf.Max(0f, Mathf.Cos(fph)) * 70f - Mathf.Max(0f, Mathf.Sin(fph)) * Mathf.Max(0f, Mathf.Cos(fph)) * 30f) * moveW * Mathf.Lerp(0.7f, 1.2f, runW);
-                LegIK(s, hip, ft, fwd + up * 0.2f, caught ? headRot * Quaternion.Euler(-60f, 0f, 0f) : rot * Quaternion.Euler(footPitch, side * 6f, 0f));
+                Vector3 hangF = Vector3.ProjectOnPlane(headRot * Vector3.forward, Vector3.up);
+                Quaternion dangle = (hangF.sqrMagnitude > 1e-4f ? Quaternion.LookRotation(hangF.normalized) : rot) * Quaternion.Euler(upside ? -40f : 45f, 0f, 0f);
+                LegIK(s, hip, ft, fwd + up * 0.2f, caught ? dangle : rot * Quaternion.Euler(footPitch, side * 6f, 0f));
             }
 
             // arms: swing against the legs; out in front when carrying; flailing when caught
@@ -227,7 +229,9 @@ namespace AfterHours.Player
             for (int s = 0; s < 2; s++)
             {
                 float side = s == 0 ? -1f : 1f;
-                Vector3 shoulder = chestPos + spineRot * new Vector3(ShW * side, ShoulderOff.y, ShoulderOff.z);
+                // idle breathing: the shoulders rise a little on each breath in (more when out of breath)
+                Vector3 shoulder = chestPos + spineRot * new Vector3(ShW * side, ShoulderOff.y, ShoulderOff.z)
+                                   + up * (Mathf.Max(0f, breath) * Mathf.Lerp(0.006f, 0.02f, exertion) * (1f - moveW * 0.5f));
                 // arms swing against the legs; the elbow bends more as the hand comes forward, and a lot when running
                 float swing = Mathf.Sin((phase + s * 0.5f + 0.5f) * Mathf.PI * 2f) * Mathf.Lerp(0.2f, 0.42f, runW) * moveW;
                 float reachLen = (Upper + Fore) * (0.95f - 0.12f * Mathf.Max(0f, swing) - 0.2f * runW);
@@ -258,7 +262,12 @@ namespace AfterHours.Player
                 ArmIK(s, shoulder, target, -fwd + right * (0.3f * side) - up * 0.3f, palm);
             }
             Fingers(caught ? 0.8f : carrying ? 0.6f : (handGrip[0] || handGrip[1]) ? 0.7f : 0.25f + 0.2f * runW);
-            if (jaw != null) jaw.localRotation = Quaternion.Euler(caught ? 8f + 14f * struggle + Mathf.Sin(t * 20f) * 4f * struggle : 1f + exertion * 6f * Mathf.Max(0f, breath), 0f, 0f);
+            // the mouth: open with fright when caught, panting when out of breath, and moving with your voice
+            if (mouth == null) mouth = GetComponent<VoiceMouth>() ?? gameObject.AddComponent<VoiceMouth>();
+            float talk = mouth.Open;
+            if (jaw != null) jaw.localRotation = Quaternion.Euler(caught ? 8f + 14f * struggle + Mathf.Sin(t * 20f) * 4f * struggle : 1f + exertion * 6f * Mathf.Max(0f, breath) + talk * 15f, 0f, 0f);
+            Face(t, dt, caught, talk);
+
         }
 
         void SetBody(Vector3 pelvisPos, Quaternion pelvisRot, Quaternion spineRot, Quaternion neckRot, Quaternion headRot, Vector3 up)
@@ -337,6 +346,48 @@ namespace AfterHours.Player
             Vector3 f = Vector3.ProjectOnPlane(pole, dir);
             if (f.sqrMagnitude < 1e-6f) f = Vector3.ProjectOnPlane(Vector3.forward, dir);
             seg.SetPositionAndRotation(from, Quaternion.LookRotation(f.normalized, -dir));
+        }
+
+        VoiceMouth mouth;
+        Transform lidL, lidR;
+        Quaternion lidRestL, lidRestR;
+        float blinkT = -1f, nextBlink;
+        int lidVersion = -1;
+
+        /// <summary>
+        /// Blinking: every 2-6 s (much more often when scared), a fast close-hold-open, sometimes twice; held shut
+        /// once you go limp. Lids sit a few degrees lowered at rest so the eyes aren't staring wide.
+        /// </summary>
+        void Face(float t, float dt, bool caught, float talk)
+        {
+            if (lidVersion != builtVersion)
+            {
+                lidVersion = builtVersion;
+                lidL = body.Bone("LidL"); lidR = body.Bone("LidR");
+                if (lidL != null) lidRestL = lidL.localRotation;
+                if (lidR != null) lidRestR = lidR.localRotation;
+                nextBlink = t + Random.Range(1f, 4f);
+            }
+            if (lidL == null || lidR == null) return;
+            if (blinkT < 0f && t >= nextBlink)
+            {
+                blinkT = 0f;
+                nextBlink = t + (caught ? Random.Range(0.5f, 1.2f) : Random.Range(2f, 6f));
+                if (Random.value < 0.15f) nextBlink = t + 0.32f;        // a double blink
+            }
+            float k = 0f;
+            if (blinkT >= 0f)
+            {
+                blinkT += dt;
+                float u = blinkT;
+                k = u < 0.07f ? u / 0.07f : u < 0.1f ? 1f : u < 0.22f ? 1f - (u - 0.1f) / 0.12f : 0f;
+                if (u >= 0.22f) blinkT = -1f;
+            }
+            k = Mathf.SmoothStep(0f, 1f, k);
+            float wide = caught ? -4f : 0f;                              // terror: eyes wide between blinks
+            float ang = 4f + wide + 46f * k + talk * 2f;
+            lidL.localRotation = lidRestL * Quaternion.Euler(ang, 0f, 0f);
+            lidR.localRotation = lidRestR * Quaternion.Euler(ang, 0f, 0f);
         }
 
         readonly bool[] handGrip = new bool[2];

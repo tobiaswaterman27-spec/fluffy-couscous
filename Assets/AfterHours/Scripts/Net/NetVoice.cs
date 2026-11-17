@@ -111,7 +111,12 @@ namespace AfterHours.Net
     /// <summary>Plays another player's voice from their head, in 3D, through walls (occlusion).</summary>
     public class VoicePlayer : MonoBehaviour
     {
+        /// <summary>How loud this player's voice is coming out right now (RMS of what's playing), for their mouth.</summary>
+        public float Loudness { get; private set; }
+        volatile float audioRms;
         AudioSource source;
+
+        void Update() => Loudness = Mathf.Lerp(Loudness, audioRms, 1f - Mathf.Exp(-25f * Time.deltaTime));
         readonly float[] ring = new float[NetVoice.Rate * 2];
         int writePos, readPos, buffered;
         readonly object gate = new object();
@@ -146,6 +151,17 @@ namespace AfterHours.Net
         }
 
         void OnRead(float[] data)
+        {
+            try { ReadInto(data); }
+            finally
+            {
+                float sum = 0f;
+                for (int i = 0; i < data.Length; i++) sum += data[i] * data[i];
+                audioRms = data.Length > 0 ? Mathf.Sqrt(sum / data.Length) : 0f;
+            }
+        }
+
+        void ReadInto(float[] data)
         {
             lock (gate)
             {

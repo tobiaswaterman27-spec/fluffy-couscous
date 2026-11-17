@@ -92,6 +92,8 @@ namespace AfterHours.Net
             if (real != null) headGo.GetComponent<Renderer>().enabled = false;   // only a voice source now
             proxy.head = headGo.transform;
             proxy.voice = headGo.AddComponent<VoicePlayer>();
+            VoicePlayer vp = proxy.voice;
+            (go.GetComponent<AfterHours.Player.VoiceMouth>() ?? go.AddComponent<AfterHours.Player.VoiceMouth>()).Source = () => vp != null ? vp.Loudness : 0f;
             // Something solid to bump into (a little slimmer than a real body, so squeezing past is possible).
             proxy.body = go.AddComponent<CapsuleCollider>();
             proxy.body.radius = 0.24f;
