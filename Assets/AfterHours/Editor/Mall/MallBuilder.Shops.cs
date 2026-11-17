@@ -394,6 +394,15 @@ namespace AfterHours.EditorTools
                 // fragments that fell on the concourse side
                 int bits = 6 + rng.Next(10);
                 Vector3 floor = new Vector3(p.x, y, p.z);
+                // an invisible skin of glass over that patch, so footsteps there crunch on glass
+                {
+                    Vector3 al = (b - a).normalized;
+                    Vector3 c0 = floor + toConcourse * 0.5f;
+                    Vector3 ext = new Vector3(Mathf.Abs(al.x) * 0.5f + Mathf.Abs(toConcourse.x) * 0.5f, 0f, Mathf.Abs(al.z) * 0.5f + Mathf.Abs(toConcourse.z) * 0.5f);
+                    GameObject skin = BoxMinMax("Broken glass (floor)", parent, c0 - ext, c0 + ext + Vector3.up * 0.004f, glassBit, SurfaceType.Glass);
+                    Object.DestroyImmediate(skin.GetComponent<MeshRenderer>());
+                    Object.DestroyImmediate(skin.GetComponent<MeshFilter>());
+                }
                 for (int i = 0; i < bits; i++)
                 {
                     GameObject f = Decor("Glass fragment", parent, Vector3.zero, new Vector3(R(0.01f, 0.05f), 0.003f, R(0.01f, 0.04f)), glassBit);
