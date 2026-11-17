@@ -15,6 +15,9 @@ namespace AfterHours.Rendering
         public Renderer[] faces;              // one per half of the box (the halves can fail separately)
         [ColorUsage(false, true)] public Color emission = new Color(1.6f, 1.55f, 1.4f);
         public int seed;
+        [Tooltip("Optional real light the box throws (a vending machine lighting the floor in front of it).")]
+        public Light glow;
+        float glowBase = -1f;
 
         static readonly int EmissionId = Shader.PropertyToID("_EmissionColor");
         MaterialPropertyBlock block;
@@ -55,6 +58,11 @@ namespace AfterHours.Rendering
 
         void Apply()
         {
+            if (glow != null)
+            {
+                if (glowBase < 0f) glowBase = glow.intensity;
+                glow.intensity = state == State.Dead ? 0f : glowBase * level * power;
+            }
             if (faces == null || block == null) return;
             for (int i = 0; i < faces.Length; i++)
             {

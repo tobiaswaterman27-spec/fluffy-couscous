@@ -198,7 +198,7 @@ namespace AfterHours.EditorTools
 
         static void DressConcourses(Transform parent)
         {
-            Material vendFront = ArtLibrary.Plain("Vending_Front", new Color(0.5f, 0.6f, 0.75f), 0.8f, 0f, new Color(0.45f, 0.6f, 0.85f), true);
+            Material vendFront = ArtLibrary.Plain("Vending_Front", new Color(0.5f, 0.6f, 0.75f), 0.8f, 0f, new Color(0.45f, 0.6f, 0.85f), false);
             Material vendBody = ArtLibrary.Plain("Vending_Body", new Color(0.55f, 0.12f, 0.12f), 0.5f);
             ArtLibrary.MarkDetail(vendFront);
             foreach (MallFloor f in MallLayout.ShopFloors)
@@ -228,7 +228,30 @@ namespace AfterHours.EditorTools
                         Vector3 vm = MallLayout.WingPoint(w, p.u0 + 0.45f, p.side * (MallLayout.ConcourseHalf - 0.42f), y);
                         GameObject body = EditorBuild.Box("Vending machine", g, vm + Vector3.up * 0.92f, new Vector3(0.82f, 1.84f, 0.78f), vendBody, SurfaceType.Metal, face);
                         body.isStatic = true;
-                        Detail("Vending machine front", g, vm + Vector3.up * 1.05f + inward * 0.392f, new Vector3(0.6f, 1.2f, 0.01f), vendFront, face);
+                        GameObject front = Detail("Vending machine front", g, vm + Vector3.up * 1.05f + inward * 0.392f, new Vector3(0.6f, 1.2f, 0.01f), vendFront, face);
+                        // still on, all night: a cold glow on the floor, and the compressor's hum
+                        int vh = Mathf.Abs(MallLayout.Hash((int)f, (int)w, (int)(p.u0 * 10f), 41));
+                        var lgo = new GameObject("Vending glow");
+                        lgo.transform.SetParent(g, false);
+                        lgo.transform.localPosition = vm + Vector3.up * 1.1f + inward * 0.75f;
+                        Light vl = lgo.AddComponent<Light>();
+                        vl.type = LightType.Point; vl.range = 4.5f; vl.intensity = 0.9f; vl.color = new Color(0.62f, 0.75f, 1f);
+                        vl.shadows = LightShadows.Soft; vl.lightmapBakeType = LightmapBakeType.Realtime;
+                        var box = front.AddComponent<SignLightbox>();
+                        box.faces = new[] { front.GetComponent<Renderer>() };
+                        box.emission = new Color(0.45f, 0.6f, 0.85f) * 1.6f;
+                        box.glow = vl;
+                        box.seed = vh;
+                        box.state = vh % 6 == 0 ? SignLightbox.State.Dead : vh % 6 == 1 ? SignLightbox.State.Failing : SignLightbox.State.Lit;
+                        if (box.state != SignLightbox.State.Dead)
+                        {
+                            var hum = new GameObject("Vending hum");
+                            hum.transform.SetParent(g, false);
+                            hum.transform.localPosition = vm + Vector3.up * 0.4f;
+                            hum.AddComponent<AudioSource>().playOnAwake = false;
+                            AmbientSound a = hum.AddComponent<AmbientSound>();
+                            a.kind = ProceduralSounds.Ambience.Buzz; a.volume = 0.12f; a.maxDistance = 7f; a.maskingLevel = 0.15f;
+                        }
                         Vector3 pp = MallLayout.WingPoint(w, p.u1 - 0.45f, p.side * (MallLayout.ConcourseHalf - 0.15f), y);
                         Detail("Payphone hood", g, pp + Vector3.up * 1.6f, new Vector3(0.6f, 0.9f, 0.3f), metal, face);
                         EditorBuild.Box("Payphone", g, pp + Vector3.up * 1.3f + inward * 0.05f, new Vector3(0.32f, 0.5f, 0.18f), blackMat, SurfaceType.Metal, face);
