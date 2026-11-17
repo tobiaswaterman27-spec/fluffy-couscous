@@ -82,7 +82,7 @@ namespace AfterHours.EditorTools
                 call.isCall = true;
                 call.lamp = btn.GetComponent<Renderer>();
                 Part("Indicator panel", parent, new Vector3(cx, y + DoorHeight + 0.2f, r.minZ - 0.012f), new Vector3(0.3f, 0.16f, 0.02f), blackMat, SurfaceType.Metal, false);
-                TextMesh ind = EditorBuild.Label(parent, names[i], new Vector3(cx, y + DoorHeight + 0.2f, r.minZ - 0.026f), 0f, 0.02f);
+                TextMesh ind = EditorBuild.Label(parent, names[i], new Vector3(cx, y + DoorHeight + 0.2f, r.minZ - 0.026f), 0f, 0.02f, false);
                 ind.color = new Color(1f, 0.35f, 0.1f);
                 indicators.Add(ind);
             }
@@ -141,7 +141,7 @@ namespace AfterHours.EditorTools
                 string text = i >= 0 ? names[i] : i == LiftButton.OpenDoors ? "<|>" : "ALARM";
                 EditorBuild.Label(car, text, new Vector3(px - 0.006f, by, pz - 0.07f), -90f, 0.012f);
             }
-            TextMesh carInd = EditorBuild.Label(car, names[start], new Vector3(0f, DoorHeight + 0.16f, -cd * 0.5f + 0.045f), 180f, 0.02f);
+            TextMesh carInd = EditorBuild.Label(car, names[start], new Vector3(0f, DoorHeight + 0.16f, -cd * 0.5f + 0.045f), 180f, 0.02f, false);
             carInd.color = new Color(1f, 0.35f, 0.1f);
             indicators.Add(carInd);
 

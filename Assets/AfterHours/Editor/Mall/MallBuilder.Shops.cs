@@ -357,16 +357,17 @@ namespace AfterHours.EditorTools
                 faces[i] = Decor("Sign face", parent, c0 - hh, c0 + hh, face).GetComponent<Renderer>();
                 faces[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
-            TextMesh tm = EditorBuild.Label(parent, u.name.ToUpperInvariant(), centre - viewDir * 0.018f, yaw, textSize);
+            int roll = Mathf.Abs(h / 7) % 100;
+            var state = roll < 55 ? SignLightbox.State.Lit : roll < 70 ? SignLightbox.State.Failing : roll < 82 ? SignLightbox.State.HalfDead : SignLightbox.State.Dead;
+            // letters on a dead sign are just paint, lit by the room; on a working one they're backlit
+            TextMesh tm = EditorBuild.Label(parent, u.name.ToUpperInvariant(), centre - viewDir * 0.018f, yaw, textSize, state == SignLightbox.State.Dead);
             tm.color = FasciaLetters[brand];
 
             var box = faces[0].gameObject.AddComponent<SignLightbox>();
             box.faces = faces;
             box.emission = faceCol * 1.4f + new Color(0.15f, 0.15f, 0.15f);
             box.seed = h;
-            int roll = Mathf.Abs(h / 7) % 100;
-            box.state = roll < 55 ? SignLightbox.State.Lit : roll < 70 ? SignLightbox.State.Failing : roll < 82 ? SignLightbox.State.HalfDead : SignLightbox.State.Dead;
-            if (box.state == SignLightbox.State.Dead) tm.color = Color.Lerp(tm.color, new Color(0.25f, 0.24f, 0.22f), 0.6f);
+            box.state = state;
         }
     }
 }

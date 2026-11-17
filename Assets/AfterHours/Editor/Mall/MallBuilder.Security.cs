@@ -77,7 +77,7 @@ namespace AfterHours.EditorTools
                 quad.transform.localScale = new Vector3(0.56f, 0.42f, 1f);
                 screens[i] = quad.GetComponent<Renderer>();
                 screens[i].shadowCastingMode = ShadowCastingMode.Off;
-                TextMesh t = EditorBuild.Label(g, name, new Vector3(wallX + 0.51f, yc + 0.18f, zc - 0.25f), -90f, 0.0045f);
+                TextMesh t = EditorBuild.Label(g, name, new Vector3(wallX + 0.51f, yc + 0.18f, zc - 0.25f), -90f, 0.0045f, false);
                 t.anchor = TextAnchor.UpperLeft;
                 t.alignment = TextAlignment.Left;
                 t.color = new Color(0.85f, 0.95f, 0.88f);

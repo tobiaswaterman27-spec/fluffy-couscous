@@ -32,6 +32,7 @@ namespace AfterHours.Rendering
             targets = new RenderTexture[n];
             mats = new Material[screens != null ? screens.Length : 0];
             Shader sh = Shader.Find("AfterHours/CCTVScreen");
+            if (sh != null && !sh.isSupported) sh = null;
             int mask = ~0;
             int localBody = GameLayers.LocalBodyLayer;
             if (localBody >= 0) mask &= ~(1 << localBody);     // the local player's own body has no head

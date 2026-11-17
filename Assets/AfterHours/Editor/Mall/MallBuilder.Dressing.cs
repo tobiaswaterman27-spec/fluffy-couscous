@@ -577,7 +577,7 @@ namespace AfterHours.EditorTools
                         Vector3 c = p + Vector3.up * (slot.height + 0.25f) + normal * (side * (depth * 0.5f + 0.03f));
                         Detail("Exit sign", g, c, new Vector3(0.42f, 0.16f, 0.05f), exitSignMat, rot);
                         float yaw = Mathf.Atan2(-normal.x * side, -normal.z * side) * Mathf.Rad2Deg;
-                        EditorBuild.Label(g, "EXIT", c + normal * (side * 0.03f), yaw, 0.03f);
+                        EditorBuild.Label(g, "EXIT", c + normal * (side * 0.03f), yaw, 0.03f, false);
                         if (side == 1 || slot.kind == DoorKind.Fire)
                         {
                             // its own battery: a faint green glow on the frame and the floor, power or not

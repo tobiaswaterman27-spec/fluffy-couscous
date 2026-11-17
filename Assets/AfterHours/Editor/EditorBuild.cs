@@ -84,7 +84,33 @@ namespace AfterHours.EditorTools
             foreach (Transform child in go.transform) SetLayerRecursive(child.gameObject, layer);
         }
 
-        public static TextMesh Label(Transform parent, string text, Vector3 position, float yaw, float size = 0.06f)
+        static Material litText;
+
+        /// <summary>
+        /// Font material lit by the surroundings (AfterHours/LitText), so text doesn't glow in the dark.
+        /// Falls back to the font's own (unlit) material if the shader isn't available.
+        /// </summary>
+        public static Material LitTextMaterial(Font font)
+        {
+            if (litText != null) return litText;
+            Shader sh = Shader.Find("AfterHours/LitText");
+            if (sh == null || !sh.isSupported) return font.material;
+            EnsureFolder(Root + "/Materials/Art");
+            string path = Root + "/Materials/Art/LitText.mat";
+            litText = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (litText == null)
+            {
+                litText = new Material(sh);
+                AssetDatabase.CreateAsset(litText, path);
+            }
+            litText.shader = sh;
+            litText.SetTexture("_MainTex", font.material.mainTexture);
+            litText.renderQueue = 3000;
+            EditorUtility.SetDirty(litText);
+            return litText;
+        }
+
+        public static TextMesh Label(Transform parent, string text, Vector3 position, float yaw, float size = 0.06f, bool lit = true)
         {
             var go = new GameObject("Label - " + text.Split('\n')[0]);
             go.transform.SetParent(parent, false);
@@ -101,7 +127,7 @@ namespace AfterHours.EditorTools
             if (font != null)
             {
                 tm.font = font;
-                go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+                go.GetComponent<MeshRenderer>().sharedMaterial = lit ? LitTextMaterial(font) : font.material;
             }
             return tm;
         }
