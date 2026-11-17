@@ -116,8 +116,59 @@ namespace AfterHours.EditorTools
 
         static void Chairs(Transform g, Vector3 tableCentre, float y)
         {
-            Prop(g, "Chair", tableCentre + new Vector3(0f, 0f, 0.8f), new Vector3(0.45f, 0.85f, 0.45f), 5f, propMat, SurfaceType.Wood);
-            Prop(g, "Chair", tableCentre + new Vector3(0f, 0f, -0.8f), new Vector3(0.45f, 0.85f, 0.45f), 5f, propMat, SurfaceType.Wood);
+            int h = Mathf.Abs(MallLayout.Hash((int)(tableCentre.x * 10f), (int)(tableCentre.z * 10f), 7, 3));
+            if (h % 5 < 2)
+            {
+                // put up for the cleaner at closing time: upside down on the table
+                // the backs hang down over the table's edges
+                ChairProp(g, tableCentre + new Vector3(-0.27f, 0.75f, 0f), 90f + (h % 9 - 4), true);
+                ChairProp(g, tableCentre + new Vector3(0.27f, 0.75f, 0f), -90f + (h % 7 - 3), true);
+                return;
+            }
+            ChairProp(g, tableCentre + new Vector3(0f, 0f, 0.8f), 180f + (h % 25 - 12), false);
+            if (h % 7 == 3) ChairTipped(g, tableCentre + new Vector3(0.3f, 0f, -1.0f), h);   // knocked over as someone ran
+            else ChairProp(g, tableCentre + new Vector3((h % 3 - 1) * 0.15f, 0f, -0.8f - (h % 4) * 0.06f), (h % 31 - 15), false);
+        }
+
+        /// <summary>
+        /// A café chair: seat, back and four legs, one physics object you can push or knock over. 'yaw' 0 faces +z.
+        /// Upside down, it rests seat-down on a table, legs in the air.
+        /// </summary>
+        static GameObject ChairProp(Transform g, Vector3 at, float yaw, bool upsideDown)
+        {
+            Material frame = Mat("Chair frame", new Color(0.2f, 0.2f, 0.21f), 0.55f, 0.8f);
+            var root = new GameObject("Chair");
+            root.transform.SetParent(g, false);
+            root.transform.localPosition = at + (upsideDown ? Vector3.up * 0.47f : Vector3.zero);
+            root.transform.localRotation = Quaternion.Euler(0f, yaw, upsideDown ? 180f : 0f);
+            void Part(string n, Vector3 c, Vector3 size, Material m)
+            {
+                GameObject b = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                b.name = n; Object.DestroyImmediate(b.GetComponent<Collider>());
+                b.transform.SetParent(root.transform, false);
+                b.transform.localPosition = c; b.transform.localScale = size;
+                b.GetComponent<Renderer>().sharedMaterial = m;
+            }
+            Part("Seat", new Vector3(0f, 0.45f, 0f), new Vector3(0.42f, 0.03f, 0.42f), propMat);
+            Part("Back", new Vector3(0f, 0.68f, -0.2f), new Vector3(0.42f, 0.36f, 0.025f), propMat);
+            foreach (var (lx, lz) in new[] { (-0.18f, -0.18f), (0.18f, -0.18f), (-0.18f, 0.18f), (0.18f, 0.18f) })
+                Part("Leg", new Vector3(lx, 0.22f, lz), new Vector3(0.025f, 0.45f, 0.025f), frame);
+            var col = root.AddComponent<BoxCollider>();
+            // upside down only the seat and legs need to collide (the back hangs past the table edge)
+            if (upsideDown) { col.center = new Vector3(0f, 0.24f, 0.02f); col.size = new Vector3(0.42f, 0.48f, 0.4f); }
+            else { col.center = new Vector3(0f, 0.43f, 0f); col.size = new Vector3(0.42f, 0.86f, 0.42f); }
+            var rb = root.AddComponent<Rigidbody>(); rb.mass = 5f;
+            root.AddComponent<PhysicsProp>().material = SurfaceType.Metal;
+            EditorBuild.SetLayerRecursive(root, GameLayers.PropLayer);
+            return root;
+        }
+
+        static void ChairTipped(Transform g, Vector3 at, int h)
+        {
+            GameObject c = ChairProp(g, at, h % 360, false);
+            // on its back on the floor
+            c.transform.localRotation = Quaternion.Euler(0f, h % 360, 0f) * Quaternion.Euler(-90f, 0f, 0f);
+            c.transform.localPosition = at + Vector3.up * 0.22f;
         }
 
         /// <summary>
