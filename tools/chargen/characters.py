@@ -20,7 +20,7 @@ CHARACTERS = [
     dict(id="priya", top_colour=(0.3, 0.2, 0.24), name="Priya Sharma", role="Phone shop assistant",
          bio="Stayed late to finish a stock count. The shutters came down with her still inside.",
          body=dict(gender=0.0, age=24, muscle=0.45, weight=0.42, height=0.42, race=(0.0, 0.35, 0.65), breast=0.45,
-                   details={"nose/nose-point-width-decr": 0.2, "eyes/r-eye-height2-incr": 0.2, "eyes/l-eye-height2-incr": 0.2}),
+                   details={"nose/nose-point-width-decr": 0.2}),
          skin=(0.62, 0.44, 0.33), hair=dict(style="ponytail", colour=(0.05, 0.04, 0.035)), eyes=(0.18, 0.11, 0.06), beard="none",
          top="cardigan", bottom="trousers", shoes="flats", extras=["lanyard"]),
     dict(id="ruth", top_colour=(0.18, 0.32, 0.36), name="Ruth Okafor", role="Night cleaner",

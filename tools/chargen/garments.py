@@ -42,8 +42,10 @@ class Part:
         self.rigid = rigid        # or: one bone for everything (hair, shoes...)
 
 
-def shell(body, mask, thickness, tag, smooth=12, folds=None, rng=None, hem=None):
-    """A garment: the body faces inside 'mask', pushed out along the normals, smoothed like hanging cloth."""
+def shell(body, mask, thickness, tag, smooth=12, folds=None, rng=None, hem=None, bridge=0):
+    """A garment: the body faces inside 'mask', pushed out along the normals, smoothed like hanging cloth.
+    'bridge': how many passes the cloth gets to span small bumps and hollows (cloth lies across a chest,
+    it doesn't cling into every detail of it)."""
     V, F, N = body["V"], body["F"], body["N"]
     keep = mask[F].all(1)
     Fs = F[keep]
@@ -55,7 +57,12 @@ def shell(body, mask, thickness, tag, smooth=12, folds=None, rng=None, hem=None)
     A = neighbours(Fs, len(used))
     deg = np.asarray(A.sum(1)).ravel()
     bnd = boundary_vertices(Fs, len(used))
-    base = V[used]
+    base = V[used].copy()
+    for _ in range(bridge):
+        avg = (A @ base) / np.maximum(deg, 1)[:, None]
+        base = np.where(bnd[:, None], base, base + 0.6 * (avg - base))
+    if bridge:
+        P = base + N[used] * th[:, None]
     for _ in range(smooth):
         avg = (A @ P) / np.maximum(deg, 1)[:, None]
         P = np.where(bnd[:, None], P, P + 0.6 * (avg - P))
@@ -70,7 +77,9 @@ def shell(body, mask, thickness, tag, smooth=12, folds=None, rng=None, hem=None)
         P[low, 1] = hem
         near = ~bnd & (P[:, 1] < hem + 0.025)
         P[near, 1] = np.maximum(P[near, 1], hem + 0.008)
-    return Part(P, Fs, tag, src=used)
+    part = Part(P, Fs, tag, src=used)
+    smooth_edges(part)
+    return part
 
 
 def sdf_part(model, lo, hi, tag, fine=0.003, target=None, rigid=None, src_tree=None):
@@ -132,8 +141,74 @@ def hang(part, a, b, select, window=0.3, loose=0.85, bins=48, tbins=60):
         hung[k] = grid[max(0, k - w):k + 1].max(0)
     hung = np.maximum(hung, np.roll(hung, 1, 1) * 0.97)
     hung = np.maximum(hung, np.roll(hung, -1, 1) * 0.97)
-    target = hung[ti, hi]
+    # soften the profile so fabric falls from a rounded bust / shoulder, not from a point
+    from scipy.ndimage import gaussian_filter1d
+    empty = hung <= 0
+    hung = gaussian_filter1d(hung, 1.6, axis=1, mode="wrap")
+    hung = gaussian_filter1d(hung, 1.2, axis=0, mode="nearest")
+    hung[empty] = 0
+    # bilinear lookup in angle, so neighbouring bins don't leave steps
+    fh = (th + np.pi) / (2 * np.pi) * bins - 0.5
+    h0 = np.floor(fh).astype(int); fr = fh - h0
+    target = hung[ti, h0 % bins] * (1 - fr) + hung[ti, (h0 + 1) % bins] * fr
     newr = np.where(s & (target > r), r + (target - r) * loose, r)
     scale = np.where(r > 1e-6, newr / np.maximum(r, 1e-6), 1)
     part.V = a + np.outer(t, ax) + radial * scale[:, None]
     return part
+
+
+def cuff(part, elbow, wrist, side, wrist_r, ease=0.008, end_t=None):
+    """Finish a sleeve: the ragged open edge is laid onto one plane across the forearm (a straight cuff), and
+    the last few centimetres are drawn in towards the wrist (sleeves taper, they don't flare like a bell)."""
+    d = wrist - elbow; L = np.linalg.norm(d); d = d / L
+    P = part.V
+    rel = P - elbow
+    t = rel @ d
+    rad0 = np.linalg.norm(rel - np.outer(t, d), axis=1)
+    on = (P[:, 0] * side > 0.12) & (t > 0.3 * L) & (t < 1.3 * L) & (rad0 < wrist_r + 0.07)
+    if not on.any(): return
+    bnd = boundary_vertices(part.F, len(P)) & on
+    if not bnd.any(): return
+    te = np.percentile(t[bnd], 35) if end_t is None else end_t * L
+    # the edge: onto the plane
+    P[bnd] += d * (te - t[bnd])[:, None]
+    # anything poking past it: pulled back behind the edge
+    past = on & ~bnd & (t > te - 0.004)
+    P[past] += d * ((te - 0.006) - t[past])[:, None]
+    # taper: radius eased in towards the wrist over the last 7 cm
+    rel = P - elbow; t = rel @ d
+    radial = rel - np.outer(t, d)
+    r = np.linalg.norm(radial, axis=1) + 1e-9
+    k = smoothstep(te - 0.08, te - 0.005, t) * on
+    target = np.minimum(r, wrist_r + ease)
+    newr = r + (target - r) * k
+    P[:] = elbow + np.outer(t, d) + radial * (newr / r)[:, None]
+
+
+def smooth_edges(part, iters=10, select=None):
+    """Even out every open edge (neckline, cuffs, hems): each edge vertex is eased towards its two neighbours
+    along the edge (Taubin smoothing, so the opening doesn't shrink), then the ring next to it follows."""
+    F, P = part.F, part.V
+    e = np.sort(np.concatenate([F[:, [0, 1]], F[:, [1, 2]], F[:, [2, 0]]]), 1)
+    u, c = np.unique(e, axis=0, return_counts=True)
+    be = u[c == 1]
+    if len(be) == 0: return
+    if select is not None:
+        be = be[select[be[:, 0]] & select[be[:, 1]]]
+        if len(be) == 0: return
+    n = len(P)
+    import scipy.sparse as sp
+    A = sp.coo_matrix((np.ones(2 * len(be)), (np.r_[be[:, 0], be[:, 1]], np.r_[be[:, 1], be[:, 0]])), shape=(n, n)).tocsr()
+    deg = np.asarray(A.sum(1)).ravel()
+    b = deg > 0
+    for _ in range(iters):
+        for lam in (0.5, -0.53):
+            avg = (A @ P) / np.maximum(deg, 1)[:, None]
+            P[b] += lam * (avg[b] - P[b])
+    # the ring of faces touching the edge relaxes a little towards its neighbours
+    Afull = neighbours(F, n)
+    dfull = np.asarray(Afull.sum(1)).ravel()
+    ring = (np.asarray((Afull @ b.astype(float))).ravel() > 0) & ~b
+    for _ in range(3):
+        avg = (Afull @ P) / np.maximum(dfull, 1)[:, None]
+        P[ring] += 0.4 * (avg[ring] - P[ring])

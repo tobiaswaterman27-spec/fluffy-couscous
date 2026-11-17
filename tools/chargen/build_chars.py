@@ -78,6 +78,15 @@ def build(spec):
 
     # ---------------- top
     top = spec["top"]
+    # tops lie across the chest rather than clinging into every detail of it: they're made over a copy of the
+    # body whose chest is smoothed (no nipples, softened cleavage), the way a bra and a layer of cloth would
+    chest_sel = (w("Chest", "Spine") > 0.4) & (V[:, 2] > P("Chest")[2]) & (np.abs(V[:, 0]) < 0.2) & (y > hipY + 0.15) & (y < neckY - 0.04)
+    Vs = V.copy()
+    An = neighbours(F, len(V)); dn = np.asarray(An.sum(1)).ravel()
+    for _ in range(45):
+        avg = (An @ Vs) / np.maximum(dn, 1)[:, None]
+        Vs[chest_sel] += 0.5 * (avg[chest_sel] - Vs[chest_sel])
+    body_top = dict(V=Vs, F=F, N=vertex_normals(Vs, F))
     hemY = {"hoodie": hipY - 0.03, "cardigan": hipY - 0.06, "security": hipY + 0.02, "workjacket": hipY - 0.02,
             "jacket": hipY - 0.0, "tabard": hipY + 0.02, "coat": kneeY + 0.12}[top]
     sleeve_end = {"tabard": 0.75}.get(top, 0.93)
@@ -94,17 +103,19 @@ def build(spec):
         return np.full(len(p), tthick) + 0.008 * smoothstep(hipY + 0.25, hipY, p[:, 1])
     if top == "tabard":
         # a long-sleeved top underneath, the tabard over it (that's the coloured part)
-        under = shell(body, m_top | ((torso > 0.5) & (y > hipY + 0.02) & (y < neckY + 0.02) & (headw < 0.3) & (handw < 0.3) & (fore_t < 0.93)),
+        under = shell(body_top, m_top | ((torso > 0.5) & (y > hipY + 0.02) & (y < neckY + 0.02) & (headw < 0.3) & (handw < 0.3) & (fore_t < 0.93)),
                       0.006, "undershirt", smooth=6, folds=sleeve_folds(None, 0.002))
+        for s, side in (("L", -1), ("R", 1)):
+            cuff(under, P("ForeArm" + s), P("Hand" + s), side, wrist_radius(V, P("ForeArm" + s), P("Hand" + s), fore_t), ease=0.004)
         parts.append(under)
         m_tab = (w("Pelvis", "Spine", "Chest", "Neck") > 0.55) & (y > hipY - 0.03) & (y < neckY + 0.0) & (headw < 0.3)
-        ptab = shell(body, m_tab, 0.02, "top", smooth=20, folds=torso_folds(0.003), hem=hipY - 0.03)
+        ptab = shell(body_top, m_tab, 0.02, "top", smooth=20, folds=torso_folds(0.003), hem=hipY - 0.03)
         shY = P("UpperArmR")[1]
         hang(ptab, np.array([0, shY - 0.1, P("Neck")[2]]), np.array([0, hipY - 0.15, P("Pelvis")[2]]), ptab.V[:, 1] < shY - 0.1, window=0.35, loose=0.85)
         parts.append(ptab)
         covered |= (torso > 0.5) & (y > hipY + 0.05) & (y < neckY - 0.02) & (fore_t < 0.88)
     else:
-        pt = shell(body, m_top, top_thick, "top", smooth=30, hem=hemY, folds=lambda p: torso_folds(0.005)(p) + sleeve_folds(None, 0.003)(p))
+        pt = shell(body_top, m_top, top_thick, "top", smooth=30, hem=hemY, folds=lambda p: torso_folds(0.005)(p) + sleeve_folds(None, 0.003)(p))
         # loose: the body of it hangs from below the arms, the sleeves from the shoulders (the skeleton says which is which)
         Wp = W[pt.src]
         for s, side in (("L", -1), ("R", 1)):
@@ -112,11 +123,26 @@ def build(spec):
             d = (wr - sh) / np.linalg.norm(wr - sh)
             sel = (Wp[:, I["UpperArm" + s]] + Wp[:, I["ForeArm" + s]] > 0.5)
             hang(pt, sh + d * 0.06, wr, sel, window=0.1, loose={"hoodie": 0.75, "jacket": 0.6, "workjacket": 0.7}.get(top, 0.45))
+        for s, side in (("L", -1), ("R", 1)):
+            cuff(pt, P("ForeArm" + s), P("Hand" + s), side, wrist_radius(V, P("ForeArm" + s), P("Hand" + s), fore_t),
+                 ease={"hoodie": 0.006, "cardigan": 0.006, "security": 0.01, "workjacket": 0.016, "jacket": 0.014}.get(top, 0.01))
         armw = sum(Wp[:, I[n]] for n in ("UpperArmL", "UpperArmR", "ForeArmL", "ForeArmR"))
         shY = P("UpperArmR")[1]
         body_sel = (armw < 0.15) & (pt.V[:, 1] < shY - 0.1)
         hang(pt, np.array([0, shY - 0.1, P("Neck")[2] - 0.01]), np.array([0, hemY - 0.05, P("Pelvis")[2]]), body_sel,
-             window=0.35, loose={"hoodie": 0.85, "jacket": 0.8, "workjacket": 0.85, "security": 0.6, "cardigan": 0.5}.get(top, 0.6))
+             window=0.35, loose={"hoodie": 0.85, "jacket": 0.8, "workjacket": 0.85, "security": 0.75, "cardigan": 0.78}.get(top, 0.6))
+        # relax the cloth over the chest and belly: no bumps poking up through it
+        sel = (chest_sel | ((w("Pelvis", "Spine") > 0.4) & (V[:, 2] > P("Spine")[2]) & (np.abs(V[:, 0]) < 0.18) & (y > hipY)))[pt.src]
+        Ap = neighbours(pt.F, len(pt.V)); dp = np.asarray(Ap.sum(1)).ravel()
+        Nb = body_top["N"][pt.src]; Bb = Vs[pt.src]
+        floor_d = np.maximum(np.sum((pt.V - Bb) * Nb, 1), tthick * 0.6)   # never sink below where it hangs now
+        for _ in range(40):
+            avg = (Ap @ pt.V) / np.maximum(dp, 1)[:, None]
+            pt.V[sel] += 0.5 * (avg[sel] - pt.V[sel])
+            dd = np.sum((pt.V - Bb) * Nb, 1)
+            push = np.maximum(0, floor_d - dd) * sel
+            pt.V += Nb * push[:, None]
+        smooth_edges(pt, iters=14)
         parts.append(pt)
         covered |= (torso > 0.5) & (y > hemY + 0.04) & (y < neckY - 0.02) & (fore_t < sleeve_end - 0.05) & (headw < 0.2) & (handw < 0.1)
     covered |= (footw > 0.5) & (y < ankleY + (0.12 if spec["shoes"] == "boots" else 0.05))
@@ -272,6 +298,7 @@ def build(spec):
         prim.bone, prim.tag, prim.op, prim.k = bone, tag, "add", k
         em.add(prim)
     btree_top = cKDTree(V[(torso > 0.5) & (y > hipY) & (headw < 0.2) & (handw < 0.2)])
+    card_c = None
     if "lanyard" in spec["extras"]:
         card = np.array([0.03, nk[1] - 0.2, 0]);
         zc = V[(torso > 0.5) & (np.abs(V[:, 0] - 0.03) < 0.03) & (np.abs(y - card[1]) < 0.03)][:, 2].max() + tthick + 0.012
@@ -279,6 +306,7 @@ def build(spec):
         for sgn in (-1, 1):
             a = np.array([sgn * 0.05, nk[1] + 0.01, nk[2] + 0.04]); eadd(cone(a, card + [0, 0.035, -0.003], 0.003, 0.003), "strap")
         eadd(rbox(card, [0.028, 0.04, 0.002], np.eye(3), 0.002), "card")
+        card_c = card.copy()
     if "backpack" in spec["extras"]:
         bz = V[(torso > 0.5) & (y > hipY + 0.2) & (y < nk[1] - 0.05)][:, 2].min() - tthick - 0.06
         c = np.array([0, nk[1] - 0.26, bz])
@@ -319,8 +347,27 @@ def build(spec):
             cz = V[(torso > 0.5) & (np.abs(y - (nk[1] - 0.17)) < 0.03) & (np.abs(V[:, 0] - sgn * 0.04) < 0.02)][:, 2].max() + tthick + 0.006
             eadd(cone(a, np.array([sgn * 0.04, nk[1] - 0.17, cz]), 0.0035, 0.0035), "cord")
     if top in ("security", "workjacket", "jacket", "coat"):
-        # turned-down collar
-        eadd(ellipsoid(np.array([0, nk[1] + 0.01, nk[2] - 0.02]), [0.085, 0.03, 0.075]), "top", bone="Neck", k=0.02)
+        # a proper collar: a band of cloth standing round the neck, higher at the back, open at the front zip
+        ring = V[(np.abs(y - (neckY + 0.02)) < 0.012) & (np.abs(V[:, 0]) < 0.1) & (headw < 0.5) & (np.abs(V[:, 2] - nk[2]) < 0.12)]
+        ccx, ccz = float(np.median(ring[:, 0])), float((ring[:, 2].max() + ring[:, 2].min()) / 2)
+        crx = float(np.percentile(np.abs(ring[:, 0] - ccx), 95)) + tthick + 0.006
+        crz = float((ring[:, 2].max() - ring[:, 2].min()) / 2) + tthick + 0.006
+        open_front = top in ("workjacket", "jacket", "coat")
+        cy0 = neckY - 0.005
+        def collar_fn(p, ccx=ccx, ccz=ccz, crx=crx, crz=crz, cy0=cy0, open_front=open_front):
+            dx, dz = p[:, 0] - ccx, p[:, 2] - ccz
+            r = np.sqrt((dx / crx) ** 2 + (dz / crz) ** 2)
+            wall = np.abs((r - 1) * min(crx, crz)) - 0.0035
+            back = smoothstep(0.3, -0.9, dz / crz)                       # 0 front .. 1 back
+            h = 0.022 + 0.022 * back                                      # 2 cm high at the front, 4.5 at the back
+            mid = cy0 + h * 0.5 + 0.012 * back
+            band = np.abs(p[:, 1] - mid) - h * 0.5
+            d = np.maximum(wall, band)
+            if open_front:
+                d = np.maximum(d, np.where(dz > 0, 0.006 - np.abs(dx), -1))
+            return d - 0.0015
+        lo = np.array([ccx - crx - 0.02, cy0 - 0.02, ccz - crz - 0.02]); hi = np.array([ccx + crx + 0.02, cy0 + 0.08, ccz + crz + 0.02])
+        eadd(Prim("collar", lo, hi, collar_fn), "top", bone="Neck")
     extra_part = None
     if em.prims:
         extra_part = sdf_part(em, np.array([-0.45, 0.3, -0.45]), np.array([0.45, 1.9, 0.45]), "extra", fine=0.003 if not QUICK else 0.004, target=8000, src_tree=tree)
@@ -342,7 +389,7 @@ def build(spec):
     bodyPart = Part(V[used_b], rb[bodyF], "skin", src=used_b)
     parts.insert(0, bodyPart)
     lk = dict(front_up=0.085) if style == "receding" else dict(front_up=0.06) if style == "afro" else {}
-    return dict(spec=spec, human=h, sk=sk, V=V, W=W, N=N, parts=parts, eyeY=eyeY, headw=headw, hipY=hipY, neckY=neckY, tree=tree,
+    return dict(spec=spec, human=h, sk=sk, V=V, W=W, N=N, parts=parts, card=card_c, eyeY=eyeY, headw=headw, hipY=hipY, neckY=neckY, tree=tree,
                 hairline_fn=(lambda q, lk=lk: hairline(q, **lk)) if style not in ("wrap", "bob") else None)
 
 
@@ -445,12 +492,49 @@ def colours(c, p, n, tagw, ao, head_frame):
     put("beanie", np.tile([0.13, 0.13, 0.12], (N, 1)) * (0.9 + 0.15 * np.abs(np.sin(np.arctan2(x, z) * 60)))[:, None], 0.1)
     put("glasses", np.tile([0.05, 0.04, 0.035], (N, 1)), 0.75)
     put("strap", np.tile([0.1, 0.12, 0.2], (N, 1)), 0.25)
-    put("card", np.tile([0.85, 0.85, 0.82], (N, 1)), 0.5)
+    put("card", id_card(c, p), 0.5)
     put("pack", np.tile([0.14, 0.15, 0.13], (N, 1)) * (0.9 + 0.1 * fbm(p, 50, 2, seed=61))[:, None], 0.2)
     put("apron", np.tile([0.16, 0.12, 0.09], (N, 1)) * (0.9 + 0.1 * fbm(p, 40, 2, seed=62))[:, None], 0.25)
     put("apron_tie", np.tile([0.16, 0.12, 0.09], (N, 1)), 0.25)
     col *= (0.5 + 0.5 * ao)[:, None]
     return np.clip(col, 0, 1), np.clip(sm, 0, 1)
+
+
+def id_card(c, p):
+    """The staff pass on the lanyard: company stripe, photo of its owner, name and number lines, a barcode."""
+    N = len(p)
+    out = np.tile([0.86, 0.86, 0.83], (N, 1))
+    cc = c.get("card")
+    if cc is None: return out
+    spec = c["spec"]
+    u = (p[:, 0] - cc[0]) / 0.028; v = (p[:, 1] - cc[1]) / 0.04
+    front = p[:, 2] > cc[2]
+    stripe_c = {"marcus": [0.1, 0.16, 0.36], "priya": [0.62, 0.1, 0.12]}.get(spec["id"], [0.15, 0.3, 0.22])
+    out = mix(out, stripe_c, (v > 0.55) * front)
+    ph = (u > -0.8) & (u < -0.1) & (v > -0.35) & (v < 0.42) & front
+    face = np.exp(-(((u + 0.45) / 0.22) ** 2 + ((v - 0.02) / 0.3) ** 2))
+    hair = (v > 0.14 + 0.25 * ((u + 0.45) / 0.35) ** 2) & ph
+    photo = mix(np.tile([0.55, 0.66, 0.75], (N, 1)), np.array(spec["skin"]), np.clip(face * 1.6, 0, 1))
+    photo = mix(photo, np.array(spec["hair"]["colour"]), hair * 0.9)
+    photo = mix(photo, np.array(spec.get("top_colour", (0.2, 0.2, 0.2))), (v < -0.22) * 1.0)
+    out = np.where(ph[:, None], photo, out)
+    for row, length in ((0.3, 0.75), (0.12, 0.55), (-0.06, 0.65), (-0.24, 0.4)):
+        line = (np.abs(v - row) < 0.045) & (u > 0.0) & (u < 0.0 + length * 0.85) & front
+        out = mix(out, [0.18, 0.18, 0.2], line * 0.9)
+    bars = (v > -0.85) & (v < -0.55) & (np.abs(u) < 0.8) & front & (np.sin(u * 90 + np.sin(u * 37) * 3) > 0.1)
+    out = mix(out, [0.08, 0.08, 0.08], bars * 0.95)
+    return out
+
+
+def wrist_radius(V, elbow, wrist, fore_t):
+    """How thick the wrist is: the body's distance from the forearm axis just above the hand."""
+    d = wrist - elbow; d = d / np.linalg.norm(d)
+    side = np.sign(wrist[0])
+    sel = (fore_t > 0.88) & (fore_t < 0.96) & (V[:, 0] * side > 0.1)
+    if sel.sum() < 5: return 0.03
+    rel = V[sel] - elbow
+    radial = rel - np.outer(rel @ d, d)
+    return float(np.percentile(np.linalg.norm(radial, axis=1), 80))
 
 
 def garment_details(c, top, p, n, tcol, tsm, base_c):
@@ -558,11 +642,17 @@ def eye_texture(iris, size=256):
     a = np.arctan2(yy - 0.5, xx - 0.5)
     Pq = np.stack([np.cos(a) * 3, np.sin(a) * 3, r * 6], -1).reshape(-1, 3)
     fib = (0.5 + 0.5 * fbm(Pq * [1, 1, 0.2], 3, 2, seed=61)).reshape(size, size)
-    col = np.zeros((size, size, 3)); col[:] = [0.84, 0.8, 0.76]
+    col = np.zeros((size, size, 3)); col[:] = [0.8, 0.76, 0.72]
+    # sclera: greyer and a little bloodshot towards the corners (it's 3 am and they're terrified)
+    veins = smoothstep(0.55, 0.8, fbm(Pq * [2, 2, 0.5], 6, 2, seed=63).reshape(size, size)) * smoothstep(0.6, 0.95, r)
+    col = col * (1 - 0.18 * smoothstep(0.6, 1.0, r))[..., None]
+    col = col * (1 - veins[..., None] * 0.25) + veins[..., None] * np.array([0.55, 0.18, 0.15]) * 0.25
     ir = np.array(iris) * (0.6 + 0.7 * fib)[..., None]
-    col = np.where((r < 0.42)[..., None], ir, col)
-    col = np.where(((r < 0.42) & (r > 0.38))[..., None], col * 0.55, col)
-    col = np.where((r < 0.15)[..., None], np.array([0.02, 0.02, 0.02]), col)
+    IR, PU = 0.56, 0.21                                      # iris ~ half the visible eye, as real ones are
+    col = np.where((r < IR)[..., None], ir, col)
+    limbal = smoothstep(IR - 0.07, IR, r) * (r < IR)
+    col = col * (1 - 0.5 * limbal)[..., None]
+    col = np.where((r < PU)[..., None], np.array([0.02, 0.02, 0.02]), col)
     return col
 
 
