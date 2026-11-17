@@ -196,11 +196,13 @@ def build(spec):
         hadd(hair_prim(0.006, line_kw=dict(front_up=0.085), noise=0.0012, freq=90), "hair")
     elif style == "bob":
         def f(p):
-            d = scalp(p) - 0.02 - 0.004 * fbm(p * [1, 3, 1], 30, 2, seed=6)
             zf = (p[:, 2] - back_z) / max(face_z - back_z, 1e-3)
             line = np.where(zf > 0.72, eyeY + 0.05, eyeY - 0.075)
-            hang = np.maximum(d, line - p[:, 1])
-            return hang
+            # uneven strand ends, and the hair thins to its tips (no flat-cut underside to catch the dark)
+            line = line + 0.005 * np.sin(p[:, 0] * 140 + 3 * fbm(p, 20, 1, seed=61)) + 0.004 * fbm(p, 60, 2, seed=62)
+            tip = 0.2 + 0.8 * smoothstep(0.0, 0.03, p[:, 1] - line)
+            d = scalp(p) - 0.02 * tip - 0.004 * tip * fbm(p * [1, 3, 1], 30, 2, seed=6)
+            return np.maximum(d, line - p[:, 1])
         hadd(Prim("hair", hj - 0.2, hj + 0.25, f), "hair")
     elif style == "ponytail":
         hadd(hair_prim(0.007, noise=0.002), "hair")
