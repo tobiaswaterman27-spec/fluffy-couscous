@@ -115,7 +115,7 @@ def trouser_folds(knee_y, amp=0.003):
     return f
 
 
-def hang(part, a, b, select, window=0.3, loose=0.85, bins=48, tbins=60):
+def hang(part, a, b, select, window=0.3, loose=0.85, bins=48, tbins=60, apply=None):
     """Make cloth hang like cloth: around the axis a->b (a = top), each point's distance from the axis is pushed
     out towards the widest the fabric has been in the 'window' above it, so it falls straight from the chest /
     the thigh / the upper arm instead of hugging every curve."""
@@ -151,7 +151,8 @@ def hang(part, a, b, select, window=0.3, loose=0.85, bins=48, tbins=60):
     fh = (th + np.pi) / (2 * np.pi) * bins - 0.5
     h0 = np.floor(fh).astype(int); fr = fh - h0
     target = hung[ti, h0 % bins] * (1 - fr) + hung[ti, (h0 + 1) % bins] * fr
-    newr = np.where(s & (target > r), r + (target - r) * loose, r)
+    wgt = s.astype(float) if apply is None else s * np.asarray(apply, float)   # apply may be a 0..1 weight
+    newr = np.where(target > r, r + (target - r) * loose * wgt, r)
     scale = np.where(r > 1e-6, newr / np.maximum(r, 1e-6), 1)
     part.V = a + np.outer(t, ax) + radial * scale[:, None]
     return part

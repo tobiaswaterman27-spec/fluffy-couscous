@@ -83,7 +83,7 @@ def build(spec):
             hang(pb, P("Thigh" + s) + [0, -0.05, 0], P("Foot" + s), leg, window=0.32 if bot != "jeans" else 0.26, loose=0.65 if bot != "jeans" else 0.6)
     unfold(pb)
     parts.append(pb)
-    covered |= m_bot & (y < waistY - 0.03) & (y > hem + 0.03)
+    covered |= m_bot & (y < waistY - (0.008 if bot == "leggings" else 0.03)) & (y > hem + 0.03)
 
     # ---------------- top
     top = spec["top"]
@@ -136,7 +136,21 @@ def build(spec):
             sh, wr = P("UpperArm" + s), P("Hand" + s)
             d = (wr - sh) / np.linalg.norm(wr - sh)
             sel = (Wp[:, I["UpperArm" + s]] + Wp[:, I["ForeArm" + s]] > 0.5)
-            hang(pt, sh + d * 0.06, wr, sel, window=0.1, loose={"hoodie": 0.75, "jacket": 0.6, "workjacket": 0.7}.get(top, 0.45))
+            # the sleeve falls from the widest part of the upper arm straight past the elbow (no dip into it)
+            hang(pt, sh + d * 0.06, wr, sel, window=0.32, loose={"hoodie": 0.9, "jacket": 0.85, "workjacket": 0.88}.get(top, 0.75))
+            # and the cloth over the elbow is relaxed so the crease there softens
+            Ap = neighbours(pt.F, len(pt.V)); dp = np.asarray(Ap.sum(1)).ravel()
+            elb = P("ForeArm" + s)
+            near = sel & (np.linalg.norm(pt.V - elb, axis=1) < 0.09)
+            base = pt.V.copy()
+            for _ in range(12):
+                avg = (Ap @ pt.V) / np.maximum(dp, 1)[:, None]
+                pt.V[near] += 0.5 * (avg[near] - pt.V[near])
+            # never shrink inwards while relaxing (only the dent fills)
+            ax = (wr - sh) / np.linalg.norm(wr - sh)
+            def rad(Q): r = Q - sh; return np.linalg.norm(r - np.outer(r @ ax, ax), axis=1)
+            shrink = near & (rad(pt.V) < rad(base))
+            pt.V[shrink] = base[shrink]
         for s, side in (("L", -1), ("R", 1)):
             cuff(pt, P("ForeArm" + s), P("Hand" + s), side, wrist_radius(V, P("ForeArm" + s), P("Hand" + s), fore_t),
                  ease={"hoodie": 0.006, "cardigan": 0.006, "security": 0.01, "workjacket": 0.016, "jacket": 0.014}.get(top, 0.01))
@@ -159,8 +173,22 @@ def build(spec):
         flatten_dense_patches(pt, (V[:, 2] > P("Spine")[2])[pt.src] & (pt.V[:, 1] > hipY - 0.05) & (pt.V[:, 1] < neckY - 0.02) & (np.abs(pt.V[:, 0]) < 0.2))
         unfold(pt)
         smooth_edges(pt, iters=14)
+        # last: the sleeves fall straight over the elbows (earlier smoothing can pull a dent back in)
+        Wp2 = W[pt.src]
+        for s, side in (("L", -1), ("R", 1)):
+            sh, wr = P("UpperArm" + s), P("Hand" + s)
+            d = (wr - sh) / np.linalg.norm(wr - sh); L = np.linalg.norm(wr - sh)
+            sel = (Wp2[:, I["UpperArm" + s]] + Wp2[:, I["ForeArm" + s]] > 0.5)
+            tt = (pt.V - sh) @ d / L
+            hang(pt, sh + d * 0.06, wr, sel, window=0.35, loose=0.85, apply=smoothstep(0.22, 0.42, tt) * (1 - smoothstep(0.66, 0.84, tt)))
+        # then relax the sleeves along their length so nothing is left stepped
+        Ap = neighbours(pt.F, len(pt.V)); dp = np.asarray(Ap.sum(1)).ravel()
+        arms = (Wp2[:, I["UpperArmL"]] + Wp2[:, I["ForeArmL"]] + Wp2[:, I["UpperArmR"]] + Wp2[:, I["ForeArmR"]] > 0.5) & ~boundary_vertices(pt.F, len(pt.V))
+        for _ in range(8):
+            avg = (Ap @ pt.V) / np.maximum(dp, 1)[:, None]
+            pt.V[arms] += 0.45 * (avg[arms] - pt.V[arms])
         parts.append(pt)
-        covered |= (torso > 0.5) & (y > hemY + 0.04) & (y < neckY - 0.02) & (fore_t < sleeve_end - 0.05) & (headw < 0.2) & (handw < 0.1)
+        covered |= (torso > 0.5) & (y > hemY + 0.02) & (y < neckY - 0.02) & (fore_t < sleeve_end - 0.05) & (headw < 0.2) & (handw < 0.1)
     covered |= (footw > 0.5) & (y < ankleY + (0.12 if spec["shoes"] == "boots" else 0.05))
 
     # ---------------- sculpted bits: hood, collar, pockets, shoes, hair, accessories
