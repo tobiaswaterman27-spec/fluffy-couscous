@@ -13,7 +13,7 @@ namespace AfterHours.World
     /// </summary>
     public static class WorldFX
     {
-        enum Kind { Spark, Dust, Splinter }
+        enum Kind { Spark, Dust, Splinter, Breath }
         static readonly Dictionary<Kind, ParticleSystem> systems = new Dictionary<Kind, ParticleSystem>();
         static Transform root;
         static Texture2D dot, puff;
@@ -99,6 +99,20 @@ namespace AfterHours.World
                     var sz = ps.sizeOverLifetime; sz.enabled = true; sz.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.6f, 1f, 1.6f));
                     var dr = ps.limitVelocityOverLifetime; dr.enabled = true; dr.drag = 2.5f;
                     break;
+                case Kind.Breath:
+                    main.startLifetime = new ParticleSystem.MinMaxCurve(1.1f, 2.0f);
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.09f);
+                    main.gravityModifier = -0.012f;                                  // warm air rises a touch
+                    main.startColor = new Color(0.85f, 0.87f, 0.9f, 0.16f);
+                    main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+                    r.renderMode = ParticleSystemRenderMode.Billboard;
+                    r.sharedMaterial = Mat(puff, false);
+                    g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                              new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.9f, 0.08f), new GradientAlphaKey(0.35f, 0.5f), new GradientAlphaKey(0f, 1f) });
+                    var bs = ps.sizeOverLifetime; bs.enabled = true; bs.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.5f, 1f, 3.2f));
+                    var bd = ps.limitVelocityOverLifetime; bd.enabled = true; bd.drag = 3.5f;
+                    var bn = ps.noise; bn.enabled = true; bn.strength = 0.08f; bn.frequency = 0.8f; bn.scrollSpeed = 0.3f;
+                    break;
                 case Kind.Splinter:
                     main.startLifetime = new ParticleSystem.MinMaxCurve(1.2f, 2.5f);
                     main.startSize3D = true;
@@ -156,6 +170,27 @@ namespace AfterHours.World
 
         /// <summary>Dust and grit shaken loose (e.g. from a door frame being hammered).</summary>
         public static void Dust(Vector3 at, Vector3 dir, int count = 14) => Emit(Kind.Dust, at, dir, count, 0.4f, 1.2f);
+
+        /// <summary>
+        /// A breath of fog in the cold (the heating went off when the mall closed). 'strength' 0..1: a calm breath
+        /// is a faint wisp, a panting one a proper cloud. Skipped when nobody's close enough to see it.
+        /// </summary>
+        public static void Breath(Vector3 mouth, Vector3 dir, float strength = 0.5f)
+        {
+            Camera c = Camera.main;
+            if (c == null || (c.transform.position - mouth).sqrMagnitude > 18f * 18f) return;
+            int count = Mathf.RoundToInt(Mathf.Lerp(3f, 9f, strength));
+            ParticleSystem ps = Get(Kind.Breath);
+            var p = new ParticleSystem.EmitParams();
+            dir = dir.sqrMagnitude > 1e-6f ? dir.normalized : Vector3.forward;
+            for (int i = 0; i < count; i++)
+            {
+                p.position = mouth + Random.insideUnitSphere * 0.015f;
+                p.velocity = (dir + Random.insideUnitSphere * 0.35f + Vector3.down * 0.25f).normalized * Mathf.Lerp(0.35f, 0.9f, strength) * Random.Range(0.6f, 1.1f);
+                p.applyShapeToPosition = false;
+                ps.Emit(p, 1);
+            }
+        }
 
         /// <summary>Wood splinters flung from a breaking door, plus dust.</summary>
         public static void Splinters(Vector3 at, Vector3 dir, int count = 60)

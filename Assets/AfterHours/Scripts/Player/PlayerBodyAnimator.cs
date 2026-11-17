@@ -2,6 +2,7 @@ using UnityEngine;
 using AfterHours.Core;
 using AfterHours.Creature;
 using AfterHours.Items;
+using AfterHours.World;
 
 namespace AfterHours.Player
 {
@@ -99,8 +100,12 @@ namespace AfterHours.Player
             float moveW = Mathf.Clamp01(speed / 0.3f);
             float runW = Mathf.Clamp01(Mathf.InverseLerp(3f, 5.5f, speed));
             exertion = Mathf.MoveTowards(exertion, runW, dt * (runW > exertion ? 0.15f : 0.05f));
+            float prevBreathT = breathT;
             breathT += dt * Mathf.Lerp(1.4f, 3.2f, exertion);
             float breath = Mathf.Sin(breathT * Mathf.PI);
+            // each exhale (sin turns negative) fogs in the cold air
+            if (head != null && Mathf.FloorToInt(breathT) != Mathf.FloorToInt(prevBreathT) && Mathf.FloorToInt(breathT) % 2 == 1 && !HoldingBreath())
+                WorldFX.Breath(head.position + transform.forward * 0.11f + Vector3.down * 0.05f, transform.forward + Vector3.down * 0.3f, 0.35f + exertion * 0.65f);
 
             // stride: one stridePhase unit per footstep; a full leg cycle is two
             float ds = l.stridePhase - lastStride;
@@ -286,6 +291,14 @@ namespace AfterHours.Player
             Vector3 f = Vector3.ProjectOnPlane(pole, dir);
             if (f.sqrMagnitude < 1e-6f) f = Vector3.ProjectOnPlane(Vector3.forward, dir);
             seg.SetPositionAndRotation(from, Quaternion.LookRotation(f.normalized, -dir));
+        }
+
+        AfterHours.Audio.PlayerAudio ownAudio;
+        bool ownAudioLooked;
+        bool HoldingBreath()
+        {
+            if (!ownAudioLooked) { ownAudio = GetComponentInParent<AfterHours.Audio.PlayerAudio>(); ownAudioLooked = true; }
+            return ownAudio != null && ownAudio.HoldingBreath;
         }
     }
 }

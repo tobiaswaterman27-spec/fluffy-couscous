@@ -448,7 +448,24 @@ namespace AfterHours.Creature
             vp.headRoll = Ease(vp.headRoll, want.headRoll, k); vp.push = Ease(vp.push, want.push, k); vp.arch = Ease(vp.arch, want.arch, k);
             vp.shoulders = Ease(vp.shoulders, want.shoulders, k); vp.arms = Ease(vp.arms, want.arms, k); vp.curl = Ease(vp.curl, want.curl, k);
             vp.splay = Ease(vp.splay, want.splay, k); vp.shake = Ease(vp.shake, want.shake, k);
+
+            // his breath fogs in the cold too: a wisp at the top of each breath, a cloud with every roar
+            float dc = vp.chest - lastChest;
+            lastChest = vp.chest;
+            fogCool -= dt;
+            if (head != null && fogCool <= 0f)
+            {
+                bool loud = vp.jaw > 0.55f;
+                if (loud || (lastChestDelta > 0f && dc <= 0f && vp.chest > 0.1f))
+                {
+                    AfterHours.World.WorldFX.Breath(MouthPosition, head.forward, loud ? 1f : 0.55f);
+                    fogCool = loud ? 0.3f : 1f;
+                }
+            }
+            lastChestDelta = dc;
         }
+
+        float lastChest, lastChestDelta, fogCool;
 
         static Transform FindDeep(Transform t, string name)
         {

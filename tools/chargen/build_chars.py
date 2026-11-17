@@ -19,7 +19,8 @@ from build import tangents, save_rgb, _img
 from elliot import mat_to_quat
 
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
-OUT = os.path.join(ROOT, "Assets/AfterHours/Resources/Player/Characters")
+OUT = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--out=")),
+           os.path.join(ROOT, "Assets/AfterHours/Resources/Player/Characters"))
 QUICK = "--quick" in sys.argv
 VIEWER = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--viewer=")), None)
 T0 = time.time()
@@ -403,8 +404,11 @@ def colours(c, p, n, tagw, ao, head_frame):
         tcol = mix(tcol, [0.75, 0.68, 0.35], badge * 0.8)
     if top == "tabard":
         tcol = np.tile(base_c, (N, 1)) * (0.9 + 0.1 * fbm(p, 40, 2, seed=23))[:, None]
+    tsm = np.full(N, 0.14 if top not in ("jacket", "workjacket", "security") else 0.28)
+    if top != "tabard":
+        tcol, tsm = garment_details(c, top, p, n, tcol, tsm, base_c)
     tcol = mix(tcol, base_c * 0.7 + 0.08, grime)
-    put("top", tcol, 0.14 if top not in ("jacket", "workjacket", "security") else 0.28)
+    put("top", tcol, tsm)
     put("cord", np.tile([0.85, 0.85, 0.82], (N, 1)), 0.1)
     # bottoms
     bot = spec["bottom"]
@@ -447,6 +451,84 @@ def colours(c, p, n, tagw, ao, head_frame):
     put("apron_tie", np.tile([0.16, 0.12, 0.09], (N, 1)), 0.25)
     col *= (0.5 + 0.5 * ao)[:, None]
     return np.clip(col, 0, 1), np.clip(sm, 0, 1)
+
+
+def garment_details(c, top, p, n, tcol, tsm, base_c):
+    """Construction details painted onto the top: side seams, a stitched or ribbed hem, a zip (teeth and
+    puller), welt pockets, chest pocket flaps, buttons. Front is +z; the wearer's centre line is x = 0."""
+    x, y, z = p[:, 0], p[:, 1], p[:, 2]
+    hipY, nkY = c["hipY"], c["neckY"]
+    front = smoothstep(0.25, 0.6, n[:, 2])
+    torso = (np.abs(x) < 0.2) * (y > hipY - 0.12) * (y < nkY)
+    hem = hipY + {"hoodie": -0.03, "cardigan": -0.06, "security": 0.02, "workjacket": -0.02, "jacket": 0.0, "coat": -0.4}.get(top, 0.0)
+    dark = base_c * 0.55
+    # side seams (where the surface turns from front to back) and a shoulder seam line
+    seam = np.exp(-(n[:, 2] / 0.05) ** 2) * (np.abs(n[:, 0]) > 0.7) * torso
+    tcol = mix(tcol, dark, seam * 0.6)
+    # hem: ribbed band on knits, a line of stitching on woven jackets
+    above = y - hem
+    if top in ("hoodie", "cardigan"):
+        rib = smoothstep(0.06, 0.05, above) * (above > -0.02)
+        ribs = 0.5 + 0.5 * np.sin(np.arctan2(x, z) * 160)
+        tcol = mix(tcol, base_c * (0.8 + 0.25 * ribs[:, None]), rib * 0.8)
+    else:
+        stitch = np.exp(-((above - 0.022) / 0.0015) ** 2) * (0.5 + 0.5 * np.sign(np.sin(np.arctan2(x, z) * 500)))
+        tcol = mix(tcol, dark * 0.8, stitch * 0.7)
+    centre = np.abs(x)
+    if top in ("jacket", "workjacket"):
+        # zip: placket, teeth, puller near the top
+        plk = smoothstep(0.016, 0.012, centre) * front * (above > 0) * (y < nkY)
+        tcol = mix(tcol, dark, plk * 0.35)
+        teeth = smoothstep(0.0045, 0.003, centre) * front * (above > 0) * (y < nkY + 0.01)
+        tooth = 0.5 + 0.5 * np.sign(np.sin(y * 2 * np.pi / 0.0045))
+        metal = np.array([0.42, 0.42, 0.44]) if top == "jacket" else np.array([0.1, 0.1, 0.1])
+        tcol = mix(tcol, metal * (0.7 + 0.3 * tooth[:, None]), teeth)
+        tsm = tsm + teeth * 0.4
+        pull = (np.abs(x - 0.002) < 0.006) * (np.abs(y - (nkY - 0.07)) < 0.014) * front
+        tcol = mix(tcol, metal * 1.1, pull)
+        tsm = tsm + pull * 0.45
+        # welt pockets: slanted slits with a stitched lip
+        ax = np.abs(x)
+        slit_y = hipY + 0.085 + (ax - 0.07) * 0.55
+        inpk = (ax > 0.07) * (ax < 0.15) * front
+        slit = np.exp(-((y - slit_y) / 0.0022) ** 2) * inpk
+        lip = np.exp(-((y - slit_y - 0.008) / 0.004) ** 2) * inpk
+        tcol = mix(tcol, base_c * 0.25, slit)
+        tcol = mix(tcol, dark, lip * 0.35)
+    if top in ("workjacket", "security"):
+        # chest pockets with flaps and a button each
+        for sgn in (-1, 1):
+            cx, cy = sgn * 0.09, nkY - 0.16
+            inside = (np.abs(x - cx) < 0.045) * (np.abs(y - cy) < 0.05) * front
+            edge = inside * (1 - (np.abs(x - cx) < 0.04) * (np.abs(y - cy) < 0.045))
+            flap = (np.abs(x - cx) < 0.047) * (np.abs(y - (cy + 0.035)) < 0.017) * front
+            flapedge = flap * (1 - (np.abs(x - cx) < 0.043) * (np.abs(y - (cy + 0.035)) < 0.013))
+            tcol = mix(tcol, dark, edge * 0.6 + flapedge * 0.7)
+            tcol = mix(tcol, base_c * 1.08, flap * 0.15)
+            btn = (np.hypot(x - cx, y - (cy + 0.028)) < 0.006) * front
+            tcol = mix(tcol, [0.08, 0.08, 0.08], btn)
+            tsm = tsm + btn * 0.3
+    if top in ("cardigan", "security"):
+        # button front: a placket and buttons every 7-8 cm
+        plk = smoothstep(0.014, 0.01, centre) * front * (above > 0) * (y < nkY - 0.05)
+        tcol = mix(tcol, dark, plk * 0.25 + np.exp(-((centre - 0.013) / 0.0015) ** 2) * front * (above > 0) * (y < nkY - 0.05) * 0.4)
+        bc = np.array([0.12, 0.09, 0.07]) if top == "cardigan" else np.array([0.08, 0.08, 0.1])
+        for k in range(7):
+            by = nkY - 0.1 - k * 0.075
+            if by < hem + 0.04: break
+            b = (np.hypot(x, y - by) < 0.0065) * front
+            ring = (np.abs(np.hypot(x, y - by) - 0.0045) < 0.0009) * front
+            tcol = mix(tcol, bc, b)
+            tcol = mix(tcol, bc * 0.5, ring)
+            tsm = tsm + b * 0.35
+    if top == "hoodie":
+        # kangaroo pocket outline and the hood's seam line at the neck
+        ax = np.abs(x)
+        pocket = (ax < 0.13) * (np.abs(y - (hipY + 0.1)) < 0.075) * front
+        edge = pocket * (1 - (ax < 0.125) * (np.abs(y - (hipY + 0.1)) < 0.07))
+        opening = np.exp(-((ax - (0.11 - (y - (hipY + 0.1)) * 0.3)) / 0.003) ** 2) * pocket
+        tcol = mix(tcol, dark, edge * 0.5 + opening * 0.6)
+    return np.clip(tcol, 0, 1), np.clip(tsm, 0, 1)
 
 
 def heights(p, tagw):
