@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using AfterHours.Rendering;
 using AfterHours.World;
 using AfterHours.World.Layout;
 
@@ -175,7 +176,7 @@ namespace AfterHours.EditorTools
             // Fascia sign above the shopfront, readable from the concourse.
             float mid = (u.u0 + u.u1) * 0.5f;
             Vector3 signCentre = MallLayout.WingPoint(w, mid, side * (MallLayout.ConcourseHalf - 0.08f), y + 4.0f);
-            Sign(parent, u.name.ToUpperInvariant(), signCentre, intoShop, (u.u1 - u.u0) * 0.75f, Mathf.Clamp((u.u1 - u.u0) * 0.006f, 0.035f, 0.06f));
+            FasciaSign(parent, u, signCentre, intoShop, (u.u1 - u.u0) * 0.75f, Mathf.Clamp((u.u1 - u.u0) * 0.006f, 0.035f, 0.06f));
             EditorBuild.Label(parent, u.code, MallLayout.WingPoint(w, u.u0 + 0.6f, side * (MallLayout.ConcourseHalf - 0.15f), y + 2.9f),
                 Mathf.Atan2(intoShop.x, intoShop.z) * Mathf.Rad2Deg, 0.018f);
             ShopPosters(parent, u, w, side, y, intoShop);
@@ -318,6 +319,54 @@ namespace AfterHours.EditorTools
             Vector3 view = MallLayout.WingForward(w);
             Sign(parent, MallLayout.FloorName(f) + "  -  " + w.ToString().ToUpperInvariant() + " MALL",
                 MallLayout.WingPoint(w, 18f, 0f, y + 3.6f), view, 5f, 0.05f);
+        }
+
+        static readonly Color[] FasciaFaces =
+        {
+            new Color(0.92f, 0.9f, 0.86f), new Color(0.55f, 0.08f, 0.07f), new Color(0.08f, 0.16f, 0.4f),
+            new Color(0.1f, 0.3f, 0.16f), new Color(0.12f, 0.12f, 0.13f), new Color(0.75f, 0.55f, 0.1f),
+        };
+        static readonly Color[] FasciaLetters =
+        {
+            new Color(0.08f, 0.08f, 0.09f), new Color(0.95f, 0.92f, 0.85f), new Color(0.95f, 0.92f, 0.85f),
+            new Color(0.95f, 0.92f, 0.85f), new Color(0.85f, 0.7f, 0.35f), new Color(0.1f, 0.08f, 0.06f),
+        };
+
+        /// <summary>
+        /// A shop's fascia: an aluminium-trimmed lightbox with an acrylic face in the brand colour, the name in
+        /// letters across it. Lit on its timer, failing, half dead, or long dead (see SignLightbox).
+        /// </summary>
+        static void FasciaSign(Transform parent, MallUnit u, Vector3 centre, Vector3 viewDir, float width, float textSize)
+        {
+            int h = MallLayout.Hash(u.code.GetHashCode(), 7, 31, 5);
+            int brand = Mathf.Abs(h) % FasciaFaces.Length;
+            float height = textSize * 4.4f;
+            float yaw = Mathf.Atan2(viewDir.x, viewDir.z) * Mathf.Rad2Deg;
+            Vector3 across = Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
+
+            // box: a slim metal frame proud of the wall, two acrylic halves on its face
+            Vector3 half = across * (width * 0.5f + 0.05f) + Vector3.up * (height * 0.5f + 0.05f);
+            Decor("Sign box", parent, centre - half, centre + half + viewDir * 0.13f, fixtureMat);
+            Color faceCol = FasciaFaces[brand];
+            Material face = ArtLibrary.Plain("SignFace_" + brand, faceCol * 0.7f, 0.85f, 0f, faceCol, false);
+            var faces = new Renderer[2];
+            for (int i = 0; i < 2; i++)
+            {
+                Vector3 c0 = centre - viewDir * 0.006f + across * (width * (i == 0 ? -0.25f : 0.25f));
+                Vector3 hh = across * (width * 0.25f - 0.004f) + Vector3.up * (height * 0.5f) + viewDir * 0.004f;
+                faces[i] = Decor("Sign face", parent, c0 - hh, c0 + hh, face).GetComponent<Renderer>();
+                faces[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+            TextMesh tm = EditorBuild.Label(parent, u.name.ToUpperInvariant(), centre - viewDir * 0.018f, yaw, textSize);
+            tm.color = FasciaLetters[brand];
+
+            var box = faces[0].gameObject.AddComponent<SignLightbox>();
+            box.faces = faces;
+            box.emission = faceCol * 1.4f + new Color(0.15f, 0.15f, 0.15f);
+            box.seed = h;
+            int roll = Mathf.Abs(h / 7) % 100;
+            box.state = roll < 55 ? SignLightbox.State.Lit : roll < 70 ? SignLightbox.State.Failing : roll < 82 ? SignLightbox.State.HalfDead : SignLightbox.State.Dead;
+            if (box.state == SignLightbox.State.Dead) tm.color = Color.Lerp(tm.color, new Color(0.25f, 0.24f, 0.22f), 0.6f);
         }
     }
 }

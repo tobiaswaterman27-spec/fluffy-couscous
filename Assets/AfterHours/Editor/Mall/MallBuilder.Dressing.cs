@@ -18,7 +18,7 @@ namespace AfterHours.EditorTools
     {
         static System.Random dressRng;
         static Material decalStainA, decalStainB, decalScuffs, decalGum, decalCrack, decalOil, decalTyre, decalPuddle,
-            decalWater, decalGrime, decalDamp, decalTape;
+            decalWater, decalGrime, decalDamp, decalTape, decalWear;
         static readonly List<Material> adMaterials = new List<Material>();
 
         static readonly string[] AdSlogans =
@@ -43,6 +43,7 @@ namespace AfterHours.EditorTools
             decalGrime = ArtLibrary.Decal("Grime", "grime", Color.white, 0.1f);
             decalDamp = ArtLibrary.Decal("Damp", "damp", Color.white, 0.2f);
             decalTape = ArtLibrary.Decal("TapeMarks", "tape_marks", Color.white, 0.2f);
+            decalWear = ArtLibrary.Decal("Wear", "wear", Color.white, 0.12f);
 
             adMaterials.Clear();
             Color[] adColours =
@@ -448,6 +449,7 @@ namespace AfterHours.EditorTools
         static void DressFloors(Transform parent)
         {
             Transform g = Group("Floor decals", parent);
+            WornPaths(g);
             foreach (MallFloor f in MallLayout.ShopFloors)
             {
                 float y = MallLayout.FloorY(f);
@@ -480,6 +482,54 @@ namespace AfterHours.EditorTools
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Decades of footfall: a dulled, scuffed band down the middle of each concourse (two lanes where there's
+        /// a void in the middle), and worn half-moons in front of every shop doorway. Pieces overlap and wander
+        /// slightly, so it reads as a real path rather than a stripe.
+        /// </summary>
+        static void WornPaths(Transform g)
+        {
+            foreach (MallFloor f in MallLayout.ShopFloors)
+            {
+                float y = MallLayout.FloorY(f) + 0.011f;
+                List<AreaRect> holes = MallLayout.FloorHoles(f);
+                bool Clear(Vector3 p, float pad) => !holes.Exists(h => h.Expanded(pad).Contains(p.x, p.z));
+                foreach (WingId w in MallLayout.Wings)
+                {
+                    float end = MallLayout.AnchorEndFor(f, w) - 4f;
+                    float yaw = MallLayout.WingFacingYaw(w);
+                    for (float u = MallLayout.WingStart - 2f; u < end; u += Rand(2.6f, 3.4f))
+                    {
+                        Vector3 mid = MallLayout.WingPoint(w, u, Rand(-0.4f, 0.4f), y);
+                        if (Clear(mid, 1.6f))
+                            WearPiece(g, mid, yaw, Rand(2.2f, 3f));
+                        else
+                            foreach (int side in new[] { -1, 1 })
+                            {
+                                Vector3 lane = MallLayout.WingPoint(w, u, side * Rand(3.9f, 4.4f), y);
+                                if (Clear(lane, 0.4f)) WearPiece(g, lane, yaw, Rand(1.3f, 1.7f));
+                            }
+                    }
+                }
+                foreach (MallUnit unit in MallLayout.Units)
+                {
+                    if (unit.floor != f || unit.isAnchor || !unit.HasInterior) continue;
+                    float uc = (unit.u0 + unit.u1) * 0.5f;
+                    Vector3 door = MallLayout.WingPoint(unit.wing, uc, unit.side * (MallLayout.ConcourseHalf - 1.1f), y);
+                    if (!Clear(door, 0.3f)) continue;
+                    // a short worn patch leading out of the doorway, angled towards the middle of the concourse
+                    WearPiece(g, door, MallLayout.WingFacingYaw(unit.wing) + 90f + Rand(-20f, 20f), Rand(1.6f, 2.2f), Rand(2.2f, 3f));
+                }
+            }
+        }
+
+        static void WearPiece(Transform g, Vector3 p, float yaw, float width, float length = 0f)
+        {
+            if (length <= 0f) length = Rand(3.8f, 4.6f);
+            // DecalQuad lays a quad flat on the floor; its local X runs along 'angle' measured about the up axis.
+            DecalQuad(g, p, Vector3.up, length, width, yaw + 90f + Rand(-4f, 4f), decalWear);
         }
 
         // =====================================================================

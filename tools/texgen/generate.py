@@ -569,11 +569,38 @@ def blood_decals():
     save_decal("blood_lens", colour(a, np.full((n, n), 0.5)), np.clip(a, 0, 1))
 
 
+def wear_decal():
+    """Worn walking path: a broad, soft darker band where decades of shoes have dulled the floor, with
+    long scuff streaks running along it. Ends fade so pieces overlap seamlessly down a concourse."""
+    n = 512
+    x, y = coords(n)
+    u, v = x / n, y / n
+    across = np.abs(v - 0.5) * 2.0
+    wob = 0.08 * (fnoise(n, 2.4, 611) - 0.5)
+    core = smoothstep(1.0, 0.25, across + wob)
+    ends = smoothstep(0.0, 0.25, u) * smoothstep(1.0, 0.75, u)
+    rng = np.random.default_rng(612)
+    streak = np.zeros((n, n))
+    for _ in range(140):
+        cy, cx = rng.uniform(0.15, 0.85) * n, rng.random() * n
+        L, W = rng.uniform(40, 220), rng.uniform(0.8, 3.0)
+        ang = rng.uniform(-0.06, 0.06)
+        dx, dy = x - cx, y - cy
+        uu = dx * np.cos(ang) + dy * np.sin(ang)
+        vv = -dx * np.sin(ang) + dy * np.cos(ang)
+        streak = np.maximum(streak, smoothstep(1, 0, np.abs(vv) / W) * smoothstep(L, L * 0.5, np.abs(uu)) * rng.uniform(0.2, 0.6))
+    grain = 0.75 + 0.25 * fnoise(n, 1.6, 613)
+    a = (0.28 * core * grain + 0.35 * streak * core) * ends
+    rgb = np.ones((n, n, 3)) * col([38, 34, 30])
+    save_decal("wear", rgb, a)
+
+
 if __name__ == "__main__":
     print("Generating textures into", os.path.abspath(OUT))
     for fn in (floor_tile, terrazzo, ceiling_tile, wall_paint, wall_block, concrete, carpark_floor, floor_vinyl,
                carpet, metal_brushed, shutter, wood, tile_white, metal_painted, laminate, plaster_dark):
         fn()
     decals()
+    wear_decal()
     blood_decals()
     print("Done.")
