@@ -95,13 +95,13 @@ namespace AfterHours.EditorTools
                 }
                 Tube(path, 0.012f, 0.005f);
                 // leaves from the upper half of the stem
-                int leaves = 3 + rng.Next(4);
+                int leaves = 5 + rng.Next(5);
                 for (int k = 0; k < leaves; k++)
                 {
                     int at = 2 + rng.Next(path.Count - 2);
                     Vector3 ld = Quaternion.Euler(0f, yaw + R(-70f, 70f), 0f) * Quaternion.Euler(R(40f, 80f), 0f, 0f) * Vector3.up;
                     bool isDead = rng.NextDouble() < deadShare;
-                    Leaf(path[at], ld, R(0.3f, 0.55f), R(0.035f, 0.06f), isDead ? R(0.5f, 0.9f) : R(0.15f, 0.35f), isDead);
+                    Leaf(path[at], ld, R(0.3f, 0.55f), R(0.045f, 0.075f), isDead ? R(0.5f, 0.9f) : R(0.15f, 0.35f), isDead);
                 }
             }
             // dead leaves fallen on the soil
