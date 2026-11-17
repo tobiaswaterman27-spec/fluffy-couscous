@@ -113,6 +113,7 @@ namespace AfterHours.Player
             lastStride = l.stridePhase;
             if (ds >= 0f && ds < 1f) stepRate = Mathf.Lerp(stepRate, ds / dt, 1f - Mathf.Exp(-6f * dt));
             float stepLen = stepRate > 0.2f ? Mathf.Clamp(speed / stepRate, 0f, 1.4f) : 0f;
+            stepLen *= Mathf.Lerp(1f, 0.6f, Mathf.Clamp01(Mathf.InverseLerp(motor.standHeight, motor.crouchHeight, motor.CurrentHeight)));   // short steps crouched
             float phase = l.stridePhase * 0.5f;
             Vector2 lv = l.localPlanarVelocity;
             Vector3 moveDir = lv.sqrMagnitude > 0.01f ? (right * lv.x + fwd * lv.y).normalized : fwd;
@@ -161,17 +162,22 @@ namespace AfterHours.Player
             }
 
             // ---------------- upright: standing, walking, running, crouching ----------------
-            float hipY = Mathf.Lerp(HipY, HipY * 0.62f, crouch) - Mathf.Abs(Mathf.Sin(phase * Mathf.PI * 2f)) * Mathf.Lerp(0.02f, 0.05f, runW) * moveW + breath * 0.004f;
-            float dy = Vector3.Dot(headPos - root, up) - hipY;
+            // the torso hangs from the head at a natural lean: barely forward when walking, more when running,
+            // well forward when crouched (the legs then bend to reach the floor). The hips dip on each step.
             float span = Spine + Neck;
-            float back = dy < span ? Mathf.Sqrt(Mathf.Max(0f, span * span - dy * dy)) * 0.92f : 0f;   // hips go back so the head can come forward
-            Vector3 headFlat = headPos - up * Vector3.Dot(headPos - root, up);
-            pelvisPos = headFlat - fwd * (back + 0.02f + 0.06f * runW) + up * hipY;
+            float leanDeg = Mathf.Lerp(3f, 13f, runW * moveW) + 46f * crouch + 3f * moveW;
+            Vector3 torsoDir = up * Mathf.Cos(leanDeg * Mathf.Deg2Rad) + fwd * Mathf.Sin(leanDeg * Mathf.Deg2Rad);
+            float hipBob = Mathf.Abs(Mathf.Sin(phase * Mathf.PI * 2f)) * Mathf.Lerp(0.015f, 0.04f, runW) * moveW;
+            pelvisPos = headPos - torsoDir * (span * 0.995f) - up * (hipBob - breath * 0.004f);
+            // never higher than the legs can reach
+            float maxHip = Vector3.Dot(root, up) + HipY;
+            float overHip = Vector3.Dot(pelvisPos, up) - maxHip;
+            if (overHip > 0f) pelvisPos -= up * overHip;
             // held: the torso hangs from where it's gripped, under gravity (from the shoulders, or by the ankles)
             Vector3 gripL = Vector3.zero, gripR = Vector3.zero; float struggle = 0f; bool upside = false;
             if (caught) CatchSequence.VictimPose(controller, out gripL, out gripR, out struggle, out upside);
             if (caught) pelvisPos = headPos + (upside ? Vector3.up : Vector3.down) * (span * 0.97f) + (headRot * Vector3.back) * 0.05f;
-            Vector3 m2 = SolveIK(pelvisPos, headPos, Spine, Neck, (caught ? headRot * Vector3.back : -fwd) + up * 0.2f, out Vector3 e2);
+            Vector3 m2 = SolveIK(pelvisPos, headPos, Spine, Neck, (caught ? headRot * Vector3.back : -fwd * 0.3f) + up * 0.2f, out Vector3 e2);
             spineRot = Aim(m2 - pelvisPos, fwd);
             neckRot = Aim(e2 - m2, fwd);
             float twist = Mathf.Sin(phase * Mathf.PI * 2f) * Mathf.Lerp(4f, 9f, runW) * moveW;
@@ -209,7 +215,10 @@ namespace AfterHours.Player
                     if (!l.grounded) raise += 0.15f;
                     ft = basePos - up * (Vector3.Dot(basePos, up) - groundY) + up * (AnkleH + raise);
                 }
-                LegIK(s, hip, ft, fwd + up * 0.2f, caught ? headRot * Quaternion.Euler(-60f, 0f, 0f) : rot * Quaternion.Euler(0f, side * 6f, 0f));
+                // the foot rolls: toe lifts as it reaches forward to strike with the heel, heel lifts as it pushes off behind
+                float fph = (phase + s * 0.5f) * Mathf.PI * 2f;
+                float footPitch = (Mathf.Max(0f, -Mathf.Sin(fph)) * Mathf.Max(0f, Mathf.Cos(fph)) * 70f - Mathf.Max(0f, Mathf.Sin(fph)) * Mathf.Max(0f, Mathf.Cos(fph)) * 30f) * moveW * Mathf.Lerp(0.7f, 1.2f, runW);
+                LegIK(s, hip, ft, fwd + up * 0.2f, caught ? headRot * Quaternion.Euler(-60f, 0f, 0f) : rot * Quaternion.Euler(footPitch, side * 6f, 0f));
             }
 
             // arms: swing against the legs; out in front when carrying; flailing when caught
@@ -219,9 +228,11 @@ namespace AfterHours.Player
             {
                 float side = s == 0 ? -1f : 1f;
                 Vector3 shoulder = chestPos + spineRot * new Vector3(ShW * side, ShoulderOff.y, ShoulderOff.z);
-                float swing = Mathf.Sin((phase + s * 0.5f + 0.5f) * Mathf.PI * 2f) * Mathf.Lerp(0.12f, 0.35f, runW) * moveW;
-                Vector3 target = shoulder + (-up * 0.52f + right * (0.07f * side) + fwd * (swing + 0.04f + 0.1f * crouch)).normalized * ((Upper + Fore) * 0.96f);
-                if (runW > 0.3f) target += up * (0.12f * runW) + fwd * 0.05f;
+                // arms swing against the legs; the elbow bends more as the hand comes forward, and a lot when running
+                float swing = Mathf.Sin((phase + s * 0.5f + 0.5f) * Mathf.PI * 2f) * Mathf.Lerp(0.2f, 0.42f, runW) * moveW;
+                float reachLen = (Upper + Fore) * (0.95f - 0.12f * Mathf.Max(0f, swing) - 0.2f * runW);
+                Vector3 target = shoulder + (-up * 0.55f + right * (0.05f * side) + fwd * (swing + 0.05f + 0.12f * crouch)).normalized * reachLen;
+                if (runW > 0.3f) target += up * (0.1f * runW) - right * (0.04f * side * runW);
                 if (carrying) target = shoulder + fwd * 0.42f - up * 0.12f - right * (0.05f * side);
                 if (caught)
                 {
