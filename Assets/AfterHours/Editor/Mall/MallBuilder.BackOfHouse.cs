@@ -178,6 +178,11 @@ namespace AfterHours.EditorTools
                 new AreaRect(25.5f, d, 33.5f, d + 1.6f).Mirrored(sx, sz),        // lockers / cupboards row
             };
             int seed = MallLayout.Hash((int)f, sx, sz, 99);
+            if (ra.type == FacilityType.Security && sx < 0 && sz > 0)
+            {
+                clearA.Add(SecurityConsoleRect);
+                SecurityMonitors(g, y);
+            }
             Furnish(g, Inset(rectA, 0.4f), y, ra.style, clearA, seed, propMat);
             Furnish(g, Inset(rectB, 0.4f), y, rb.style, clearB, seed + 1, propMat);
 

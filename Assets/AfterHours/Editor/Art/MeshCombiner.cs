@@ -41,6 +41,10 @@ namespace AfterHours.EditorTools
             {
                 if (f.panels != null) foreach (Renderer r in f.panels) if (r != null) keep.Add(r);
             }
+            foreach (SignLightbox s in root.GetComponentsInChildren<SignLightbox>(true))
+            {
+                if (s.faces != null) foreach (Renderer r in s.faces) if (r != null) keep.Add(r);
+            }
 
             // Phase 1: read everything (nothing is changed yet, so a failure leaves the scene intact).
             MeshRenderer[] renderers = root.GetComponentsInChildren<MeshRenderer>(true);

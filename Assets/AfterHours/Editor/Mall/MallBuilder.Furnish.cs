@@ -42,6 +42,7 @@ namespace AfterHours.EditorTools
                     {
                         Prop(g, "Office chair", centre + new Vector3(0f, 0f, -0.75f), new Vector3(0.5f, 0.9f, 0.5f), 8f, propMat, SurfaceType.Metal);
                         InteractiveFactory.AddDrawer(g, centre + new Vector3(0.45f, 0.6f, -0.15f), new Vector3(0.42f, 0.14f, 0.5f), Vector3.back, woodMat);
+                        DeskClutter(g, centre + Vector3.up * 0.75f);
                     });
                     break;
                 case FurnishStyle.Plant:
@@ -117,6 +118,63 @@ namespace AfterHours.EditorTools
         {
             Prop(g, "Chair", tableCentre + new Vector3(0f, 0f, 0.8f), new Vector3(0.45f, 0.85f, 0.45f), 5f, propMat, SurfaceType.Wood);
             Prop(g, "Chair", tableCentre + new Vector3(0f, 0f, -0.8f), new Vector3(0.45f, 0.85f, 0.45f), 5f, propMat, SurfaceType.Wood);
+        }
+
+        /// <summary>
+        /// An office desk as it was left: a monitor (old beige CRT or a flat screen), keyboard and mouse, a phone,
+        /// papers and folders, a mug, sometimes a desk lamp or a dead pot plant. Seated at -z, facing +z.
+        /// </summary>
+        static void DeskClutter(Transform g, Vector3 top)
+        {
+            int h = Mathf.Abs(MallLayout.Hash((int)(top.x * 10f), (int)(top.z * 10f), 5, 41));
+            Material beige = Mat("Plastic beige", new Color(0.72f, 0.68f, 0.58f), 0.35f);
+            Material black = Mat("Plastic black", new Color(0.06f, 0.06f, 0.065f), 0.45f);
+            Material paper = Mat("Paper", new Color(0.86f, 0.84f, 0.78f), 0.1f);
+            float sx = (h % 3 - 1) * 0.12f;
+            Vector3 mon = top + new Vector3(sx, 0f, 0.22f);
+            if (h % 2 == 0)
+            {
+                // CRT: deep beige box with a dark glass front
+                Decor("CRT monitor", g, mon + new Vector3(-0.2f, 0.0f, -0.18f), mon + new Vector3(0.2f, 0.36f, 0.2f), beige);
+                Decor("CRT glass", g, mon + new Vector3(-0.16f, 0.05f, -0.185f), mon + new Vector3(0.16f, 0.31f, -0.18f), darkGlass);
+            }
+            else
+            {
+                Decor("Monitor stand", g, mon + new Vector3(-0.08f, 0f, -0.06f), mon + new Vector3(0.08f, 0.012f, 0.06f), black);
+                Decor("Monitor neck", g, mon + new Vector3(-0.025f, 0f, 0.0f), mon + new Vector3(0.025f, 0.14f, 0.03f), black);
+                Decor("Flat monitor", g, mon + new Vector3(-0.24f, 0.1f, -0.02f), mon + new Vector3(0.24f, 0.4f, 0.015f), black);
+            }
+            Decor("Keyboard", g, top + new Vector3(sx - 0.22f, 0f, -0.2f), top + new Vector3(sx + 0.22f, 0.025f, -0.05f), h % 2 == 0 ? beige : black);
+            Decor("Mouse", g, top + new Vector3(sx + 0.3f, 0f, -0.16f), top + new Vector3(sx + 0.36f, 0.03f, -0.06f), h % 2 == 0 ? beige : black);
+            Decor("Desk phone", g, top + new Vector3(-0.68f, 0f, 0.05f), top + new Vector3(-0.48f, 0.07f, 0.25f), h % 2 == 0 ? beige : black);
+            // papers: a few sheets at angles, and a stack of folders
+            for (int i = 0; i < 2 + h % 3; i++)
+            {
+                GameObject sheet = Decor("Paper", g, Vector3.zero, new Vector3(0.21f, 0.002f, 0.297f), paper);
+                sheet.transform.localPosition = top + new Vector3(0.35f + (i % 2) * 0.08f - 0.1f, 0.001f + i * 0.0015f, -0.1f + i * 0.03f) - new Vector3(0.105f, 0f, 0.15f);
+                sheet.transform.RotateAround(top + new Vector3(0.3f, 0f, -0.05f), Vector3.up, (h >> i) % 40 - 20f);
+            }
+            if (h % 5 < 3)
+            {
+                Material folder = Mat(h % 2 == 0 ? "Folder blue" : "Folder red", h % 2 == 0 ? new Color(0.15f, 0.22f, 0.42f) : new Color(0.48f, 0.12f, 0.1f), 0.3f);
+                Decor("Folders", g, top + new Vector3(-0.7f, 0f, -0.3f), top + new Vector3(-0.4f, 0.06f + (h % 4) * 0.02f, -0.06f), folder);
+            }
+            Decor("Mug", g, top + new Vector3(0.6f, 0f, 0.15f), top + new Vector3(0.68f, 0.095f, 0.23f), Mat(h % 3 == 0 ? "Mug" : "Mug white", h % 3 == 0 ? new Color(0.55f, 0.12f, 0.1f) : new Color(0.85f, 0.85f, 0.82f), 0.6f));
+            if (h % 4 == 1)
+            {
+                // desk lamp: base, arm, shade
+                Vector3 b = top + new Vector3(0.62f, 0f, 0.3f);
+                Decor("Lamp base", g, b + new Vector3(-0.06f, 0f, -0.06f), b + new Vector3(0.06f, 0.02f, 0.06f), black);
+                Decor("Lamp arm", g, b + new Vector3(-0.01f, 0.02f, -0.01f), b + new Vector3(0.01f, 0.38f, 0.01f), black);
+                Decor("Lamp shade", g, b + new Vector3(-0.07f, 0.3f, -0.18f), b + new Vector3(0.07f, 0.38f, -0.02f), black);
+            }
+            else if (h % 4 == 3)
+            {
+                // a pot plant nobody watered
+                Vector3 b = top + new Vector3(-0.65f, 0f, 0.32f);
+                Decor("Plant pot", g, b + new Vector3(-0.06f, 0f, -0.06f), b + new Vector3(0.06f, 0.11f, 0.06f), Mat("Terracotta", new Color(0.55f, 0.3f, 0.2f), 0.2f));
+                Decor("Dead plant", g, b + new Vector3(-0.08f, 0.11f, -0.08f), b + new Vector3(0.08f, 0.24f, 0.08f), Mat("Dead leaves", new Color(0.36f, 0.3f, 0.18f), 0.1f));
+            }
         }
 
         /// <summary>Whatever people left when the place emptied: a tray, a cup, napkins, a wrapper.</summary>

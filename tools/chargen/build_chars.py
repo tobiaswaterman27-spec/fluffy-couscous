@@ -151,9 +151,10 @@ def build(spec):
         lk = line_kw or {}
         lo, hi = hj - 0.2, hj + 0.25
         def f(p):
-            d = scalp(p) - thick - noise * fbm(p, freq, 3, seed=5)
-            cut = hairline(p, **lk) - p[:, 1]
-            return np.maximum(d, cut)
+            above = p[:, 1] - hairline(p, **lk)
+            taper = 0.35 + 0.65 * smoothstep(0.0, 0.025, above)
+            d = scalp(p) - thick * taper - noise * taper * fbm(p, freq, 3, seed=5)
+            return np.maximum(d, -above)
         return Prim("hair", lo, hi, f)
     if style == "messy":
         hadd(hair_prim(0.014, noise=0.007, freq=30), "hair")
@@ -162,7 +163,7 @@ def build(spec):
     elif style == "buzz":
         hadd(hair_prim(0.0035, noise=0.0008), "hair")
     elif style == "receding":
-        hadd(hair_prim(0.006, line_kw=dict(front_up=0.085), noise=0.002), "hair")
+        hadd(hair_prim(0.006, line_kw=dict(front_up=0.085), noise=0.0012, freq=90), "hair")
     elif style == "bob":
         def f(p):
             d = scalp(p) - 0.02 - 0.004 * fbm(p * [1, 3, 1], 30, 2, seed=6)
@@ -339,7 +340,9 @@ def build(spec):
     rb = -np.ones(len(V), int); rb[used_b] = np.arange(len(used_b))
     bodyPart = Part(V[used_b], rb[bodyF], "skin", src=used_b)
     parts.insert(0, bodyPart)
-    return dict(spec=spec, human=h, sk=sk, V=V, W=W, N=N, parts=parts, eyeY=eyeY, headw=headw, hipY=hipY, neckY=neckY, tree=tree)
+    lk = dict(front_up=0.085) if style == "receding" else dict(front_up=0.06) if style == "afro" else {}
+    return dict(spec=spec, human=h, sk=sk, V=V, W=W, N=N, parts=parts, eyeY=eyeY, headw=headw, hipY=hipY, neckY=neckY, tree=tree,
+                hairline_fn=(lambda q, lk=lk: hairline(q, **lk)) if style not in ("wrap", "bob") else None)
 
 
 # ================================================================ textures
@@ -366,9 +369,15 @@ def colours(c, p, n, tagw, ao, head_frame):
     sk = mix(sk, redness, np.clip(nose * 0.4 + cheek * 0.3, 0, 1))
     for e in (el, er):
         bx = x - e[0]
-        brow = np.exp(-((y - (e[1] + 0.022 + 0.004 * np.cos(bx * 50))) / 0.0045) ** 2) * smoothstep(0.024, 0.014, np.abs(bx + np.sign(e[0]) * 0.003)) * face
-        hairc = np.array(spec["hair"]["colour"]) * 0.8 if spec["hair"]["style"] != "receding" else np.array([0.5, 0.48, 0.46])
-        sk = mix(sk, hairc, brow * (0.55 + 0.45 * (np.sin(bx * 1300 + y * 400) > 0)))
+        out = bx * np.sign(e[0])                                   # + towards the temple
+        arch = e[1] + 0.02 + 0.006 * np.exp(-((out - 0.004) / 0.012) ** 2) - 0.004 * smoothstep(0.008, 0.024, out)
+        thick = 0.0055 * (1 - 0.6 * smoothstep(-0.012, 0.024, out))       # heavier at the inner end, thin at the tail
+        shape = np.exp(-((y - arch) / np.maximum(thick, 1e-4)) ** 2) * smoothstep(0.026, 0.018, np.abs(out - 0.004)) * face
+        hairs = 0.5 + 0.5 * np.sin((out * 0.6 + (y - arch) * 1.0) * 5200 + 6 * fbm(p, 300, 1, seed=55))
+        hairs = smoothstep(0.35, 0.9, hairs) * (0.7 + 0.3 * fbm(p, 900, 1, seed=56))
+        brow = shape * (0.35 + 0.65 * hairs)
+        hairc = np.array(spec["hair"]["colour"]) * 0.85 if spec["hair"]["style"] != "receding" else np.array([0.45, 0.43, 0.41])
+        sk = mix(sk, hairc, np.clip(brow, 0, 0.92))
         lid = np.exp(-((bx) ** 2 + (y - e[1]) ** 2) / 0.00035) * face
         sk = mix(sk, np.array(spec["skin"]) * 0.75, lid * 0.4)
     lips = np.exp(-((x / 2.6) ** 2 + (y - (eyeY - 0.075)) ** 2) / 0.00012) * face
@@ -376,6 +385,10 @@ def colours(c, p, n, tagw, ao, head_frame):
     if spec.get("beard") == "stubble":
         stub = smoothstep(eyeY - 0.05, eyeY - 0.07, y) * (y > c["neckY"] - 0.02) * face
         sk = mix(sk, np.array(spec["skin"]) * 0.62, stub * smoothstep(0.1, 0.5, fbm(p, 900, 1, seed=52) + 0.3) * 0.5)
+    if spec["hair"]["style"] not in ("wrap",):
+        d_line = c["hairline_fn"](p) - p[:, 1] if c.get("hairline_fn") else np.full(N, 1.0)
+        band = smoothstep(0.02, -0.002, d_line) * (y > c["neckY"]) * smoothstep(0.1, 0.5, fbm(p, 250, 2, seed=57) + 0.4)
+        sk = mix(sk, np.array(spec["hair"]["colour"]) * 0.9 + np.array(spec["skin"]) * 0.1, band * 0.55)
     put("skin", sk, 0.36)
     # the coloured garment: neutral, the material tints it
     top = spec["top"]
@@ -419,7 +432,7 @@ def colours(c, p, n, tagw, ao, head_frame):
     put("sole", mix(np.tile([0.72, 0.7, 0.64], (N, 1)), [0.35, 0.32, 0.28], smoothstep(0.012, 0.0, y) * 0.8), 0.15)
     put("boot_sole", np.tile([0.06, 0.055, 0.05], (N, 1)), 0.2)
     hc = np.array(spec["hair"]["colour"])
-    strands = 0.75 + 0.5 * (0.5 + 0.5 * np.sin(x * 900 + fbm(p, 40, 2, seed=12) * 6))
+    strands = 0.8 + 0.35 * (0.5 + 0.5 * np.sin(x * 2600 + fbm(p, 60, 2, seed=12) * 9)) * (0.6 + 0.4 * fbm(p, 400, 1, seed=13))
     put("hair", hc * strands[:, None], 0.35)
     beardc = hc if spec.get("beard") != "grey" else np.array([0.6, 0.59, 0.56])
     put("beard", beardc * strands[:, None], 0.3)

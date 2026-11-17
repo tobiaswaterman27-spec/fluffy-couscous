@@ -100,6 +100,8 @@ After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the cam
 - **Lifts**: call button beside the doors, floor buttons inside. No power = stuck. The alarm bell is very loud.
 - **Power cuts**: breakers trip now and then; the area goes dark. The switchboard is in the car park plant room.
 - **Escalators**: the red button at the bottom stops them (and restarts them).
+- **CCTV**: the Security Office (ground floor, north-west back corridor) has live camera feeds of the atrium,
+  the malls, the entrance and the car park. Watch them to see where Elliot is. They need power.
 
 ### 8. LAN co-op (Parts 14-17)
 Everyone needs the same version: each player does **Get Latest Update** and **3 - Build Mall** first.
