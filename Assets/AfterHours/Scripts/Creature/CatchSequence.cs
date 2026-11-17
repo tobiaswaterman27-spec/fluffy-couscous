@@ -202,8 +202,8 @@ namespace AfterHours.Creature
             }
             upsideDown = ctx == CatchContext.Vent || ctx == CatchContext.Floor;
             holdEye = upsideDown
-                ? ePos + fwd * 0.5f + Vector3.up * (headH - 1.0f)
-                : ePos + fwd * (ctx == CatchContext.HidingPlace ? 0.5f : 0.6f) + Vector3.up * (headH - 0.02f);
+                ? ePos + fwd * 0.8f + Vector3.up * (headH - 1.0f)
+                : ePos + fwd * (ctx == CatchContext.HidingPlace ? 0.8f : 0.95f) + Vector3.up * Mathf.Max(headH - 0.05f, 2.3f);   // lifted to his face at the end of his long arms, never inside him
             if (ctx == CatchContext.VentInside) holdEye = startEye;
             floorEye = ePos + fwd * 1.9f + Vector3.up * 0.2f;
             if (Physics.Raycast(floorEye + Vector3.up, Vector3.down, out RaycastHit fh, 3f, GameLayers.CharacterBlockingMask & ~PlayerMask, QueryTriggerInteraction.Ignore))
@@ -426,9 +426,11 @@ namespace AfterHours.Creature
             lookAt = Face;
             pose.look = eye;
             pose.jaw = 14f;
-            pose.lean = upsideDown ? 28f : 6f;
+            pose.lean = upsideDown ? 22f : 2f;
             pose.headShake = 0f;
-            pose.headPush = upsideDown ? Vector3.down * 0.45f * lift : Vector3.zero;
+            // his face comes to yours (a hand's width away), not looming over your head
+            Vector3 faceBase = upsideDown ? Vector3.down * 0.45f * lift : (eye - fwd * 0.34f + Vector3.up * 0.02f - headStart) * lift;
+            pose.headPush = faceBase;
             sharp = 16f;
 
             if (u < LiftT)
@@ -471,8 +473,8 @@ namespace AfterHours.Creature
                 // The bite: lunges at your neck.
                 float k = Ease(BiteT, BiteHitT, u);
                 Vector3 neck = eye - (held * Vector3.up) * 0.2f;
-                Vector3 want = neck - fwd * 0.08f;
-                pose.headPush = Vector3.Lerp(-fwd * 0.18f, want - headStart, k);
+                Vector3 want = neck - fwd * 0.2f;            // the mouth stops at the surface of your neck
+                pose.headPush = Vector3.Lerp(faceBase - fwd * 0.18f, want - headStart, k);
                 pose.jaw = u < BiteHitT ? 80f : 8f;
                 shake = u < BiteHitT ? 0.3f : 1.4f;
                 sharp = 30f;
@@ -481,7 +483,7 @@ namespace AfterHours.Creature
             {
                 // Thrashing with its teeth in you.
                 Vector3 neck = eye - (held * Vector3.up) * 0.2f;
-                pose.headPush = neck - fwd * 0.06f - headStart;
+                pose.headPush = neck - fwd * 0.18f - headStart;
                 pose.jaw = 10f;
                 pose.headShake = 30f;
                 Vector3 jerk = new Vector3(Noise(13f, 1f), Noise(11f, 2f), Noise(12f, 3f)) * 0.12f;
