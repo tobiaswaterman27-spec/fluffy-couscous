@@ -162,6 +162,18 @@ namespace AfterHours.UI
             s.cameraShake = GUILayout.Toggle(s.cameraShake, " Camera shake");
             s.gore = GUILayout.Toggle(s.gore, " Blood and gore");
             s.vSync = GUILayout.Toggle(s.vSync, " V-Sync");
+            // how hard the night is (takes effect straight away; the host's setting counts in co-op)
+            GUILayout.Space(6);
+            GUILayout.Label("Difficulty");
+            GUILayout.BeginHorizontal();
+            string[] dn = { "Easy", "Normal", "Hard" };
+            for (int d = 0; d < 3; d++)
+            {
+                bool on = s.difficulty == d;
+                if (GUILayout.Toggle(on, dn[d], GUI.skin.button, GUILayout.Height(26)) && !on) { s.difficulty = d; GUI.changed = true; }
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Label(s.difficulty == 0 ? "It takes longer to get worse, and hears and sees less." : s.difficulty == 2 ? "It roams everywhere from the start, gets worse fast, hears and sees more." : "As intended.");
             // who you play as
             GUILayout.Space(6);
             PlayerCharacters.Entry me = PlayerCharacters.Get(s.character);

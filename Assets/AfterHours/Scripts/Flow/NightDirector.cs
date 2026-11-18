@@ -73,7 +73,9 @@ namespace AfterHours.Flow
             evalTimer = 2f;
 
             int level = 0;
-            for (int i = TimeLevels.Length - 1; i >= 0; i--) if (NightTime >= TimeLevels[i]) { level = i; break; }
+            float tScale = Difficulty == 0 ? 1.5f : Difficulty == 2 ? 0.6f : 1f;
+            for (int i = TimeLevels.Length - 1; i >= 0; i--) if (NightTime >= TimeLevels[i] * tScale) { level = i; break; }
+            if (Difficulty == 2) level = Mathf.Max(level, 1);           // hard: it's already roaming
             level = Mathf.Max(level, ProgressLevel());
             if (level > Threat)
             {
@@ -111,6 +113,16 @@ namespace AfterHours.Flow
             return level;
         }
 
+        /// <summary>0 easy, 1 normal, 2 hard (from the settings of whoever runs the creatures).</summary>
+        public static int Difficulty
+        {
+            get
+            {
+                var s = AfterHours.Settings.SettingsService.CurrentOrDefault;
+                return s != null ? s.difficulty : 1;
+            }
+        }
+
         void Apply()
         {
             ElliotBrain.Threat = Threat;
@@ -127,14 +139,16 @@ namespace AfterHours.Flow
                     bases[b] = o;
                 }
                 float k = Threat / 3f;
+                float senses = Difficulty == 0 ? 0.8f : Difficulty == 2 ? 1.25f : 1f;
+                float pace = Difficulty == 0 ? 0.9f : Difficulty == 2 ? 1.08f : 1f;
                 // Searching and stalking get much quicker; its sprint barely changes (you can still outrun it, just).
-                b.motor.slowWalkSpeed = o.slow * (1f + 0.25f * k);
-                b.motor.walkSpeed = o.walk * (1f + 0.3f * k);
-                b.motor.fastWalkSpeed = o.fast * (1f + 0.25f * k);
-                b.motor.runSpeed = o.run * (1f + 0.03f * k);
-                b.motor.crawlSpeed = o.crawl * (1f + 0.15f * k);
-                b.senses.hearingScale = o.hear * (1f + 0.45f * k);
-                b.senses.sightRange = o.sight + 12f * k;
+                b.motor.slowWalkSpeed = o.slow * (1f + 0.25f * k) * pace;
+                b.motor.walkSpeed = o.walk * (1f + 0.3f * k) * pace;
+                b.motor.fastWalkSpeed = o.fast * (1f + 0.25f * k) * pace;
+                b.motor.runSpeed = Mathf.Min(o.run * (1f + 0.03f * k) * pace, 6.1f);   // never faster than you can sprint
+                b.motor.crawlSpeed = o.crawl * (1f + 0.15f * k) * pace;
+                b.senses.hearingScale = o.hear * (1f + 0.45f * k) * senses;
+                b.senses.sightRange = (o.sight + 12f * k) * senses;
                 if (Threat >= 1) b.Rouse();
             }
         }

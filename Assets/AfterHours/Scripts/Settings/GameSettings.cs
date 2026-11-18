@@ -27,6 +27,8 @@ namespace AfterHours.Settings
         [Tooltip("Blood and gore in the death sequence.")]
         public bool gore = true;
         public string character = "tom";        // which person you play as (PlayerCharacters)
+        [Tooltip("0 = easy, 1 = normal, 2 = hard (the host's applies in co-op).")]
+        public int difficulty = 1;
 
         [Header("Audio")]
         public float masterVolume = 1f;
@@ -46,6 +48,7 @@ namespace AfterHours.Settings
             musicVolume = Mathf.Clamp01(musicVolume);
             targetFrameRate = Mathf.Clamp(targetFrameRate, 0, 360);
             if (string.IsNullOrEmpty(character)) character = "tom";
+            difficulty = Mathf.Clamp(difficulty, 0, 2);
             // Future versions migrate older files here before stamping the new version.
             version = CurrentVersion;
         }
