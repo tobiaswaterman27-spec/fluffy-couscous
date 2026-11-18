@@ -27,6 +27,11 @@ namespace AfterHours.Hiding
         [Range(0f, 1f)] [Tooltip("How good a spot it is: lower = checked more often.")]
         public float quality = 0.5f;
         public float lookRange = 40f;
+        [Tooltip("No door: under a desk or counter, behind a changing-room curtain. Elliot can see you if he gets close.")]
+        public bool open;
+        public float exposedWithin = 2.2f;
+        [Tooltip("The posture you hide in (crawl under a desk, crouch behind a counter...).")]
+        public AfterHours.Core.Stance hideStance = AfterHours.Core.Stance.Standing;
 
         static readonly List<HidingSpot> all = new List<HidingSpot>();
         public static IReadOnlyList<HidingSpot> All => all;
@@ -55,7 +60,7 @@ namespace AfterHours.Hiding
             if (Occupant == p) return "Get out";
             if (Occupant != null || p.IsHidden) return null;
             if (AnyLocked) return null;
-            return "Hide";
+            return hideStance == AfterHours.Core.Stance.Crawling ? "Hide underneath" : "Hide";
         }
 
         public override void Interact(IInteractor who)
@@ -109,6 +114,8 @@ namespace AfterHours.Hiding
             p.SetControlLock(true, true);
             OpenDoors(outsidePoint + (outsidePoint - insidePoint), Mathf.Max(0.6f, urgency), p.gameObject);
             NoiseBus.Emit(new NoiseEvent(transform.position, Mathf.Lerp(2f, 9f, Mathf.InverseLerp(0.4f, 1.8f, urgency)), NoiseKind.Interaction, p.gameObject));
+            if (enter && hideStance != AfterHours.Core.Stance.Standing && p.Motor != null)
+                p.Motor.WarpStance(p.transform.position, p.transform.eulerAngles.y, hideStance);   // get down first
             if (enter)
             {
                 // Claimed now, but only actually hidden once inside with the door shut (anyone watching sees you go in).

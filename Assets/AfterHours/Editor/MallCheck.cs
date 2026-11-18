@@ -85,7 +85,7 @@ namespace AfterHours.EditorTools
             Need(covers.Length >= 96, $"Expected at least 96 vent grilles, found {covers.Length}");
             HidingSpot[] spots = All<HidingSpot>();
             Need(spots.Length > 0, "No hiding places");
-            foreach (HidingSpot s in spots) Need(s.doors != null && s.doors.Length > 0 && s.doors[0] != null, s.transform.parent != null ? s.transform.parent.name + ": hiding place has no door" : "hiding place has no door");
+            foreach (HidingSpot s in spots) Need(s.open || (s.doors != null && s.doors.Length > 0 && s.doors[0] != null), s.transform.parent != null ? s.transform.parent.name + ": hiding place has no door" : "hiding place has no door");
 
             // Doors, items, exits.
             Door[] doors = All<Door>();

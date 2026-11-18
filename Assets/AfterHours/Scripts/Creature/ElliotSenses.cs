@@ -85,7 +85,13 @@ namespace AfterHours.Creature
         public bool CanSee(PlayerController p, out float rate)
         {
             rate = 0f;
-            if (p == null || p.IsHidden) return false;
+            if (p == null) return false;
+            if (p.IsHidden)
+            {
+                // Behind a door: unseen. Under a desk or behind a curtain: only if it gets right up close and looks.
+                var spot = p.CurrentHidingSpot;
+                if (spot == null || !spot.open || Vector3.Distance(EyePosition, p.transform.position) > spot.exposedWithin) return false;
+            }
             Vector3 eye = EyePosition;
             Vector3 target = p.EyePosition;
             Vector3 chest = p.transform.position + Vector3.up * Mathf.Max(0.3f, p.Motor.CurrentHeight * 0.55f);

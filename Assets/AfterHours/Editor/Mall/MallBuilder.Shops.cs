@@ -211,7 +211,10 @@ namespace AfterHours.EditorTools
                 MallLayout.WingRect(w, u.u0, u.u0 + 4.2f, side * 10.6f, side * 12.6f)
             };
             int seed = MallLayout.Hash((int)u.floor, (int)w, side, (int)(u.u0 * 10f));
+            bool changing = u.style == FurnishStyle.Rails && u.u1 - u.u0 > 7f;
+            if (changing) keepClear.Add(MallLayout.WingRect(w, u.u1 - 2.4f, u.u1, side * 8.6f, side * 11.6f));
             Furnish(parent, floorArea, y, u.style, keepClear, seed, categoryMats[u.category]);
+            if (changing) ChangingRooms(parent, u, y, side);
 
             // Shelving along both side walls (products facing into the shop), for shops that sell things off shelves.
             if (u.style == FurnishStyle.Shelving || u.style == FurnishStyle.Rails || u.style == FurnishStyle.Tables ||
@@ -224,14 +227,13 @@ namespace AfterHours.EditorTools
                 Transform wg = Group("Wall shelving", parent);
                 Vector3 fwdW = MallLayout.WingForward(w);
                 WallShelving(kit, wg, MallLayout.WingPoint(w, u.u0 + 0.1f, side * (v0 + v1) * 0.5f, y), Quaternion.LookRotation(fwdW), v1 - v0, 2.2f, pal, seed + 101);
-                WallShelving(kit, wg, MallLayout.WingPoint(w, u.u1 - 0.1f, side * (v0 + v1) * 0.5f, y), Quaternion.LookRotation(-fwdW), v1 - v0, 2.2f, pal, seed + 202);
+                if (!changing) WallShelving(kit, wg, MallLayout.WingPoint(w, u.u1 - 0.1f, side * (v0 + v1) * 0.5f, y), Quaternion.LookRotation(-fwdW), v1 - v0, 2.2f, pal, seed + 202);
                 kit.Build(wg, "Wall shelving");
             }
 
             // Counter near the back.
-            Vector3 c0 = MallLayout.WingPoint(w, u.u0 + 1f, side * 11.2f, y);
-            Vector3 c1 = MallLayout.WingPoint(w, Mathf.Min(u.u0 + 3.5f, u.u1 - 3.4f), side * 12f, y + 1.05f);
-            if (Mathf.Abs(Vector3.Dot(c1 - c0, MallLayout.WingForward(w))) > 0.8f) BoxMinMax("Counter", parent, c0, c1, counterMat, SurfaceType.Wood);
+            float cuB = Mathf.Min(u.u0 + 3.5f, u.u1 - 3.4f);
+            if (cuB - (u.u0 + 1f) > 0.8f) HollowCounter(parent, w, u.u0 + 1f, cuB, 11.2f, 12f, y, 1.05f, side);   // you can hide under it
 
             // Stock room shelving.
             Vector3 s0 = MallLayout.WingPoint(w, u.u0 + 0.3f, side * 15.3f, y);
