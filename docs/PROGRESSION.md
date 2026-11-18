@@ -93,7 +93,7 @@ are all solvable without the axe; it's a shortcut that costs noise and choices.
 
 ## The night gets worse (NightDirector)
 
-The clock starts at 11:30 PM; one real minute is two and a half minutes of night (it's on the pause screen). Elliot's
+The clock starts at midnight; one real minute is two and a half minutes of night (the big clock in the atrium shows it). Elliot's
 **threat level** follows whichever of these is further along: the time, or how close anyone is to getting out.
 
 | Threat | When | What changes |

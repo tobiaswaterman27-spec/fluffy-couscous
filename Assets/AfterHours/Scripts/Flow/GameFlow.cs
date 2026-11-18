@@ -19,7 +19,7 @@ namespace AfterHours.Flow
     /// <summary>
     /// The whole single-player game from start to finish:
     ///   Main menu   - the camera drifts slowly through the dark atrium. New / Continue / Settings / Host / Join / Quit.
-    ///   Opening     - 11:30 PM. You come to on the atrium floor: ears ringing, eyes struggling to stay open,
+    ///   Opening     - Midnight. You come to on the atrium floor: ears ringing, eyes struggling to stay open,
     ///                 blurred vision; you push yourself up and stand. Somewhere far off a shutter slams down.
     ///   Playing     - autosaves every minute when it's safe; dying resets the run (and the save).
     ///   Ending      - you get out into grey morning daylight. Birds. An empty car park... and behind the glass
@@ -44,7 +44,7 @@ namespace AfterHours.Flow
 
         public FlowState State { get; private set; } = FlowState.Menu;
         public float PlayTime => playTime;
-        /// <summary>Times caught this run (single player: each one sends you back to the atrium at 11:30).</summary>
+        /// <summary>Times caught this run (single player: each one sends you back to the atrium at midnight).</summary>
         public int Deaths { get; private set; }
 
         NightDirector night;
@@ -406,7 +406,7 @@ namespace AfterHours.Flow
         void OnRunReset()
         {
             if (NetSession.Active) return; // co-op never resets the whole run
-            // Caught: the run starts over, so the save goes too. You come to again on the atrium floor... at 11:30.
+            // Caught: the run starts over, so the save goes too. You come to again on the atrium floor... at midnight.
             SaveSystem.DeleteSave();
             Deaths++;
             NewLayout(); // everything moves: what you learned about where things were no longer holds

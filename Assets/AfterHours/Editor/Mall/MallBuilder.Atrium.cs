@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 using AfterHours.World;
 using AfterHours.World.Layout;
 
@@ -101,19 +103,52 @@ namespace AfterHours.EditorTools
             BoxMinMax("Planter", parent, new Vector3(-14.8f, 0f, -14.8f), new Vector3(-12.2f, 0.9f, -12.2f), concrete, SurfaceType.Concrete);
             BoxMinMax("Planter", parent, new Vector3(12.2f, 0f, 12.2f), new Vector3(14.8f, 0.9f, 14.8f), concrete, SurfaceType.Concrete);
 
-            // Hanging clock above the information desk (Part 13 makes it tell the in-game time).
-            Transform clock = Group("Clock", parent);
-            GameObject face = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            face.name = "Clock face";
-            face.transform.SetParent(clock, false);
-            face.transform.localPosition = new Vector3(0f, 8f, -8f);
-            face.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            face.transform.localScale = new Vector3(1.4f, 0.06f, 1.4f);
-            Object.DestroyImmediate(face.GetComponent<Collider>());
-            face.GetComponent<Renderer>().sharedMaterial = screenMat;
-            EditorBuild.Label(clock, "11:30", new Vector3(0f, 8f, -8.08f), 0f, 0.05f);
-            EditorBuild.Label(clock, "11:30", new Vector3(0f, 8f, -7.92f), 180f, 0.05f);
-            Decor("Clock rod", clock, new Vector3(-0.03f, 8.7f, -8.03f), new Vector3(0.03f, MallLayout.RoofY - 0.4f, -7.97f), metal);
+            // Hanging clock above the information desk: two white faces back to back, hour ticks, real hands that
+            // tell the night's time from midnight (MallClock).
+            {
+                Transform clock = Group("Clock", parent);
+                Vector3 c = new Vector3(0f, 8f, -8f);
+                Material faceMat = ArtLibrary.Plain("ClockFace", new Color(0.9f, 0.89f, 0.85f), 0.5f, 0f);
+                GameObject body = Cyl("Clock body", clock, c + Vector3.forward * 0.06f, c - Vector3.forward * 0.06f, 1.5f, blackMat);
+                body.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.On;
+                var hourHands = new Transform[2];
+                var minuteHands = new Transform[2];
+                var signs = new float[2];
+                for (int s = 0; s < 2; s++)
+                {
+                    float dir = s == 0 ? -1f : 1f;                               // front face looks along -z, back along +z
+                    Vector3 fc = c + Vector3.forward * (0.061f * dir);
+                    Cyl("Clock face", clock, fc, fc + Vector3.forward * (0.004f * dir), 1.38f, faceMat);
+                    for (int k = 0; k < 12; k++)
+                    {
+                        float an = k * 30f * Mathf.Deg2Rad;
+                        Vector3 pos = fc + Vector3.forward * (0.005f * dir) + new Vector3(Mathf.Sin(an), Mathf.Cos(an), 0f) * 0.6f;
+                        bool major = k % 3 == 0;
+                        Detail("Clock tick", clock, pos, new Vector3(major ? 0.035f : 0.02f, major ? 0.12f : 0.07f, 0.004f), blackMat,
+                            Quaternion.Euler(0f, 0f, -k * 30f));
+                    }
+                    var pivotH = new GameObject("Hour hand pivot").transform;
+                    pivotH.SetParent(clock, false);
+                    pivotH.position = fc + Vector3.forward * (0.012f * dir);
+                    GameObject hh = Detail("Hour hand", pivotH, pivotH.position + Vector3.up * 0.17f, new Vector3(0.045f, 0.4f, 0.008f), blackMat);
+                    hh.transform.SetParent(pivotH, true);
+                    var pivotM = new GameObject("Minute hand pivot").transform;
+                    pivotM.SetParent(clock, false);
+                    pivotM.position = fc + Vector3.forward * (0.02f * dir);
+                    GameObject mh = Detail("Minute hand", pivotM, pivotM.position + Vector3.up * 0.25f, new Vector3(0.03f, 0.58f, 0.008f), blackMat);
+                    mh.transform.SetParent(pivotM, true);
+                    foreach (GameObject hand in new[] { hh, mh }) GameObjectUtility.SetStaticEditorFlags(hand, 0);   // they move
+                    Cyl("Clock centre cap", clock, fc + Vector3.forward * (0.02f * dir), fc + Vector3.forward * (0.03f * dir), 0.07f, blackMat);
+                    hourHands[s] = pivotH;
+                    minuteHands[s] = pivotM;
+                    signs[s] = s == 0 ? -1f : 1f;                                 // clockwise as each viewer sees it
+                }
+                Decor("Clock rod", clock, c + new Vector3(-0.03f, 0.74f, -0.03f), new Vector3(0.03f, MallLayout.RoofY - 0.4f, -7.97f), metal);
+                AfterHours.World.MallClock mc = clock.gameObject.AddComponent<AfterHours.World.MallClock>();
+                mc.hourHands = hourHands;
+                mc.minuteHands = minuteHands;
+                mc.faceSign = signs;
+            }
 
             // Escalators: Ground <-> Level 1 on the east side, Level 1 <-> Level 2 on the west side.
             float l1 = MallLayout.FloorY(MallFloor.Level1), l2 = MallLayout.FloorY(MallFloor.Level2);

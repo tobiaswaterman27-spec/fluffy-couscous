@@ -10,7 +10,7 @@ namespace AfterHours.Flow
 {
     /// <summary>
     /// The night gets worse. Two things push it on, whichever is further along:
-    ///   - time:     the clock runs from 11:30 PM (one real minute = two and a half minutes of night);
+    ///   - time:     the clock runs from midnight (one real minute = two and a half minutes of night);
     ///   - progress: how close anyone is to getting out (parts fitted, chains cut, the generator running).
     /// Threat 0 - it keeps to the car park unless something draws it out.
     /// Threat 1 - it roams the whole building; hears and sees a little better.
@@ -47,10 +47,10 @@ namespace AfterHours.Flow
             ElliotBrain.Hotspots.Clear();
         }
 
-        /// <summary>The clock as a person would read it: 11:30 PM + night time.</summary>
+        /// <summary>The clock as a person would read it: midnight + night time.</summary>
         public static string ClockText(float nightSeconds)
         {
-            int minutes = (23 * 60 + 30 + Mathf.FloorToInt(nightSeconds * ClockScale / 60f)) % (24 * 60);
+            int minutes = Mathf.FloorToInt(nightSeconds * ClockScale / 60f) % (24 * 60);   // from midnight
             int h = minutes / 60, m = minutes % 60;
             int h12 = h % 12 == 0 ? 12 : h % 12;
             return $"{h12}:{m:00} {(h < 12 ? "AM" : "PM")}";

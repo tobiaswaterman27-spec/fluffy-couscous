@@ -1,7 +1,7 @@
 # AFTER HOURS
 
 First-person psychological / survival horror. You wake up alone in an enormous shopping centre at
-11:30 PM. Something is hunting you. (Behind the scenes, the creature is called **Elliot**.) Single-player and LAN co-op (up to 4). Unity 6, for Windows, macOS and Linux.
+midnight. Something is hunting you. (Behind the scenes, the creature is called **Elliot**.) Single-player and LAN co-op (up to 4). Unity 6, for Windows, macOS and Linux.
 
 - Feature checklist (what is done / not done): [`docs/CHECKLIST.md`](docs/CHECKLIST.md)
 - Technical decisions and why: [`docs/DECISIONS.md`](docs/DECISIONS.md)
@@ -86,7 +86,7 @@ Press the **Play** button (▶, top centre). Click inside the **Game** view to c
 
 ### 7. Playing the whole game (Part 13)
 After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the camera drifts through the dark atrium).
-- **New game**: you wake up on the atrium floor at 11:30 PM.
+- **New game**: you wake up on the atrium floor at midnight.
 - **Continue**: carries on from the last save (it saves itself every minute when you're not being chased,
   and when you quit). Being caught resets the run and deletes the save.
 - **Settings**: sensitivity, field of view, head bob, camera shake, blood and gore, key bindings.
