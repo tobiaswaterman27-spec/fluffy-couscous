@@ -230,6 +230,42 @@ namespace AfterHours.EditorTools
         }
 
         // =====================================================================
+        /// <summary>The storm: rain sources at the skylight, the entrance glass and on the roof, and the lightning light.</summary>
+        static void BuildWeather(Transform parent)
+        {
+            float roof = MallLayout.RoofY;
+            AudioSource Src(string name, Vector3 p, float vol, float min, float max)
+            {
+                var go = new GameObject(name);
+                go.transform.SetParent(parent, false);
+                go.transform.position = p;
+                AudioSource s = go.AddComponent<AudioSource>();
+                s.spatialBlend = 1f; s.rolloffMode = AudioRolloffMode.Linear; s.minDistance = min; s.maxDistance = max;
+                s.volume = vol; s.dopplerLevel = 0f; s.playOnAwake = false; s.spread = 120f;
+                go.AddComponent<AfterHours.Audio.AudioOcclusion>();
+                return s;
+            }
+            var sources = new[]
+            {
+                Src("Rain on the skylight", new Vector3(0f, roof - 0.5f, 0f), 0.55f, 8f, 45f),
+                Src("Rain on the entrance glass", new Vector3(0f, 2.5f, -MallLayout.EntranceHallEnd + 1f), 0.35f, 4f, 30f),
+                Src("Rain on the roof", new Vector3(0f, roof + 2f, 25f), 0.8f, 30f, 80f),
+                Src("Rain on the roof", new Vector3(0f, roof + 2f, -25f), 0.8f, 30f, 80f),
+            };
+            var lg = new GameObject("Lightning");
+            lg.transform.SetParent(parent, false);
+            lg.transform.rotation = Quaternion.Euler(70f, 30f, 0f);
+            Light l = lg.AddComponent<Light>();
+            l.type = LightType.Directional;
+            l.color = new Color(0.75f, 0.82f, 1f);
+            l.intensity = 0f;
+            l.shadows = LightShadows.Hard;          // only what the sky can see: through the skylight and glass
+            l.enabled = false;
+            AfterHours.World.Weather w = parent.gameObject.AddComponent<AfterHours.World.Weather>();
+            w.rainSources = sources;
+            w.lightning = l;
+        }
+
         // Roof
         // =====================================================================
 

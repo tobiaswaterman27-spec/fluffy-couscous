@@ -109,6 +109,27 @@ def fire_alarm(rng):
     return loopify(reverb(soften(x, 9000)[: int(dur * SR)], 1.6, 0.8, 0.3, 0.5, rng), 0.5)
 
 
+def thunder(rng, near):
+    """Thunder: a crack (near strikes only), then a long rolling rumble that swells and fades, heard through a roof."""
+    dur = rng.uniform(5.0, 8.0)
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    x = np.zeros(n, np.float32)
+    if near:
+        crack = hp(noise(0.25, rng), 600) * env_exp(int(0.25 * SR), 0.03, 0.001) * 1.2
+        place(x, crack.astype(np.float32), 0.0)
+    rumble = lp(brown(dur, rng), 140 if near else 90)
+    # rolls: a few swells as the sound arrives from different parts of the bolt
+    env = np.zeros(n)
+    for _ in range(rng.integers(3, 6)):
+        c = rng.uniform(0.2, dur * 0.6); w = rng.uniform(0.4, 1.6)
+        env += rng.uniform(0.4, 1.0) * np.exp(-((t - c) / w) ** 2)
+    env *= np.clip(1 - t / dur, 0, 1) ** 0.7
+    x += (rumble * env * (1.6 if near else 1.0)).astype(np.float32)
+    x += (lp(pink(dur, rng), 400) * env * 0.15).astype(np.float32)    # the building rattling
+    return fade(reverb(x, 2.5, 1.0, 0.35, 0.2, rng), 0.002, 0.8)
+
+
 def render(out):
     rng = np.random.default_rng(9090)
     for i in range(4):
@@ -118,6 +139,10 @@ def render(out):
         out(f"sfx/generator_start_{i}", gen_start(rng))
     out("loops/generator_run_0", gen_run(rng))
     out("loops/fire_alarm_0", fire_alarm(rng))
+    trng = np.random.default_rng(4411)       # (own generator: adding thunder doesn't change the sounds above)
+    for i in range(3):
+        out(f"sfx/thunder_near_{i}", thunder(trng, True))
+        out(f"sfx/thunder_far_{i}", thunder(trng, False))
 
 
 if __name__ == "__main__":

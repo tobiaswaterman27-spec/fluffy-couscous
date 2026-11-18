@@ -82,6 +82,7 @@ namespace AfterHours.EditorTools
 
                 Progress("Roof", 0.27f);
                 BuildRoof(Group("Roof", mall));
+                BuildWeather(Group("Weather", mall));
 
                 Progress("Escape routes and directory", 0.29f);
                 BuildEscapeMarkers(Group("Escape Routes", mall));
