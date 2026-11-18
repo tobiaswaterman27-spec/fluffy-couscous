@@ -32,8 +32,9 @@ CLIPS = [
     ("run",         "16_45",  "cycle", None, 0.5),
     ("crouch",      "77_32",  "cycle", None, 0.3),    # creeping walk, low
     ("crouch_back", "136_11", "cycle", None, 0.5),    # walking backwards crouched
-    ("idle",        "137_28", "idle",  (3.0, 21.0), None),   # standing, waiting
-    ("idle_scared", "142_16", "idle",  (4.0, 22.0), None),   # scared, standing
+    ("idle",        "137_28", "idle",  (3.0, 21.0), 0.1),    # standing, waiting (kept almost still)
+    ("idle_scared", "142_16", "idle",  (4.0, 22.0), 0.18),   # scared, standing
+    ("crawl",       "111_03", "cycle", None, 0.43),    # on hands and knees
 ]
 
 SEGS = [  # name, from joint, to joint, twist source joint, twist axis (T-pose, char space)
@@ -53,8 +54,10 @@ SEGS = [  # name, from joint, to joint, twist source joint, twist axis (T-pose, 
     ("footR",  "RightFoot",     "RightToeBase",    "RightFoot",    (0, 1, 0)),
 ]
 # per sample: pelvis off (3) + pelvis quat (4) + head quat (4) + chest quat (4) + foot quats L/R (4+4) + 14 segs * 6
-#             + shoulder shrug L/R (3+3) + ankle L/R relative to the ground point (3+3) + contact L/R (2)
-CH = 3 + 4 + 4 + 4 + 8 + len(SEGS) * 6 + 6 + 6 + 2
+#             + shoulder shrug L/R (3+3) + ankle L/R relative to the ground point (3+3) + contact L/R (2) + wrist L/R (3+3)
+CH = 3 + 4 + 4 + 4 + 8 + len(SEGS) * 6 + 6 + 6 + 2 + 6
+CON = CH - 8      # contact L/R
+WR = CH - 6       # wrists L/R relative to the ground point (hands on the floor when crawling)
 
 
 def fetch(c, d):
@@ -159,6 +162,9 @@ def features(pos, rot, idx, L, fwd_yaw, ground_xz, floor):
     for ft in ("LeftFoot", "RightFoot"):
         a = P[:, idx[ft]] - g; a[:, 1] = P[:, idx[ft], 1] - floor
         out[:, c:c + 3] = a / L; c += 3
+    for hd in ("LeftHand", "RightHand"):
+        a = P[:, idx[hd]] - g; a[:, 1] = P[:, idx[hd], 1] - floor
+        out[:, WR + (0 if hd[0] == "L" else 3):WR + (3 if hd[0] == "L" else 6)] = a / L
     return out
 
 
@@ -172,7 +178,10 @@ def build_cycle(name, path, pick):
     L = np.linalg.norm(pos0[idx["LeftUpLeg"]] - pos0[idx["LeftLeg"]]) + np.linalg.norm(pos0[idx["LeftLeg"]] - pos0[idx["LeftFoot"]])
     lf, rf = idx["LeftFoot"], idx["RightFoot"]
     floor = np.percentile(np.minimum(pos[:, lf, 1], pos[:, rf, 1]), 3)
-    sl, sr = strikes(pos[:, lf], ft), strikes(pos[:, rf], ft)
+    if name == "crawl":   # on all fours the hands step cleanly; the feet drag
+        sl, sr = strikes(pos[:, idx["LeftHand"]], ft), strikes(pos[:, idx["RightHand"]], ft)
+    else:
+        sl, sr = strikes(pos[:, lf], ft), strikes(pos[:, rf], ft)
     if len(sl) < 2: raise SystemExit(f"{name}: not enough strides ({len(sl)})")
     k = int(np.clip(round(pick * (len(sl) - 2)), 0, len(sl) - 2))
     a, b = sl[k], sl[k + 1]
@@ -182,6 +191,9 @@ def build_cycle(name, path, pick):
     hp = pos[seg, idx["Hips"]]
     travel = hp[-1] - hp[0]
     yaw = np.arctan2(travel[0], travel[2])
+    if name == "crawl":   # barely moving per cycle: face where the spine points (hips to neck)
+        sd = (pos[seg, idx["Neck"]] - pos[seg, idx["Hips"]]).mean(axis=0)
+        yaw = np.arctan2(sd[0], sd[2])
     backwards = name.endswith("_back")
     if backwards: yaw += np.pi                       # face the other way from the travel
     n = len(seg)
@@ -191,7 +203,7 @@ def build_cycle(name, path, pick):
     # contacts from foot speed (relative to the moving ground point = stance)
     for s, fj in enumerate((lf, rf)):
         v = np.linalg.norm(np.gradient(pos[seg, fj][:, [0, 2]], axis=0), axis=1) / ft / L
-        f[:, CH - 2 + s] = np.clip(1.0 - (v - 0.15) / 0.5, 0, 1)
+        f[:, CON + s] = np.clip(1.0 - (v - 0.15) / 0.5, 0, 1)
     # make it loop: spread the end-to-start mismatch over the cycle
     err = f[-1] - f[0]
     f = f - np.outer(tt, err)
@@ -201,7 +213,7 @@ def build_cycle(name, path, pick):
     src = np.linspace(0, 1, len(f), endpoint=False)
     dst = np.linspace(0, 1, N, endpoint=False)
     # time-warp so the right heel strikes exactly half way (the game's footsteps alternate evenly)
-    r = float(np.clip(rphase, 0.25, 0.75))
+    r = 0.5 if name == "crawl" else float(np.clip(rphase, 0.25, 0.75))   # crawling keeps its own limb order
     tw = np.where(dst < 0.5, dst / 0.5 * r, r + (dst - 0.5) / 0.5 * (1 - r))
     res = np.stack([np.interp(tw, src, f[:, c], period=1.0) for c in range(CH)], 1)
     dur = (b - a) * ft
@@ -212,7 +224,7 @@ def build_cycle(name, path, pick):
     return dict(name=name, kind=0, length=1.0 / dur, speed=speed * (-1 if backwards else 1), step=step, rphase=rphase, data=res)
 
 
-def build_idle(name, path, span):
+def build_idle(name, path, span, still=0.12):
     global rot0, pos0
     J, data, ft = load(path)
     pos, rot, idx = fk(J, data)
@@ -230,7 +242,12 @@ def build_idle(name, path, span):
     fz = np.einsum("fij,j->fi", rot[seg, idx["Hips"]] @ np.transpose(rot0[idx["Hips"]]), np.array([0, 0, 1.0]))
     yaw = np.arctan2(fz[:, 0].mean(), fz[:, 2].mean())
     f = features(pos[seg], rot[seg], idx, L, yaw, ground, floor)
-    f[:, CH - 2:] = 1.0
+    f[:, CON:CON + 2] = 1.0
+    # keep them still: the average stance plus only a little of the captured sway (breathing, small shifts)
+    mean = f.mean(axis=0)
+    f = mean + still * (f - mean)
+    f[:, 113:119] = mean[113:119]           # feet stay exactly planted
+    f = smooth(f, 9)
     # loop: cross-fade the last second into the first
     xf = 30
     w = np.linspace(0, 1, xf)[:, None]
@@ -264,5 +281,5 @@ if __name__ == "__main__":
     out = []
     for name, c, kind, span, pick in CLIPS:
         p = fetch(c, d)
-        out.append(build_cycle(name, p, pick) if kind == "cycle" else build_idle(name, p, span))
+        out.append(build_cycle(name, p, pick) if kind == "cycle" else build_idle(name, p, span, pick))
     write(out)

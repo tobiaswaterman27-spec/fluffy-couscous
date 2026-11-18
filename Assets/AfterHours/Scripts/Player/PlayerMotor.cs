@@ -67,7 +67,7 @@ namespace AfterHours.Player
         [Header("Body dimensions (metres)")]
         public float standHeight = 1.8f;
         public float crouchHeight = 1.3f;
-        public float crawlHeight = 0.55f;
+        public float crawlHeight = 0.6f;          // on hands and knees
         public float standRadius = 0.3f;
         public float crawlRadius = 0.25f;
         [Tooltip("Distance from top of head to eyes.")]
@@ -86,7 +86,7 @@ namespace AfterHours.Player
         public float backwardSprintSpeed = 3.4f;  // running backwards
         public float sprintStrafeSpeed = 3.6f;
         public float crouchSpeed = 1.05f;
-        public float crawlSpeed = 0.6f;
+        public float crawlSpeed = 0.45f;
         [Range(0.3f, 1f)] public float backwardMultiplier = 0.72f;
         [Range(0.3f, 1f)] public float strafeMultiplier = 0.88f;
         [Range(0.3f, 1f)] public float crawlBackwardMultiplier = 0.7f;
@@ -123,7 +123,7 @@ namespace AfterHours.Player
         public float walkStride = 0.88f;
         public float sprintStride = 1.75f;
         public float crouchStride = 0.6f;
-        public float crawlStride = 0.42f;
+        public float crawlStride = 0.22f;
 
         [Header("Noise radius (metres, before surface multiplier)")]
         public float crawlNoise = 1.2f;

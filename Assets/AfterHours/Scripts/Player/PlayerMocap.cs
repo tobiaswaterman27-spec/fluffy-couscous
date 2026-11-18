@@ -22,12 +22,13 @@ namespace AfterHours.Player
         public float step;      // step length in leg lengths
         public int frames;
         public float[] data;    // frames * Mocap.CH
+        public float[] mean;    // the average pose over the clip
     }
 
     public static class Mocap
     {
         // channel layout (see build_mocap.py)
-        public const int P = 0, PQ = 3, HQ = 7, CQ = 11, FQ = 15, SEG = 23, SH = 107, ANK = 113, CON = 119;
+        public const int P = 0, PQ = 3, HQ = 7, CQ = 11, FQ = 15, SEG = 23, SH = 107, ANK = 113, CON = 119, WR = 121;
         public const int Spine = 0, NeckS = 1, UpperL = 2, ForeL = 3, HandL = 4, UpperR = 5, ForeR = 6, HandR = 7,
                          ThighL = 8, ShinL = 9, FootL = 10, ThighR = 11, ShinR = 12, FootR = 13;
         public static int CH { get; private set; }
@@ -68,6 +69,8 @@ namespace AfterHours.Player
                     c.data = new float[c.frames * CH];
                     byte[] raw = r.ReadBytes(c.data.Length * 4);
                     System.Buffer.BlockCopy(raw, 0, c.data, 0, raw.Length);
+                    c.mean = new float[CH];
+                    for (int f = 0; f < c.frames; f++) for (int k = 0; k < CH; k++) c.mean[k] += c.data[f * CH + k] / c.frames;
                     clips[c.name] = c;
                 }
             }
@@ -140,6 +143,25 @@ namespace AfterHours.Player
             int ch = Mocap.CH;
             if (Pose != null && Pose.Length == ch) return;
             s1 = new float[ch]; s2 = new float[ch]; mv = new float[ch]; cr = new float[ch]; idl = new float[ch]; idl2 = new float[ch]; Pose = new float[ch];
+        }
+
+        public MocapClip CrawlClip;
+
+        /// <summary>On hands and knees: the crawl cycle at this phase, its stride stretched to the real speed.</summary>
+        public bool EvaluateCrawl(float speed, float phase, float stepLen, float legLen)
+        {
+            if (!Mocap.Ready) return false;
+            MocapClip c = Mocap.Get("crawl");
+            if (c == null) return false;
+            Ensure();
+            CrawlClip = c;
+            Mocap.Sample(c, phase, mv);
+            float k = Mathf.Clamp(stepLen / Mathf.Max(0.03f, c.step * legLen), 0.45f, 2.2f);
+            foreach (int a in new[] { Mocap.ANK, Mocap.ANK + 3, Mocap.WR, Mocap.WR + 3 })
+                mv[a + 2] = c.mean[a + 2] + (mv[a + 2] - c.mean[a + 2]) * k;
+            Mocap.Sample(c, 0.1f, idl);
+            Mocap.Blend(idl, mv, Mathf.Clamp01(speed / 0.15f), Pose);
+            return true;
         }
 
         /// <summary>

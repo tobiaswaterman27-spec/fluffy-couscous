@@ -48,15 +48,9 @@ namespace AfterHours.Player
             if (GameLayers.CreatureLayer >= 0) m &= ~(1 << GameLayers.CreatureLayer);
             if (GameLayers.PropLayer >= 0) m &= ~(1 << GameLayers.PropLayer);
             groundMask = m;
-            if (GetComponent<AfterHours.Audio.HumanVoice>() == null) gameObject.AddComponent<AfterHours.Audio.HumanVoice>();
         }
 
-        AfterHours.Audio.HumanVoice voice;
-        float VoiceOpen()
-        {
-            if (voice == null) voice = GetComponent<AfterHours.Audio.HumanVoice>();
-            return voice != null ? voice.MouthOpen : 0f;
-        }
+
 
         bool Find()
         {
@@ -138,6 +132,13 @@ namespace AfterHours.Player
             Quaternion spineRot, neckRot;
             bool proneCaught = false;
             if (caught) CatchSequence.VictimPose(controller, out _, out _, out _, out _, out proneCaught);
+            if (crawl > 0.5f && !caught && MocapCrawl(l, root, rot, up, right, speed, phase, stepLen, headPos, headRot))
+            {
+                if (mouth == null) { mouth = GetComponent<VoiceMouth>(); if (mouth == null) mouth = gameObject.AddComponent<VoiceMouth>(); }
+                if (jaw != null) jaw.localRotation = Quaternion.Euler(1f + mouth.Open * 15f, 0f, 0f);
+                Face(t, dt, false, mouth.Open);
+                return;
+            }
             if (crawl > 0.5f && (!caught || proneCaught))
             {
                 // ---------------- crawling: a belly crawl ----------------
@@ -193,7 +194,7 @@ namespace AfterHours.Player
             if (!caught && MocapUpright(motor, l, root, rot, fwd, up, right, speed, crouch, phase, stepLenRaw, moveW, runW, headPos, headRot, t, dt))
             {
                 if (mouth == null) { mouth = GetComponent<VoiceMouth>(); if (mouth == null) mouth = gameObject.AddComponent<VoiceMouth>(); }
-                float talkM = Mathf.Max(mouth.Open, VoiceOpen());
+                float talkM = mouth.Open;
                 if (jaw != null) jaw.localRotation = Quaternion.Euler(1f + exertion * 6f * Mathf.Max(0f, breath) + talkM * 15f, 0f, 0f);
                 Face(t, dt, false, talkM);
                 return;
@@ -314,7 +315,7 @@ namespace AfterHours.Player
             Fingers(caught ? 0.8f : carrying ? 0.6f : (handGrip[0] || handGrip[1]) ? 0.7f : 0.25f + 0.2f * runW);
             // the mouth: open with fright when caught, panting when out of breath, and moving with your voice
             if (mouth == null) mouth = GetComponent<VoiceMouth>() ?? gameObject.AddComponent<VoiceMouth>();
-            float talk = Mathf.Max(mouth.Open, VoiceOpen());
+            float talk = mouth.Open;
             if (jaw != null) jaw.localRotation = Quaternion.Euler(caught ? 8f + 14f * struggle + Mathf.Sin(t * 20f) * 4f * struggle : 1f + exertion * 6f * Mathf.Max(0f, breath) + talk * 15f, 0f, 0f);
             Face(t, dt, caught, talk);
 
@@ -454,6 +455,62 @@ namespace AfterHours.Player
         }
 
         readonly Vector3[] ankBuf = new Vector3[2];
+
+        /// <summary>
+        /// Crawling on hands and knees (captured): hips at their real height, the chest dipping so the head stays at
+        /// the eyes, knees and feet on the floor behind, the hands stepping in the captured pattern under the shoulders.
+        /// </summary>
+        bool MocapCrawl(LocomotionState l, Vector3 root, Quaternion rot, Vector3 up, Vector3 right, float speed, float phase,
+                        float stepLen, Vector3 headPos, Quaternion headRot)
+        {
+            float Lt = Thigh + Shin;
+            if (!mocap.EvaluateCrawl(speed, phase, stepLen, Lt)) return false;
+            float[] P = mocap.Pose;
+            float[] mean = mocap.CrawlClip.mean;
+            Quaternion legQ = rot;
+            Quaternion pelvisRot = legQ * Mocap.Q(P, Mocap.PQ);
+            Vector3 pelvisPos = root + legQ * (Mocap.V(P, Mocap.P) * Lt) - pelvisRot * new Vector3(0f, HipOff.y, HipOff.z);
+            Vector3 dS = legQ * Mocap.Dir(P, Mocap.Spine), tS = legQ * Mocap.Twist(P, Mocap.Spine);
+            Vector3 tN = legQ * Mocap.Twist(P, Mocap.NeckS);
+            Vector3 headJoint = pelvisPos + dS * Spine + (legQ * Mocap.Dir(P, Mocap.NeckS)) * Neck;
+            Vector3 corrH = Vector3.ProjectOnPlane(headPos - headJoint, up);
+            pelvisPos += corrH;
+            Vector3 mid = SolveIK(pelvisPos, headPos, Spine, Neck, up - dS * 0.2f, out Vector3 end);
+            Quaternion spineRot = Aim(mid - pelvisPos, tS), neckRot = Aim(end - mid, tN);
+            SetBody(pelvisPos, pelvisRot, spineRot, neckRot, headRot, up);
+
+            float floorY = Vector3.Dot(root, up);
+            for (int s = 0; s < 2; s++)
+            {
+                float side = s == 0 ? -1f : 1f;
+                Vector3 hip = pelvisPos + pelvisRot * new Vector3(HipW * side, HipOff.y, HipOff.z);
+                Vector3 a = root + legQ * (Mocap.V(P, Mocap.ANK + s * 3) * Lt) + corrH;
+                float ay = Vector3.Dot(a, up);
+                if (ay < floorY + AnkleH * 0.6f) a += up * (floorY + AnkleH * 0.6f - ay);
+                LegIK(s, hip, a, legQ * Mocap.Twist(P, s == 0 ? Mocap.ThighL : Mocap.ThighR), legQ * Mocap.Q(P, Mocap.FQ + s * 4));
+            }
+            Vector3 chestPos = pelvisPos + spineRot * Vector3.up * Spine;
+            for (int s = 0; s < 2; s++)
+            {
+                float side = s == 0 ? -1f : 1f;
+                int U = s == 0 ? Mocap.UpperL : Mocap.UpperR, H = s == 0 ? Mocap.HandL : Mocap.HandR;
+                Vector3 shoulder = chestPos + spineRot * new Vector3(ShW * side, ShoulderOff.y, ShoulderOff.z);
+                // the hands step in the captured pattern, centred under this body's shoulders
+                Vector3 dev = (Mocap.V(P, Mocap.WR + s * 3) - Mocap.V(mean, Mocap.WR + s * 3)) * Lt;
+                dev.y = P[Mocap.WR + s * 3 + 1] * Lt;
+                Vector3 sFloor = shoulder - up * (Vector3.Dot(shoulder, up) - floorY);
+                Vector3 w = sFloor + legQ * (dev + Vector3.forward * 0.04f);
+                if (Vector3.Dot(w, up) < floorY + 0.03f) w += up * (floorY + 0.03f - Vector3.Dot(w, up));
+                Vector3 tU = -(legQ * Mocap.Twist(P, U));
+                Vector3 target = w, palm = legQ * Mocap.Twist(P, H);
+                if (GestureArm(s, side, shoulder, headPos, rot * Vector3.forward, up, right, ref target, ref palm)) handGrip[s] = true;
+                else handGrip[s] = false;
+                ArmIK(s, shoulder, target, tU + right * (0.6f * side), palm);
+            }
+            Fingers(0.15f);
+            return true;
+        }
+
 
         void SetBody(Vector3 pelvisPos, Quaternion pelvisRot, Quaternion spineRot, Quaternion neckRot, Quaternion headRot, Vector3 up)
         {
