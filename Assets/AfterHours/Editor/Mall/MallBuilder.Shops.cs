@@ -182,6 +182,8 @@ namespace AfterHours.EditorTools
             EditorBuild.Label(parent, u.code, MallLayout.WingPoint(w, u.u0 + 0.6f, side * (MallLayout.ConcourseHalf - 0.15f), y + 2.9f),
                 Mathf.Atan2(intoShop.x, intoShop.z) * Mathf.Rad2Deg, 0.018f);
             ShopPosters(parent, u, w, side, y, intoShop);
+            BladeSign(parent, u, y, side, toConcourse);
+            OpeningHours(parent, u, y, side, toConcourse);
 
             if (!u.HasInterior) return;
 
@@ -353,6 +355,51 @@ namespace AfterHours.EditorTools
         /// A shop's fascia: an aluminium-trimmed lightbox with an acrylic face in the brand colour, the name in
         /// letters across it. Lit on its timer, failing, half dead, or long dead (see SignLightbox).
         /// </summary>
+        /// <summary>
+        /// The projecting sign at the shop's corner: a bracket off the shopfront and a double-sided panel in the
+        /// brand's colours, so you can read the shop from far down the concourse.
+        /// </summary>
+        static void BladeSign(Transform parent, MallUnit u, float y, int side, Vector3 toConcourse)
+        {
+            int h = MallLayout.Hash(u.code.GetHashCode(), 7, 31, 5);
+            int brand = Mathf.Abs(h) % FasciaFaces.Length;
+            WingId w = u.wing;
+            Vector3 along = MallLayout.WingForward(w);
+            Vector3 wall = MallLayout.WingPoint(w, u.u0 + 0.35f, side * (MallLayout.ConcourseHalf - 0.05f), y + 3.25f);
+            Vector3 c = wall + toConcourse * 0.5f;
+            Cyl("Blade sign bracket", parent, wall + Vector3.up * 0.33f, c + toConcourse * 0.32f + Vector3.up * 0.33f, 0.03f, metal);
+            Quaternion face = Quaternion.LookRotation(along);
+            Detail("Blade sign", parent, c, new Vector3(0.62f, 0.58f, 0.06f), ArtLibrary.Plain("SignFace_" + brand, FasciaFaces[brand] * 0.7f, 0.85f, 0f, FasciaFaces[brand], false), face);
+            Detail("Blade sign rim", parent, c, new Vector3(0.66f, 0.62f, 0.04f), fixtureMat, face);
+            string ini = u.name.Length > 0 ? u.name.Substring(0, 1).ToUpperInvariant() : "?";
+            string shortName = u.name.Length > 10 ? u.name.Substring(0, 10) : u.name;
+            foreach (float s in new[] { 1f, -1f })
+            {
+                float yaw = Mathf.Atan2(-along.x * s, -along.z * s) * Mathf.Rad2Deg;
+                TextMesh big = EditorBuild.Label(parent, ini, c + along * (0.035f * s) + Vector3.up * 0.06f, yaw, 0.07f, false);
+                big.color = FasciaLetters[brand];
+                TextMesh small = EditorBuild.Label(parent, shortName.ToUpperInvariant(), c + along * (0.035f * s) - Vector3.up * 0.2f, yaw, 0.012f, false);
+                small.color = FasciaLetters[brand];
+            }
+        }
+
+        /// <summary>A small vinyl plaque by the entrance: the opening hours, which nobody will be keeping tonight.</summary>
+        static void OpeningHours(Transform parent, MallUnit u, float y, int side, Vector3 toConcourse)
+        {
+            if (u.access == UnitAccess.BrokenLock) return;
+            WingId w = u.wing;
+            Vector3 p = MallLayout.WingPoint(w, u.u1 - 0.2f, side * (MallLayout.ConcourseHalf - 0.02f), y + 1.45f);
+            Quaternion face = Quaternion.LookRotation(toConcourse);
+            Detail("Opening hours plaque", parent, p, new Vector3(0.24f, 0.3f, 0.006f), darkPanel, face);
+            int h = Mathf.Abs(MallLayout.Hash(u.code.GetHashCode(), 2, 4, 8));
+            string[] times = { "MON - SAT  9:00 - 20:00\nSUN  10:00 - 17:00", "MON - SAT  9:30 - 19:30\nSUN  11:00 - 17:00", "OPEN 7 DAYS\n9:00 - 21:00" };
+            float yaw = Mathf.Atan2(-toConcourse.x, -toConcourse.z) * Mathf.Rad2Deg;
+            TextMesh t1 = EditorBuild.Label(parent, "OPENING HOURS", p + toConcourse * 0.006f + Vector3.up * 0.09f, yaw, 0.0075f, false);
+            t1.color = new Color(0.9f, 0.9f, 0.88f);
+            TextMesh t2 = EditorBuild.Label(parent, times[h % times.Length], p + toConcourse * 0.006f - Vector3.up * 0.03f, yaw, 0.006f, false);
+            t2.color = new Color(0.85f, 0.85f, 0.82f);
+        }
+
         static void FasciaSign(Transform parent, MallUnit u, Vector3 centre, Vector3 viewDir, float width, float textSize)
         {
             int h = MallLayout.Hash(u.code.GetHashCode(), 7, 31, 5);
@@ -377,8 +424,27 @@ namespace AfterHours.EditorTools
             int roll = Mathf.Abs(h / 7) % 100;
             var state = roll < 55 ? SignLightbox.State.Lit : roll < 70 ? SignLightbox.State.Failing : roll < 82 ? SignLightbox.State.HalfDead : SignLightbox.State.Dead;
             // letters on a dead sign are just paint, lit by the room; on a working one they're backlit
-            TextMesh tm = EditorBuild.Label(parent, u.name.ToUpperInvariant(), centre - viewDir * 0.018f, yaw, textSize, state == SignLightbox.State.Dead);
-            tm.color = FasciaLetters[brand];
+            // the name: built-up letters (a few layers stepping back, darker) beside a round logo badge with the initial
+            float badge = height * 0.85f;
+            bool roomForBadge = width > 2.4f;
+            Vector3 textCentre = centre + (roomForBadge ? across * (badge * 0.55f) : Vector3.zero);
+            string label = u.name.ToUpperInvariant();
+            Color letter = FasciaLetters[brand];
+            for (int layer = 3; layer >= 1; layer--)
+            {
+                TextMesh depth = EditorBuild.Label(parent, label, textCentre - viewDir * (0.018f - 0.004f * layer), yaw, textSize, false);
+                depth.color = Color.Lerp(letter, Color.black, 0.45f + 0.12f * layer);
+            }
+            TextMesh tm = EditorBuild.Label(parent, label, textCentre - viewDir * 0.019f, yaw, textSize, state == SignLightbox.State.Dead);
+            tm.color = letter;
+            if (roomForBadge)
+            {
+                Vector3 bc = centre - across * (width * 0.5f - badge * 0.6f) - viewDir * 0.012f;
+                GameObject disc = Cyl("Logo badge", parent, bc + viewDir * 0.012f, bc - viewDir * 0.012f, badge, ArtLibrary.Plain("SignBadge_" + brand, letter, 0.6f, 0f));
+                disc.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                TextMesh ini = EditorBuild.Label(parent, label.Substring(0, 1), bc - viewDir * 0.014f, yaw, textSize * 1.25f, false);
+                ini.color = faceCol;
+            }
 
             var box = faces[0].gameObject.AddComponent<SignLightbox>();
             box.faces = faces;
