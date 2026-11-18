@@ -174,6 +174,9 @@ namespace AfterHours.EditorTools
             else { col.center = new Vector3(0f, 0.43f, 0f); col.size = new Vector3(0.42f, 0.86f, 0.42f); }
             var rb = root.AddComponent<Rigidbody>(); rb.mass = 5f;
             root.AddComponent<PhysicsProp>().material = SurfaceType.Metal;
+            Knockable kn = root.AddComponent<Knockable>();          // goes over if run into; back in place next run
+            kn.height = 0.86f;
+            kn.topHeavy = upsideDown ? 0.4f : 0.6f;
             EditorBuild.SetLayerRecursive(root, GameLayers.PropLayer);
             return root;
         }

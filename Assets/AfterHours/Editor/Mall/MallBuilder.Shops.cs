@@ -183,6 +183,9 @@ namespace AfterHours.EditorTools
                 Mathf.Atan2(intoShop.x, intoShop.z) * Mathf.Rad2Deg, 0.018f);
             ShopPosters(parent, u, w, side, y, intoShop);
             BladeSign(parent, u, y, side, toConcourse);
+            if (u.Enterable && Mathf.Abs(MallLayout.Hash((int)u.u0, (int)w, side, 17)) % 3 == 0)
+                ABoard(parent, MallLayout.WingPoint(w, u.u0 + 1.2f, side * (MallLayout.ConcourseHalf - 0.9f), y),
+                    Mathf.Atan2(MallLayout.WingForward(w).x, MallLayout.WingForward(w).z) * Mathf.Rad2Deg, Mathf.Abs(MallLayout.Hash((int)u.u0, 3, 5, 7)));
             OpeningHours(parent, u, y, side, toConcourse);
 
             if (!u.HasInterior) return;
@@ -234,6 +237,9 @@ namespace AfterHours.EditorTools
             // Counter near the back.
             float cuB = Mathf.Min(u.u0 + 3.5f, u.u1 - 3.4f);
             if (cuB - (u.u0 + 1f) > 0.8f) HollowCounter(parent, w, u.u0 + 1f, cuB, 11.2f, 12f, y, 1.05f, side);   // you can hide under it
+
+            // Boxes waiting to be unpacked, stacked in the stock room.
+            BoxStack(parent, MallLayout.WingPoint(w, u.u0 + 1.4f, side * 14.4f, y), Mathf.Atan2(MallLayout.WingForward(w).x, MallLayout.WingForward(w).z) * Mathf.Rad2Deg, MallLayout.Hash((int)u.u0, (int)w, side, 23));
 
             // Stock room shelving.
             Vector3 s0 = MallLayout.WingPoint(w, u.u0 + 0.3f, side * 15.3f, y);
@@ -333,8 +339,12 @@ namespace AfterHours.EditorTools
                 }
                 else
                 {
-                    WingBox("Bin", parent, w, u - 0.25f, u + 0.25f, -0.25f, 0.25f, y, y + 0.9f, metal, SurfaceType.Metal);
+                    KnockBin(parent, MallLayout.WingPoint(w, u, 0f, y));
                 }
+                // between them, now and then: a wet-floor sign the cleaners left out
+                int h = MallLayout.Hash((int)f, (int)w, i, 41);
+                if (Mathf.Abs(h) % 4 == 0 && u + 6f < MallLayout.WingEnd - 4f)
+                    WetFloorSign(parent, MallLayout.WingPoint(w, u + 6f, (h & 1) == 0 ? 3.6f : -3.6f, y), (h % 60) - 30f);
             }
             // Hanging floor/wing sign at the atrium end.
             Vector3 view = MallLayout.WingForward(w);

@@ -37,6 +37,7 @@ namespace AfterHours.Net
             foreach (Interactable i in Sorted(UnityEngine.Object.FindObjectsByType<Interactable>(FindObjectsInactive.Include)))
                 Add(i, i is ItemPickup ip && !string.IsNullOrEmpty(ip.instanceId) ? "Item:" + ip.instanceId : KeyFor(i));
             foreach (HeavyMovable h in Sorted(UnityEngine.Object.FindObjectsByType<HeavyMovable>(FindObjectsInactive.Include))) Add(h, KeyFor(h));
+            foreach (Knockable k in Sorted(UnityEngine.Object.FindObjectsByType<Knockable>(FindObjectsInactive.Include))) Add(k, KeyFor(k));
             foreach (LiftController l in Sorted(UnityEngine.Object.FindObjectsByType<LiftController>(FindObjectsInactive.Include))) Add(l, KeyFor(l));
             foreach (Escalator e in Sorted(UnityEngine.Object.FindObjectsByType<Escalator>(FindObjectsInactive.Include))) Add(e, KeyFor(e));
             foreach (EscapeTrigger t in Sorted(UnityEngine.Object.FindObjectsByType<EscapeTrigger>(FindObjectsInactive.Include))) Add(t, KeyFor(t));

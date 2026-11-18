@@ -346,16 +346,6 @@ namespace AfterHours.EditorTools
             s.isStatic = true;
         }
 
-        static void WetFloorSign(Transform g, Vector3 floor, float yaw)
-        {
-            Quaternion r = Quaternion.Euler(0f, yaw, 0f);
-            for (int s = -1; s <= 1; s += 2)
-            {
-                Vector3 c = floor + Vector3.up * 0.32f + r * new Vector3(0f, 0f, s * 0.1f);
-                EditorBuild.Box("Wet floor sign", g, c, new Vector3(0.3f, 0.62f, 0.015f), yellowPaint, SurfaceType.Metal, r * Quaternion.Euler(s * 14f, 0f, 0f));
-            }
-            EditorBuild.Label(g, "CAUTION\nWET FLOOR", floor + Vector3.up * 0.38f + r * new Vector3(0f, 0f, -0.18f), yaw, 0.012f).color = new Color(0.1f, 0.1f, 0.1f);
-        }
 
         static void Trolley(Transform g, Vector3 floor, float yaw)
         {
