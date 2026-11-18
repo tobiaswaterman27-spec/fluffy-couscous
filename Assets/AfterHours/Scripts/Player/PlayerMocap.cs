@@ -148,14 +148,14 @@ namespace AfterHours.Player
         public MocapClip CrawlClip;
 
         /// <summary>On hands and knees: the crawl cycle at this phase, its stride stretched to the real speed.</summary>
-        public bool EvaluateCrawl(float speed, float phase, float stepLen, float legLen)
+        public bool EvaluateCrawl(float speed, float phase, float stepLen, float legLen, bool back = false)
         {
             if (!Mocap.Ready) return false;
             MocapClip c = Mocap.Get("crawl");
             if (c == null) return false;
             Ensure();
             CrawlClip = c;
-            Mocap.Sample(c, phase, mv);
+            Mocap.Sample(c, back ? 1f - Mathf.Repeat(phase, 1f) : phase, mv);   // backing up: the same crawl, in reverse
             float k = Mathf.Clamp(stepLen / Mathf.Max(0.03f, c.step * legLen), 0.45f, 2.2f);
             foreach (int a in new[] { Mocap.ANK, Mocap.ANK + 3, Mocap.WR, Mocap.WR + 3 })
                 mv[a + 2] = c.mean[a + 2] + (mv[a + 2] - c.mean[a + 2]) * k;

@@ -139,7 +139,10 @@ namespace AfterHours.Player
                 Face(t, dt, false, mouth.Open);
                 return;
             }
-            if (crawl > 0.5f && (!caught || proneCaught))
+            bool flatNow = crawl > 0.5f && (!caught || proneCaught);
+            if (flatNow && !wasFlat) SnapshotPose();     // coming from another pose (e.g. on all fours): blend, don't snap
+            wasFlat = flatNow;
+            if (flatNow)
             {
                 // ---------------- crawling: a belly crawl ----------------
                 // hips and belly on the floor, chest raised on the forearms, head up to see ahead
@@ -187,6 +190,7 @@ namespace AfterHours.Player
                     if (hand[s] != null) hand[s].SetPositionAndRotation(handP, Quaternion.LookRotation(Vector3.ProjectOnPlane(-up, hd).normalized, -hd));
                 }
                 Fingers(0.35f);
+                BlendFromSnapshot(dt, 0.25f);
                 return;
             }
 
@@ -420,6 +424,8 @@ namespace AfterHours.Player
                 Vector3 to = ank[s] - hip;
                 float reachMax = Thigh + Shin - 0.005f;
                 if (to.magnitude > reachMax) ank[s] = hip + to.normalized * reachMax;
+                // standing still and turning: feet stay planted, and step round when they've twisted too far
+                ank[s] = Plant(s, ank[s], speed < 0.08f && l.grounded, up, dt, 0.16f, 0.07f);
                 LegIK(s, hip, ank[s], legQ * Mocap.Twist(P, s == 0 ? Mocap.ThighL : Mocap.ThighR), legQ * Mocap.Q(P, Mocap.FQ + s * 4));
             }
 
@@ -456,6 +462,70 @@ namespace AfterHours.Player
 
         readonly Vector3[] ankBuf = new Vector3[2];
 
+        // =====================================================================
+        // Planting: a foot (or a hand, crawling) stays exactly where it was put while the body turns on the spot,
+        // and takes a quick little step to where it should be once it's twisted too far - one limb at a time.
+        // =====================================================================
+
+        readonly Vector3[] plantAt = new Vector3[4], stepFrom = new Vector3[4];
+        readonly bool[] planted = new bool[4];
+        readonly float[] stepT = { -1f, -1f, -1f, -1f };
+
+        Vector3 Plant(int i, Vector3 want, bool still, Vector3 up, float dt, float tolerance, float lift)
+        {
+            if (!still) { planted[i] = false; stepT[i] = -1f; return want; }
+            if (!planted[i]) { planted[i] = true; plantAt[i] = want; stepT[i] = -1f; return want; }
+            int pair = i ^ 1;
+            if (stepT[i] < 0f && (plantAt[i] - want).magnitude > tolerance && stepT[pair] < 0f)
+            {
+                stepT[i] = 0f;
+                stepFrom[i] = plantAt[i];
+            }
+            if (stepT[i] >= 0f)
+            {
+                stepT[i] += dt / 0.3f;
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(stepT[i]));
+                Vector3 p = Vector3.Lerp(stepFrom[i], want, k) + up * (Mathf.Sin(Mathf.PI * Mathf.Clamp01(stepT[i])) * lift);
+                if (stepT[i] >= 1f) { stepT[i] = -1f; plantAt[i] = want; }
+                return p;
+            }
+            return plantAt[i];
+        }
+
+        // Blending between whole-body poses that are built different ways (all fours -> pinned flat).
+        Vector3[] snapPos;
+        Quaternion[] snapRot;
+        float snapT = 1f;
+        bool wasFlat;
+
+        void SnapshotPose()
+        {
+            if (body == null || body.bones == null) return;
+            int n = body.bones.Length;
+            if (snapPos == null || snapPos.Length != n) { snapPos = new Vector3[n]; snapRot = new Quaternion[n]; }
+            for (int i = 0; i < n; i++)
+            {
+                if (body.bones[i] == null) continue;
+                snapPos[i] = body.bones[i].position;
+                snapRot[i] = body.bones[i].rotation;
+            }
+            snapT = 0f;
+        }
+
+        void BlendFromSnapshot(float dt, float seconds)
+        {
+            if (snapT >= 1f || snapPos == null || body.bones == null || body.bones.Length != snapPos.Length) return;
+            snapT = Mathf.Min(1f, snapT + dt / seconds);
+            float k = Mathf.SmoothStep(0f, 1f, snapT);
+            for (int i = 0; i < body.bones.Length; i++)
+            {
+                Transform b = body.bones[i];
+                if (b == null) continue;
+                b.SetPositionAndRotation(Vector3.Lerp(snapPos[i], b.position, k), Quaternion.Slerp(snapRot[i], b.rotation, k));
+            }
+        }
+
+
         /// <summary>
         /// Crawling on hands and knees (captured): hips at their real height, the chest dipping so the head stays at
         /// the eyes, knees and feet on the floor behind, the hands stepping in the captured pattern under the shoulders.
@@ -464,7 +534,8 @@ namespace AfterHours.Player
                         float stepLen, Vector3 headPos, Quaternion headRot)
         {
             float Lt = Thigh + Shin;
-            if (!mocap.EvaluateCrawl(speed, phase, stepLen, Lt)) return false;
+            bool backC = l.localPlanarVelocity.y < -0.15f * Mathf.Max(speed, 0.01f);
+            if (!mocap.EvaluateCrawl(speed, phase, stepLen, Lt, backC)) return false;
             float[] P = mocap.Pose;
             float[] mean = mocap.CrawlClip.mean;
             Quaternion legQ = rot;
@@ -487,6 +558,7 @@ namespace AfterHours.Player
                 Vector3 a = root + legQ * (Mocap.V(P, Mocap.ANK + s * 3) * Lt) + corrH;
                 float ay = Vector3.Dot(a, up);
                 if (ay < floorY + AnkleH * 0.6f) a += up * (floorY + AnkleH * 0.6f - ay);
+                a = Plant(s, a, speed < 0.08f, up, Time.deltaTime, 0.12f, 0.04f);         // knees stay put while turning on the spot
                 LegIK(s, hip, a, legQ * Mocap.Twist(P, s == 0 ? Mocap.ThighL : Mocap.ThighR), legQ * Mocap.Q(P, Mocap.FQ + s * 4));
             }
             Vector3 chestPos = pelvisPos + spineRot * Vector3.up * Spine;
@@ -502,6 +574,7 @@ namespace AfterHours.Player
                 Vector3 w = sFloor + legQ * (dev + Vector3.forward * 0.04f);
                 w += up * 0.03f;
                 if (Vector3.Dot(w, up) < floorY + 0.055f) w += up * (floorY + 0.055f - Vector3.Dot(w, up));   // a palm's thickness above the floor
+                w = Plant(2 + s, w, speed < 0.08f, up, Time.deltaTime, 0.12f, 0.05f);     // hands too
                 Vector3 tU = -(legQ * Mocap.Twist(P, U));
                 Vector3 target = w, palm = legQ * Mocap.Twist(P, H);
                 if (GestureArm(s, side, shoulder, headPos, rot * Vector3.forward, up, right, ref target, ref palm)) handGrip[s] = true;
