@@ -567,7 +567,7 @@ namespace AfterHours.Player
             pelvisPos += corrH;
             Vector3 mid = SolveIK(pelvisPos, headPos, Spine, Neck, up - dS * 0.2f, out Vector3 end);
             Quaternion spineRot = Aim(mid - pelvisPos, tS), neckRot = Aim(end - mid, tN);
-            SetBody(pelvisPos, pelvisRot, spineRot, neckRot, LiveHead(headRot, P, t, speed), up);
+            SetBody(pelvisPos, pelvisRot, spineRot, neckRot, LiveHead(headRot, P, Time.time, speed), up);
 
             float floorY = Vector3.Dot(root, up);
             for (int s = 0; s < 2; s++)
