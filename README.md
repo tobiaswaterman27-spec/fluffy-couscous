@@ -91,7 +91,10 @@ After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the cam
   and when you quit). Being caught resets the run and deletes the save.
 - **Settings**: sensitivity, field of view, head bob, camera shake, blood and gore, key bindings.
 - Esc while playing: pause, settings, **Save and quit to main menu**.
-- Getting out by any of the 8 routes plays the daylight ending.
+- Getting out by any of the 8 routes plays the daylight ending. **The full guide to the routes is `docs/PROGRESSION.md`** (spoilers).
+- It's meant to be long and hard: the important items are in different rooms every run (and again after you're
+  caught), most exits need several parts plus the **standby generator** in the car park plant room, and Elliot gets
+  more dangerous as the night goes on and as you get closer to escaping. The time is on the pause screen.
 
 ### Things to know when playing
 - **Hide**: open a locker or cupboard, look inside, hold **E**. **E** again to get out.
@@ -107,6 +110,12 @@ After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the cam
 - **Power cuts**: breakers trip now and then; the area goes dark. The switchboard is in the car park plant room.
 - **Escalators**: the red button at the bottom stops them (and restarts them).
 - **Tracks**: on hard floors Elliot leaves bloody footprints. Fresh, dark ones mean he passed by moments ago.
+- **Generator**: car park plant room. Petrol (jerry can) in, fuse in GEN CONTROL, then pull the cord until it catches.
+  Very loud. Four of the exits need it; their panels have an amber lamp that lights when it's running.
+- **Fire axe**: in a break-glass cabinet in one of the stairwells. Hold **E** at a locked wooden door to chop through it
+  (very loud). It breaks after three jobs.
+- **Fire exit**: pushing the bar sets off the alarm, and the door only lets go after 15 seconds - unless you cut the
+  magnetic lock's cable first.
 - **CCTV**: the Security Office (ground floor, north-west back corridor) has live camera feeds of the atrium,
   the malls, the entrance and the car park. Watch them to see where Elliot is. They need power.
 
