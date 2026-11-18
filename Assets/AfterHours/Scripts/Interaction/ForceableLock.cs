@@ -54,6 +54,8 @@ namespace AfterHours.Interaction
             door.Open(who.Position, 2f, who.Actor);
             PlayerInventory inv = who.Actor != null ? who.Actor.GetComponent<PlayerInventory>() : null;
             if (inv != null && inv.Held != null) inv.Held.Wear(who.Actor);
+            var pc = who.Actor != null ? who.Actor.GetComponent<AfterHours.Player.PlayerController>() : null;
+            if (pc != null && pc.isLocallyControlled) AfterHours.Flow.Stats.Event("axe_door");
         }
 
         public override void HoldReleased(IInteractor who)

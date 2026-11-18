@@ -116,6 +116,13 @@ After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the cam
   (very loud). It breaks after three jobs.
 - **Fire exit**: pushing the bar sets off the alarm, and the door only lets go after 15 seconds - unless you cut the
   magnetic lock's cable first.
+- **Hiding without a door**: crawl under a shop counter (from the staff side) or an office desk, or stand in a
+  changing room behind the curtain. Quick to get into, but if Elliot comes right up close and looks, he sees you.
+- **Knocking things over**: wet-floor signs, bins, A-boards, stacked boxes and chairs go over if you run into them -
+  loudly. Elliot hears it.
+- **Weather**: a storm outside. Rain on the skylight and the glass, lightning through the roof, thunder.
+- **Difficulty**: Easy / Normal / Hard in Settings (the host's counts in co-op).
+- **Your record**: on the main menu - nights, ways out found, fastest escape, and achievements.
 - **CCTV**: the Security Office (ground floor, north-west back corridor) has live camera feeds of the atrium,
   the malls, the entrance and the car park. Watch them to see where Elliot is. They need power.
 

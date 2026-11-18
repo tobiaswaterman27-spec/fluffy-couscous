@@ -67,7 +67,13 @@ namespace AfterHours.Puzzles
                 NoiseBus.Emit(new NoiseEvent(transform.position, starts ? startNoise : fuelled ? 18f : 10f, NoiseKind.Machinery, who.Actor));
             }
             else InteractionFx.Play(ProceduralSounds.Sfx.Rattle, transform.position, 1f, fuelled ? 18f : 10f, who.Actor, NoiseKind.Machinery);
-            if (starts) SetRunning(true);
+            if (starts) { SetRunning(true); if (IsLocalPlayer(who.Actor)) AfterHours.Flow.Stats.Event("generator"); }
+        }
+
+        static bool IsLocalPlayer(GameObject a)
+        {
+            var pc = a != null ? a.GetComponent<AfterHours.Player.PlayerController>() : null;
+            return pc != null && pc.isLocallyControlled;
         }
 
         void SetRunning(bool on)

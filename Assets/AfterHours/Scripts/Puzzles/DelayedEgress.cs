@@ -46,7 +46,13 @@ namespace AfterHours.Puzzles
             LastActor = who.Actor;
             Player.PlayerActions a = Player.PlayerActions.Of(who.Actor);
             if (a != null) a.Play(Player.Gesture.Push, transform.position, (who.Position - transform.position).normalized, transform.right, 0.6f);
-            if (powerCut != null && powerCut.Satisfied) { Release(); return; }
+            if (powerCut != null && powerCut.Satisfied)
+            {
+                Release();
+                var pc = who.Actor != null ? who.Actor.GetComponent<AfterHours.Player.PlayerController>() : null;
+                if (pc != null && pc.isLocallyControlled) AfterHours.Flow.Stats.Event("silent_fire_exit");
+                return;
+            }
             InteractionFx.Play(ProceduralSounds.Sfx.Latch, transform.position, 0.8f, 6f, who.Actor, NoiseKind.Door);
             alarmT = 0f;
             bellTimer = 0f;

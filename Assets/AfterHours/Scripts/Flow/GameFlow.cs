@@ -155,7 +155,7 @@ namespace AfterHours.Flow
         // LAN co-op (menu screens, start, endings)
         // =====================================================================
 
-        enum MenuScreen { Main, Host, Join }
+        enum MenuScreen { Main, Host, Join, Stats }
         MenuScreen screen = MenuScreen.Main;
         string addressText = "";
         string sessionMessage = "";
@@ -196,6 +196,8 @@ namespace AfterHours.Flow
             }
             if (NetSession.IsHost) { SaveSystem.DeleteSave(); NewLayout(); }
             Deaths = 0;
+            caughtThisGame = 0;
+            Stats.NightStarted();
             BeginOpening();
         }
 
@@ -218,6 +220,8 @@ namespace AfterHours.Flow
             SaveSystem.DeleteSave();
             playTime = 0f;
             Deaths = 0;
+            caughtThisGame = 0;
+            Stats.NightStarted();
             NewLayout();
             BeginOpening();
         }
@@ -378,9 +382,15 @@ namespace AfterHours.Flow
             autosaveTimer = 60f;
         }
 
+        int caughtThisGame;
+        bool wasCaughtStat;
+
         void UpdatePlaying(float dt)
         {
-            if (!GamePause.IsPaused) playTime += dt;
+            if (!GamePause.IsPaused) { playTime += dt; Stats.AddTime(dt); }
+            bool caughtNow = player != null && CatchSequence.IsBeingCaught(player);
+            if (caughtNow && !wasCaughtStat) { caughtThisGame++; Stats.Caught(); }
+            wasCaughtStat = caughtNow;
             autosaveTimer -= dt;
             if (autosaveTimer <= 0f && SafeToSave())
             {
@@ -450,6 +460,12 @@ namespace AfterHours.Flow
             State = FlowState.Ending;
             t = 0f;
             SaveSystem.DeleteSave();
+            if (!leftBehind)
+            {
+                bool coopAll = false;
+                if (net != null && net.Players.Count > 1) { coopAll = true; foreach (NetSession.NetPlayer p in net.Players) if (!p.escaped) coopAll = false; }
+                Stats.Escaped(r, playTime, caughtThisGame, night != null ? night.NightTime : 0f, NightDirector.Difficulty, coopAll);
+            }
             InputService.Instance?.SetGameplayEnabled(false);
             if (player != null) player.SetControlLock(true, true);
         }
@@ -723,6 +739,7 @@ namespace AfterHours.Flow
             if (State == FlowState.Menu && !GamePause.IsPaused)
             {
                 if (screen == MenuScreen.Main) DrawMenu(scale);
+                else if (screen == MenuScreen.Stats) DrawStats(scale);
                 else DrawLobby(scale);
             }
 
@@ -831,8 +848,8 @@ namespace AfterHours.Flow
                 }
             }
 
-            string[] items = { "New game", "Continue", "Settings", "Host LAN game", "Join LAN game", "Quit" };
-            bool[] enabled = { true, hasSave, true, true, true, true };
+            string[] items = { "New game", "Continue", "Settings", "Host LAN game", "Join LAN game", "Your record", "Quit" };
+            bool[] enabled = { true, hasSave, true, true, true, true, true };
             Vector2 mouse = Event.current.mousePosition;
             for (int i = 0; i < items.Length; i++)
             {
@@ -857,7 +874,8 @@ namespace AfterHours.Flow
                         case 2: AfterHours.UI.DevPauseMenu.OpenFromMenu(); break;
                         case 3: sessionMessage = ""; SaveSystem.CoopSlot = true; continueCoop = false; Net().Host(); screen = MenuScreen.Host; break;
                         case 4: sessionMessage = ""; SaveSystem.CoopSlot = false; Net().Browse(); screen = MenuScreen.Join; break;
-                        case 5:
+                        case 5: screen = MenuScreen.Stats; break;
+                        case 6:
 #if UNITY_EDITOR
                             UnityEditor.EditorApplication.isPlaying = false;
 #else
@@ -869,6 +887,48 @@ namespace AfterHours.Flow
             }
             GUI.Label(new Rect(120f, 1080f - 110f, 700f, 40f), "Headphones recommended. Play in the dark.", smallStyle);
             if (!string.IsNullOrEmpty(sessionMessage)) GUI.Label(new Rect(120f, 1080f - 150f, 900f, 40f), sessionMessage, smallStyle);
+            GUI.matrix = Matrix4x4.identity;
+        }
+
+        /// <summary>Your record: nights, ways out, fastest escape... and the achievements (locked ones say how).</summary>
+        void DrawStats(float scale)
+        {
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1f));
+            GUI.color = new Color(0f, 0f, 0f, 0.7f);
+            GUI.DrawTexture(new Rect(0f, 0f, 1100f, 1080f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(110f, 120f, 900f, 110f), "YOUR RECORD", titleStyle);
+            Stats.Data d = Stats.Current;
+            string[] names = { "main entrance", "car park exit", "loading bay", "emergency exit", "roof", "service tunnel", "staff exit", "hidden hatch" };
+            var lines = new System.Collections.Generic.List<string>
+            {
+                $"Nights started   {d.nights}",
+                $"Got out   {d.escapes}",
+                $"Caught   {d.caught}",
+                $"Fastest escape   {Stats.FormatTime(d.fastestEscape)}",
+                $"Time inside, all nights   {Stats.FormatTime(d.timePlayed)}",
+            };
+            float y = 250f;
+            foreach (string l in lines) { GUI.Label(new Rect(120f, y, 700f, 34f), l, smallStyle); y += 34f; }
+            y += 10f;
+            GUI.Label(new Rect(120f, y, 700f, 34f), "Ways out found", smallStyle); y += 34f;
+            for (int i = 0; i < 8; i++)
+            {
+                GUI.color = d.routes[i] > 0 ? Color.white : new Color(1f, 1f, 1f, 0.35f);
+                GUI.Label(new Rect(140f + (i % 2) * 300f, y + (i / 2) * 30f, 300f, 30f), (d.routes[i] > 0 ? "\u2713 " : "\u2022 ") + (d.routes[i] > 0 ? names[i] + "  x" + d.routes[i] : "?"), smallStyle);
+            }
+            GUI.color = Color.white;
+            y += 4 * 30f + 20f;
+            GUI.Label(new Rect(120f, y, 700f, 34f), $"Achievements   {d.achievements.Count} / {Stats.All.Length}", smallStyle); y += 36f;
+            foreach (Stats.Achievement a in Stats.All)
+            {
+                bool got = Stats.Has(a.id);
+                GUI.color = got ? new Color(0.95f, 0.8f, 0.45f) : new Color(1f, 1f, 1f, 0.4f);
+                GUI.Label(new Rect(140f, y, 900f, 28f), (got ? "\u2605 " : "\u2606 ") + a.title + "  -  " + a.how, smallStyle);
+                y += 28f;
+            }
+            GUI.color = Color.white;
+            if (LobbyButton(new Rect(120f, 1080f - 110f, 300f, 52f), "Back")) screen = MenuScreen.Main;
             GUI.matrix = Matrix4x4.identity;
         }
 
