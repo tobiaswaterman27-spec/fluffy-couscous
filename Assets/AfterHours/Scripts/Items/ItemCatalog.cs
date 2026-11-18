@@ -7,7 +7,7 @@ namespace AfterHours.Items
     public enum ItemCategory { Key, Card, Tool, Electrical, Puzzle, Progression, Distraction }
 
     public enum ItemShape { Key, Card, Screwdriver, Pliers, Spanner, Wrench, PryBar, Knife, Cutters, Fuse, Module, Connector, Battery,
-        Handle, Gear, Switch, Token, Dial, Coin, Can, Bottle, AlarmClock, Phone, Valve, Remote, Box }
+        Handle, Gear, Switch, Token, Dial, Coin, Can, Bottle, AlarmClock, Phone, Valve, Remote, Box, Jerrycan, Axe }
 
     /// <summary>What an item is. Items are identified by id; 'provides' lists the lock / tool ids it satisfies.</summary>
     public class ItemDefinition
@@ -18,6 +18,8 @@ namespace AfterHours.Items
         public ItemShape shape;
         public string[] provides;
         public float mass = 0.3f;
+        /// <summary>Hard uses before it breaks (0 = never).</summary>
+        public int durability;
         public SurfaceType material = SurfaceType.Metal;
         public Color tint = new Color(0.7f, 0.7f, 0.72f);
         public bool Provides(string lockId)
@@ -104,6 +106,9 @@ namespace AfterHours.Items
             Add("lift_key", "Lift control key", ItemCategory.Progression, ItemShape.Key, 0.08f, SurfaceType.Metal, black, "lift_control");
             Add("dock_remote", "Loading bay remote", ItemCategory.Progression, ItemShape.Remote, 0.15f, SurfaceType.Wood, black, "dock_control");
             Add("valve_wheel", "Valve wheel", ItemCategory.Progression, ItemShape.Valve, 1.6f, SurfaceType.Metal, red, "tunnel_valve");
+            Add("fuel_can", "Jerry can (petrol)", ItemCategory.Progression, ItemShape.Jerrycan, 4.5f, SurfaceType.Metal, new Color(0.55f, 0.08f, 0.06f), "fuel");
+            Add("fire_axe", "Fire axe", ItemCategory.Tool, ItemShape.Axe, 2.4f, SurfaceType.Metal, new Color(0.7f, 0.07f, 0.05f), "axe", "pry");
+            items["fire_axe"].durability = 3;
             Add("door_actuator", "Door mechanism actuator", ItemCategory.Progression, ItemShape.Box, 1.4f, SurfaceType.Metal, yellow, "heavy_door_part");
 
             // Distractions

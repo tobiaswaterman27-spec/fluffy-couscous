@@ -116,6 +116,7 @@ namespace AfterHours.Net
                 case ToolBreakable tb: return tb.Satisfied ? "1" : "0";
                 case HeavyMovable hm: return V(hm.transform.position) + " " + Q(hm.transform.rotation);
                 case ItemPickup ip:
+                    if (!ip.gameObject.activeSelf) return "x";
                     if (ip.IsHeld)
                     {
                         int pid = playerIdOf(ip.Holder);
@@ -125,6 +126,7 @@ namespace AfterHours.Net
                 case LiftController l: return l.NetCapture();
                 case Escalator e: return e.NetCapture();
                 case EscapeTrigger t: return t.open ? "1" : "0";
+                case IStateful st: return st.CaptureState();
             }
             return null;
         }
@@ -176,6 +178,7 @@ namespace AfterHours.Net
                     case LiftController l: l.NetApply(a); break;
                     case Escalator e: e.NetApply(a); break;
                     case EscapeTrigger t: t.open = a[0] == "1"; break;
+                    case IStateful st: st.RestoreState(data); break;
                 }
             }
             catch (Exception e) { Debug.LogWarning("[AfterHours] Couldn't apply " + key + ": " + e.Message); }
@@ -190,6 +193,19 @@ namespace AfterHours.Net
         void ApplyItem(ItemPickup ip, string[] a, Func<int, PlayerController> playerById, PlayerController local)
         {
             PlayerInventory mine = local != null ? local.GetComponent<PlayerInventory>() : null;
+            if (a[0] == "x")
+            {
+                // Used up (an axe that split): gone from everyone's hands and the world.
+                if (mine != null && mine.Held == ip) mine.NetSetHeld(null);
+                foreach (PlayerController p in PlayerController.All)
+                {
+                    PlayerInventory inv = p != null ? p.GetComponent<PlayerInventory>() : null;
+                    if (inv != null && inv.Held == ip) inv.NetSetHeld(null);
+                }
+                ip.gameObject.SetActive(false);
+                return;
+            }
+            if (!ip.gameObject.activeSelf) ip.gameObject.SetActive(true);
             if (a[0] == "h")
             {
                 PlayerController holder = playerById(int.Parse(a[1], Inv));

@@ -13,41 +13,37 @@ namespace AfterHours.EditorTools
     /// </summary>
     public static class ProgressionCheck
     {
-        // (location, lock needed to get in ("" = open), items found there)
+        // (location, lock needed to get in ("" = open), items found there). Items move between rooms that share a lock
+        // each run (ItemShuffle), so a room's list here is "what this lock tier holds", which is what matters.
         static readonly (string where, string lockId, string[] items)[] Locations =
         {
-            ("Public areas / open shops", "", new[] { "card_staff", "screwdriver", "utility_knife", "alarm_clock", "circuit_module", "key_storage", "battery" }),
+            ("Public areas / open shops", "", new[] { "card_staff", "screwdriver", "utility_knife", "circuit_module", "key_storage", "battery" }),
+            ("Stairwell fire point (break glass)", "", new[] { "fire_axe" }),
             ("Food court kiosks", "", new[] { "key_storage" }),
-            ("Staff room & lockers (G NW B)", "card_staff", new[] { "key_lockers" }),
+            ("Staff rooms (lockers / workshop / canteen)", "card_staff", new[] { "key_lockers", "card_maintenance", "pliers", "spanner", "replacement_switch", "key_maintenance" }),
             ("Locked staff locker", "key_lockers", new[] { "key_main_doors" }),
-            ("Maintenance workshop (G SW B)", "card_staff", new[] { "card_maintenance", "pliers", "spanner", "replacement_switch" }),
-            ("Staff canteen (L2 NW B)", "card_staff", new[] { "key_maintenance", "old_phone" }),
-            ("Electrical room (G SW A)", "card_maintenance", new[] { "fuse", "power_connector" }),
-            ("Maintenance L1 (L1 SW B)", "card_maintenance", new[] { "key_plantroom", "wire_cutters", "card_restricted" }),
-            ("Switch room (L2 SW A)", "card_maintenance", new[] { "fuse" }),
-            ("Car park plant room", "key_maintenance", new[] { "key_tunnel", "fuse" }),
-            ("Car park maintenance store", "key_maintenance", new[] { "adjustable_wrench" }),
-            ("Plant room (L1 NE A)", "key_plantroom", new[] { "mech_handle", "gear" }),
-            ("Water tanks (L2 SW B)", "key_plantroom", new[] { "valve_wheel" }),
-            ("Mall management (L1 SE A)", "card_restricted", new[] { "key_security", "security_token", "lift_key", "key_exit", "key_shop" }),
-            ("Records office (L1 SE B)", "card_restricted", new[] { "lock_dial" }),
-            ("Roof access plant (L2 NE B)", "card_restricted", new[] { "key_roof", "card_special" }),
+            ("Maintenance rooms (electrical / maintenance L1 / switch room)", "card_maintenance", new[] { "fuse", "power_connector", "key_plantroom", "wire_cutters", "card_restricted" }),
+            ("Car park plant room & store", "key_maintenance", new[] { "key_tunnel", "fuse", "adjustable_wrench", "fuel_can" }),
+            ("Plant rooms (plant room / water tanks / air handling)", "key_plantroom", new[] { "mech_handle", "gear", "valve_wheel" }),
+            ("Restricted rooms (management / records / roof plant / staff exit lobby)", "card_restricted", new[] { "key_security", "security_token", "lift_key", "key_exit", "key_shop", "lock_dial", "key_roof", "card_special" }),
             ("Security office (G NW A)", "key_security", new[] { "card_security", "key_loading", "dock_remote", "control_switch" }),
-            ("Loading bay (G NE A)", "key_loading", new[] { "pry_bar", "door_actuator" }),
-            ("Goods in (G NE B)", "key_loading", new[] { "machine_part" }),
+            ("Loading bay & goods in", "key_loading", new[] { "pry_bar", "door_actuator", "machine_part" }),
         };
 
-        // (route, everything needed: access + parts)
+        // The standby generator (car park plant room): petrol, its control fuse, a pull-start.
+        static readonly string[] Generator = { "key_maintenance", "fuel_can", "fuse" };
+
+        // (route, everything needed). "a|b" = either will do. "GEN" = the generator must be running.
         static readonly (string route, string[] needs)[] Routes =
         {
-            ("1 Main entrance", new[] { "key_lockers", "key_main_doors", "key_security", "card_security" }),
-            ("2 Car park exit", new[] { "key_maintenance", "fuse", "key_security", "control_switch" }),
-            ("3 Loading bay", new[] { "key_loading", "circuit_module", "dock_remote" }),
-            ("4 Emergency exit", new[] { "wire_cutters", "key_exit" }),
-            ("5 Rooftop", new[] { "key_roof", "key_loading", "pry_bar" }),
-            ("6 Service tunnel", new[] { "key_maintenance", "key_plantroom", "valve_wheel" }),
-            ("7 Restricted staff exit", new[] { "card_restricted", "card_special", "door_actuator" }),
-            ("8 Hidden", new[] { "screwdriver", "key_plantroom", "mech_handle" }),
+            ("1 Main entrance", new[] { "key_lockers", "key_main_doors", "key_security", "card_security", "security_token", "GEN" }),
+            ("2 Car park exit", new[] { "key_maintenance", "fuse", "key_security", "control_switch", "spanner|adjustable_wrench", "gear", "GEN" }),
+            ("3 Loading bay", new[] { "key_loading", "circuit_module", "dock_remote", "power_connector", "GEN" }),
+            ("4 Emergency exit", new[] { "wire_cutters|key_exit" }),
+            ("5 Rooftop", new[] { "key_roof", "pry_bar|fire_axe", "spanner|adjustable_wrench" }),
+            ("6 Service tunnel", new[] { "key_maintenance", "key_plantroom", "valve_wheel", "spanner|adjustable_wrench" }),
+            ("7 Restricted staff exit", new[] { "card_restricted", "card_special", "door_actuator", "replacement_switch", "GEN" }),
+            ("8 Hidden", new[] { "screwdriver", "key_plantroom", "mech_handle", "gear" }),
         };
 
         [MenuItem("After Hours/Check Progression", priority = 50)]
@@ -86,14 +82,41 @@ namespace AfterHours.EditorTools
             foreach (var r in Routes)
             {
                 var missing = new List<string>();
-                foreach (string n in r.needs) if (!have.Contains(n)) missing.Add(n);
+                var needs = new List<string>();
+                foreach (string n in r.needs) { if (n == "GEN") needs.AddRange(Generator); else needs.Add(n); }
+                foreach (string n in needs)
+                {
+                    bool ok1 = false;
+                    foreach (string alt in n.Split('|')) if (have.Contains(alt)) ok1 = true;
+                    if (!ok1) missing.Add(n);
+                }
                 if (missing.Count == 0) report.AppendLine("OK   route " + r.route);
                 else { ok = false; report.AppendLine("FAIL route " + r.route + " missing: " + string.Join(", ", missing)); }
             }
 
+            // The built scene: every shuffled item's group must have enough spots, and no item may share its group's lock.
+            var spots = new Dictionary<string, int>();
+            foreach (AfterHours.Items.ItemSpot sp in Object.FindObjectsByType<AfterHours.Items.ItemSpot>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                spots[sp.group] = (spots.TryGetValue(sp.group, out int c) ? c : 0) + 1;
+            var counts = new Dictionary<string, int>();
+            foreach (AfterHours.Items.ItemPickup ip in Object.FindObjectsByType<AfterHours.Items.ItemPickup>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (string.IsNullOrEmpty(ip.shuffleGroup)) continue;
+                counts[ip.shuffleGroup] = (counts.TryGetValue(ip.shuffleGroup, out int c) ? c : 0) + 1;
+                AfterHours.Items.ItemDefinition d = ip.Definition;
+                if (ip.itemId == ip.shuffleGroup || (d != null && d.Provides(ip.shuffleGroup))) { ok = false; report.AppendLine("SELF-LOCKED (shuffle): " + ip.itemId + " in group " + ip.shuffleGroup); }
+            }
+            if (counts.Count == 0) report.AppendLine("(No mall in the open scene - shuffle spots not checked. Build the mall first.)");
+            foreach (var kv in counts)
+            {
+                int have2 = spots.TryGetValue(kv.Key, out int c) ? c : 0;
+                if (have2 < kv.Value) { ok = false; report.AppendLine($"TOO FEW SPOTS: group {kv.Key} has {kv.Value} items, {have2} spots"); }
+                else report.AppendLine($"OK   shuffle group {kv.Key}: {kv.Value} items over {have2} spots");
+            }
+
             Debug.Log("[AfterHours] Progression order:\n" + order + "\n" + report);
             EditorUtility.DisplayDialog("After Hours - progression check",
-                (ok ? "All eight escape routes can be completed. No dead ends.\n\n" : "PROBLEMS FOUND:\n\n") + report +
+                (ok ? "All eight escape routes can be completed without the fire axe. No dead ends.\n\n" : "PROBLEMS FOUND:\n\n") + report +
                 "\n(Full order of play is in the Console.)", "OK");
         }
     }

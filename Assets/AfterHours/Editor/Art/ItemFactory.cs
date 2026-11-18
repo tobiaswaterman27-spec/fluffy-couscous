@@ -163,6 +163,26 @@ namespace AfterHours.EditorTools
                     P(t, PrimitiveType.Cube, new Vector3(0f, 0.01f, 0f), new Vector3(0.05f, 0.02f, 0.12f), main);
                     P(t, PrimitiveType.Cube, new Vector3(0f, 0.021f, 0.03f), new Vector3(0.015f, 0.003f, 0.015f), M(new Color(0.7f, 0.1f, 0.1f)));
                     break;
+                case ItemShape.Jerrycan:
+                    // A 20 l steel jerry can: flat-sided body with pressed X ribs, three-bar handle, spout cap.
+                    P(t, PrimitiveType.Cube, new Vector3(0f, 0.175f, 0f), new Vector3(0.34f, 0.35f, 0.16f), main);
+                    P(t, PrimitiveType.Cube, new Vector3(0f, 0.17f, 0.081f), new Vector3(0.36f, 0.012f, 0.004f), main, new Vector3(0f, 0f, 42f));
+                    P(t, PrimitiveType.Cube, new Vector3(0f, 0.17f, 0.081f), new Vector3(0.36f, 0.012f, 0.004f), main, new Vector3(0f, 0f, -42f));
+                    P(t, PrimitiveType.Cube, new Vector3(0f, 0.17f, -0.081f), new Vector3(0.36f, 0.012f, 0.004f), main, new Vector3(0f, 0f, 42f));
+                    P(t, PrimitiveType.Cube, new Vector3(0f, 0.17f, -0.081f), new Vector3(0.36f, 0.012f, 0.004f), main, new Vector3(0f, 0f, -42f));
+                    for (int i = -1; i <= 1; i++)
+                        P(t, PrimitiveType.Cube, new Vector3(-0.06f + i * 0.05f, 0.375f, 0f), new Vector3(0.018f, 0.05f, 0.03f), main);
+                    P(t, PrimitiveType.Cube, new Vector3(-0.06f, 0.4f, 0f), new Vector3(0.16f, 0.014f, 0.03f), main);
+                    P(t, PrimitiveType.Cylinder, new Vector3(0.12f, 0.37f, 0f), new Vector3(0.05f, 0.025f, 0.05f), dark);
+                    break;
+                case ItemShape.Axe:
+                    // Fire axe: long ash handle, red head with a blade and a pick.
+                    P(t, PrimitiveType.Cylinder, new Vector3(0f, 0.022f, 0f), new Vector3(0.036f, 0.43f, 0.03f), M(new Color(0.62f, 0.47f, 0.3f), 0.35f), cyl);
+                    P(t, PrimitiveType.Cube, new Vector3(0.38f, 0.024f, 0f), new Vector3(0.06f, 0.035f, 0.1f), main);
+                    P(t, PrimitiveType.Cube, new Vector3(0.38f, 0.024f, 0.1f), new Vector3(0.11f, 0.03f, 0.1f), main);
+                    P(t, PrimitiveType.Cube, new Vector3(0.38f, 0.024f, 0.152f), new Vector3(0.14f, 0.026f, 0.012f), steel);
+                    P(t, PrimitiveType.Cube, new Vector3(0.38f, 0.024f, -0.1f), new Vector3(0.03f, 0.025f, 0.12f), main);
+                    break;
                 default:
                     P(t, PrimitiveType.Cube, new Vector3(0f, 0.09f, 0f), new Vector3(0.25f, 0.18f, 0.2f), main);
                     break;

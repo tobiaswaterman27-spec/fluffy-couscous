@@ -48,6 +48,14 @@ namespace AfterHours.Creature
         public Vector3 startAreaMax = new Vector3(96f, -2f, 96f);
         public float catchDistance = 1.15f;
 
+        /// <summary>Night escalation (NightDirector, host only): 0 = first hour .. 3 = it knows you're nearly out.</summary>
+        public static int Threat;
+        /// <summary>Places someone has been working on a way out (fitted parts, a running generator...).</summary>
+        public static readonly List<Vector3> Hotspots = new List<Vector3>();
+
+        /// <summary>Stops it keeping to the car park.</summary>
+        public void Rouse() => leftStartArea = true;
+
         public ElliotState State => state;
         public PlayerController Target => target;
 
@@ -164,7 +172,7 @@ namespace AfterHours.Creature
                 // Chasing someone nearby beats a distant noise; only switch if it has lost them and this is loud.
                 if (CanSeeTarget() || Time.time - lastSeenTime < 4f || s.strength < 0.6f) return;
             }
-            float threshold = state == ElliotState.Wander ? 0.08f : state == ElliotState.Search ? 0.2f : 0.3f;
+            float threshold = (state == ElliotState.Wander ? 0.08f : state == ElliotState.Search ? 0.2f : 0.3f) * (1f - 0.12f * Threat);
             if (s.strength < threshold) return;
             // A noise in the ducts: go and look into the nearest vent opening.
             if (VentDuct.Contains(s.estimatedPosition))
@@ -254,23 +262,29 @@ namespace AfterHours.Creature
             if (TryReturnToSpot()) return;
             if (!hasGoal || Arrived())
             {
-                if (hasGoal && Random.value < 0.35f)
+                if (hasGoal && Random.value < 0.35f - 0.07f * Threat)
                 {
-                    float wait = Random.Range(2f, 7f);
+                    float wait = Random.Range(2f, 7f - Threat);
                     Pause(wait);
                     animator.PlayAction(Random.value < 0.6f ? ElliotAction.LookAround : ElliotAction.Stare,
                         transform.position + transform.forward * 5f + Vector3.up * 1.5f, wait);
                 }
                 hasGoal = TrySetDestination(PickWanderPoint());
-                gait = Random.value < 0.6f ? ElliotGait.SlowWalk : ElliotGait.Walk;
+                gait = Random.value < 0.6f - 0.15f * Threat ? ElliotGait.SlowWalk : Threat >= 3 && Random.value < 0.3f ? ElliotGait.FastWalk : ElliotGait.Walk;
             }
             animator.LookTarget = null;
         }
 
         Vector3 PickWanderPoint()
         {
+            // Later in the night it drifts towards wherever someone has been working on a way out.
+            if (Threat >= 2 && Hotspots.Count > 0 && Random.value < 0.22f * (Threat - 1))
+            {
+                Vector3 h = Hotspots[Random.Range(0, Hotspots.Count)];
+                return h + new Vector3(Random.Range(-7f, 7f), 0f, Random.Range(-7f, 7f));
+            }
             // Mostly the car park until it has a reason to go elsewhere; later, also places it has been.
-            if (leftStartArea && memory.Territory.Count > 0 && Random.value < 0.4f)
+            if (leftStartArea && memory.Territory.Count > 0 && Random.value < 0.4f + 0.12f * Threat)
             {
                 Vector3 t = memory.Territory[Random.Range(0, memory.Territory.Count)];
                 return t + new Vector3(Random.Range(-10f, 10f), 0f, Random.Range(-10f, 10f));

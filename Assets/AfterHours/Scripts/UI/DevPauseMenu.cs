@@ -101,6 +101,8 @@ namespace AfterHours.UI
 
             GUILayout.BeginArea(new Rect(x, y, w, h), GUI.skin.box);
             GUILayout.Label(GameFlowFlags.InMainMenu ? "SETTINGS" : "PAUSED", title);
+            string clock = GameFlowFlags.ClockText != null ? GameFlowFlags.ClockText() : null;
+            if (!string.IsNullOrEmpty(clock)) GUILayout.Label(clock);
             GUILayout.BeginHorizontal();
             if (GUILayout.Toggle(page == Page.Settings, "Settings", GUI.skin.button, GUILayout.Height(30))) page = Page.Settings;
             if (GUILayout.Toggle(page == Page.Controls, "Controls", GUI.skin.button, GUILayout.Height(30))) page = Page.Controls;

@@ -13,6 +13,13 @@ namespace AfterHours.Puzzles
         event Action Changed;
     }
 
+    /// <summary>Extra state that saves and co-op carry as one line of text (generators, alarms...).</summary>
+    public interface IStateful
+    {
+        string CaptureState();
+        void RestoreState(string data);
+    }
+
     /// <summary>Anything whose state must go back to the start when a run resets (death, Part 11/13).</summary>
     public interface IResettable
     {

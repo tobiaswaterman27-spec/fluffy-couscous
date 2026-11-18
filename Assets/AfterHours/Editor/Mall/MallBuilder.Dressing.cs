@@ -305,6 +305,7 @@ namespace AfterHours.EditorTools
         static void DressWalls(Transform parent)
         {
             Transform g = Group("Wall details", parent);
+            AxeWalls.Clear();
             int index = 0;
             foreach (WallRecord w in Walls)
             {
@@ -412,6 +413,8 @@ namespace AfterHours.EditorTools
                 Cyl("Fire extinguisher", g, baseP + Vector3.up * 0.35f, baseP + Vector3.up * 0.9f, 0.17f, redMat);
                 Detail("Extinguisher bracket", g, face(s, 0.75f, 0.02f), new Vector3(0.12f, 0.05f, 0.04f), blackMat, facing);
                 Detail("Fire point sign", g, face(s, 1.65f, 0.006f), new Vector3(0.2f, 0.28f, 0.006f), redMat, facing);
+                // Stairwell fire points have room for a fire axe cabinet beside the extinguisher (Items: a few get one).
+                if (zone.kind == ZoneKind.Stairwell && b - (s + 1.15f) > 0.6f) AxeWalls.Add((face(s + 1.15f, 0f, 0f), n, dir));
             }
             if ((serviceArea || zone.kind == ZoneKind.Stairwell || zone.kind == ZoneKind.Concourse) && b < (w.p1 - w.p0).magnitude - 0.05f && h % 3 == 0)
             {

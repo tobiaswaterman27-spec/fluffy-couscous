@@ -24,6 +24,7 @@ namespace AfterHours.Items
                 AfterHours.Items.PlayerInventory inv = Holder.GetComponent<AfterHours.Items.PlayerInventory>();
                 if (inv != null && inv.Held == this) inv.TakeHeld();
             }
+            wear = 0;
             Release(HomePosition, Vector3.zero);
             transform.rotation = homeRotation;
             body.linearVelocity = Vector3.zero;
@@ -33,6 +34,37 @@ namespace AfterHours.Items
 
         public string itemId;
         public string instanceId;
+        [Tooltip("Run shuffle: items in the same group swap between that group's spots each run (\"\" = always here).")]
+        public string shuffleGroup = "";
+
+        /// <summary>How many times this tool has been used hard (a fire axe splits after a few doors).</summary>
+        public int wear;
+
+        /// <summary>The run shuffle moved this item: this is now where it starts (and where a reset puts it back).</summary>
+        public void SetHome(Vector3 position, Quaternion rotation)
+        {
+            HomePosition = LastRestPosition = position;
+            homeRotation = rotation;
+            if (!IsHeld) PlaceAt(position, rotation);
+        }
+
+        /// <summary>One hard use. Returns true if it just broke (it is then gone for the rest of the run).</summary>
+        public bool Wear(GameObject user)
+        {
+            ItemDefinition d = Definition;
+            if (d == null || d.durability <= 0) return false;
+            wear++;
+            if (wear < d.durability) return false;
+            if (user != null)
+            {
+                PlayerInventory inv = user.GetComponent<PlayerInventory>();
+                if (inv != null && inv.Held == this) inv.TakeHeld();
+            }
+            Release(transform.position, Vector3.zero);
+            InteractionFx.Play(ProceduralSounds.Sfx.Crack, transform.position, 0.9f, 8f, user);
+            gameObject.SetActive(false);
+            return true;
+        }
 
         static readonly List<ItemPickup> all = new List<ItemPickup>();
         public static IReadOnlyList<ItemPickup> All => all;

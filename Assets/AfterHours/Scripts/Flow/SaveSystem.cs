@@ -24,6 +24,9 @@ namespace AfterHours.Flow
         public Vector3 playerPosition;
         public float playerYaw;
         public string heldItem = "";
+        public int runSeed;
+        public float nightTime;
+        public int deaths;
         public List<string> breakersOff = new List<string>();
         public List<Entry> entries = new List<Entry>();
 
@@ -68,6 +71,13 @@ namespace AfterHours.Flow
             Register<CardReader>();
             Register<ToolBreakable>();
             Register<HeavyMovable>();
+            {
+                var stateful = new List<MonoBehaviour>();
+                foreach (MonoBehaviour m in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                    if (m is IStateful && !keys.ContainsKey(m)) stateful.Add(m);
+                stateful.Sort((a, b) => string.CompareOrdinal(AfterHours.Net.NetWorld.HierarchyPath(a.transform), AfterHours.Net.NetWorld.HierarchyPath(b.transform)));
+                foreach (MonoBehaviour m in stateful) Add(m, KeyFor(m));
+            }
             foreach (ItemPickup p in FindObjectsByType<ItemPickup>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 Add(p, !string.IsNullOrEmpty(p.instanceId) ? "Item:" + p.instanceId : KeyFor(p));
         }
@@ -122,6 +132,9 @@ namespace AfterHours.Flow
                 playTime = playTime,
                 playerPosition = player.transform.position,
                 playerYaw = player.transform.eulerAngles.y,
+                runSeed = ItemShuffle.Seed,
+                nightTime = AfterHours.Flow.NightDirector.Instance != null ? AfterHours.Flow.NightDirector.Instance.NightTime : 0f,
+                deaths = AfterHours.Flow.GameFlow.Instance != null ? AfterHours.Flow.GameFlow.Instance.Deaths : 0,
             };
             PlayerInventory inv = player.GetComponent<PlayerInventory>();
             if (inv != null && inv.Held != null && keys.TryGetValue(inv.Held, out string heldKey)) data.heldItem = heldKey;
@@ -161,8 +174,10 @@ namespace AfterHours.Flow
                 case ToolBreakable tb: return tb.Satisfied ? "1" : null;
                 case HeavyMovable hm: return V(hm.transform.position) + " " + Q(hm.transform.rotation);
                 case ItemPickup ip:
-                    if (ip.IsHeld) return "held";
-                    return V(ip.transform.position) + " " + Q(ip.transform.rotation);
+                    if (!ip.gameObject.activeSelf) return "gone";
+                    if (ip.IsHeld) return "held " + ip.wear;
+                    return V(ip.transform.position) + " " + Q(ip.transform.rotation) + " " + ip.wear;
+                case IStateful st: return st.CaptureState();
             }
             return null;
         }
@@ -210,7 +225,14 @@ namespace AfterHours.Flow
             }
 
             Each<HeavyMovable>((h, a) => h.PlaceAt(P3(a, 0), PQ(a, 3)));
-            Each<ItemPickup>((i, a) => { if (a[0] != "held") i.PlaceAt(P3(a, 0), PQ(a, 3)); });
+            Each<ItemPickup>((i, a) =>
+            {
+                if (a[0] == "gone") { i.gameObject.SetActive(false); return; }
+                if (a[0] != "held") i.PlaceAt(P3(a, 0), PQ(a, 3));
+                int wi = a[0] == "held" ? 1 : 7;
+                if (a.Length > wi) int.TryParse(a[wi], NumberStyles.Integer, Inv, out i.wear);
+            });
+            Each<MonoBehaviour>((m, a) => { if (m is IStateful st) st.RestoreState(string.Join(" ", a)); });
             Each<ItemSocket>((so, a) =>
             {
                 if (a.Length > 1 && byKey.TryGetValue(a[1], out Component it) && it is ItemPickup item) so.RestoreFitted(item, a[0] == "1");

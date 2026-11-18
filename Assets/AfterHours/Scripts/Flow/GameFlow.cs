@@ -44,6 +44,31 @@ namespace AfterHours.Flow
 
         public FlowState State { get; private set; } = FlowState.Menu;
         public float PlayTime => playTime;
+        /// <summary>Times caught this run (single player: each one sends you back to the atrium at 11:30).</summary>
+        public int Deaths { get; private set; }
+
+        NightDirector night;
+
+        NightDirector Night()
+        {
+            if (night == null) night = GetComponent<NightDirector>() ?? gameObject.AddComponent<NightDirector>();
+            return night;
+        }
+
+        /// <summary>A brand-new layout of the important items (host / single player only).</summary>
+        void NewLayout()
+        {
+            AfterHours.Items.ItemShuffle.Apply(AfterHours.Items.ItemShuffle.NewSeed());
+            Night().ResetRun();
+        }
+
+        void LoadLayout(SaveData data)
+        {
+            AfterHours.Items.ItemShuffle.Apply(data.runSeed);
+            Night().ResetRun();
+            Night().NightTime = data.nightTime;
+            Deaths = data.deaths;
+        }
 
         PlayerController player;
         ElliotBrain elliot;
@@ -73,6 +98,8 @@ namespace AfterHours.Flow
             player = FindAnyObjectByType<PlayerController>();
             elliot = FindAnyObjectByType<ElliotBrain>();
             if (GetComponent<SaveSystem>() == null) gameObject.AddComponent<SaveSystem>();
+            Night();
+            GameFlowFlags.ClockText = () => State == FlowState.Playing && night != null ? NightDirector.ClockText(night.NightTime) : null;
             RunReset.Done += OnRunReset;
             AudioLibrary.Has("preload"); // load the sound library now, not at the first sound
             EnterMenu();
@@ -158,11 +185,13 @@ namespace AfterHours.Flow
                 playTime = data.playTime;
                 LeaveMenu();
                 if (player != null) player.SetControlLock(false, false);
+                LoadLayout(data);
                 if (SaveSystem.Instance != null) SaveSystem.Instance.Apply(data, player);
                 BeginPlaying();
                 return;
             }
-            if (NetSession.IsHost) SaveSystem.DeleteSave();
+            if (NetSession.IsHost) { SaveSystem.DeleteSave(); NewLayout(); }
+            Deaths = 0;
             BeginOpening();
         }
 
@@ -184,6 +213,8 @@ namespace AfterHours.Flow
         {
             SaveSystem.DeleteSave();
             playTime = 0f;
+            Deaths = 0;
+            NewLayout();
             BeginOpening();
         }
 
@@ -193,6 +224,8 @@ namespace AfterHours.Flow
             playTime = data.playTime;
             LeaveMenu();
             if (player != null) player.SetControlLock(false, false);
+            if (data.runSeed == 0) NewLayout(); // a save from before the shuffle: keep the items where they were saved
+            else LoadLayout(data);
             if (SaveSystem.Instance != null) SaveSystem.Instance.Apply(data, player);
             BeginPlaying();
         }
@@ -371,6 +404,8 @@ namespace AfterHours.Flow
             if (NetSession.Active) return; // co-op never resets the whole run
             // Caught: the run starts over, so the save goes too. You come to again on the atrium floor... at 11:30.
             SaveSystem.DeleteSave();
+            Deaths++;
+            NewLayout(); // everything moves: what you learned about where things were no longer holds
             rewakeT = 0f;
             captionT = 0.5f;
             autosaveTimer = 60f;
@@ -563,6 +598,22 @@ namespace AfterHours.Flow
             }
         }
 
+        /// <summary>One line about how it ended, different for every way out.</summary>
+        static string RouteEpilogue(EscapeRouteId r)
+        {
+            switch (r)
+            {
+                case EscapeRouteId.MainEntrance: return "The doors are still standing open. Nobody has come to close them.";
+                case EscapeRouteId.CarParkExit: return "The shutter never came back down. Something walked up the ramp after you, and stopped at the line of daylight.";
+                case EscapeRouteId.LoadingBay: return "A delivery driver found the dock open at six. He did not go inside.";
+                case EscapeRouteId.EmergencyExit: return "The alarm company logged a fire door at the west end. The engineer's report says it was opened from the inside, twice.";
+                case EscapeRouteId.Rooftop: return "The ladder ends three metres above the service road. You'll feel that drop for weeks.";
+                case EscapeRouteId.ServiceTunnel: return "The tunnel comes up under the bus station. The pressure door is shut again now, and nobody admits to shutting it.";
+                case EscapeRouteId.RestrictedStaffExit: return "Your name is in the staff exit log at 05:58. So is one other, an hour later. It isn't a name.";
+                default: return "Nobody knows that hatch is there. Nobody but you, and whatever made the scratches on the inside of it.";
+            }
+        }
+
         static string FormatTime(float seconds)
         {
             int s = Mathf.FloorToInt(seconds);
@@ -726,8 +777,9 @@ namespace AfterHours.Flow
                     Color tc = textStyle.normal.textColor;
                     if (leftBehind) textStyle.normal.textColor = new Color(0.75f, 0.73f, 0.7f);
                     GUI.Label(new Rect(0f, 480f, cx, 50f), leftBehind ? "They got out. You didn't." : "You got out " + RouteName(route) + ".", textStyle);
-                    GUI.Label(new Rect(0f, 535f, cx, 50f), "Time inside: " + FormatTime(playTime), textStyle);
-                    if (!leftBehind) GUI.Label(new Rect(0f, 590f, cx, 50f), "6:12 AM.", textStyle);
+                    if (!leftBehind) GUI.Label(new Rect(0f, 520f, cx, 40f), RouteEpilogue(route), smallCentered);
+                    GUI.Label(new Rect(0f, 565f, cx, 50f), "Time inside: " + FormatTime(playTime) + (Deaths > 0 ? "   ·   caught " + Deaths + (Deaths == 1 ? " time" : " times") : "   ·   never caught"), textStyle);
+                    if (!leftBehind) GUI.Label(new Rect(0f, 615f, cx, 50f), "6:12 AM.", textStyle);
                     if (net != null && net.Players.Count > 1)
                     {
                         float y = 660f;

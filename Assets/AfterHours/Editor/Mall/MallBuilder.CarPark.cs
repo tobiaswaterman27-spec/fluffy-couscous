@@ -65,7 +65,8 @@ namespace AfterHours.EditorTools
             Furnish(parent, new AreaRect(-99.5f, -49.5f, -86.5f, -38.2f), y, FurnishStyle.Storage,
                 new List<AreaRect> { new AreaRect(-89f, -46f, -86f, -43f) }, 17, propMat);
             Furnish(parent, new AreaRect(-99.5f, -37.3f, -86.5f, -25.5f), y, FurnishStyle.Plant,
-                new List<AreaRect> { new AreaRect(-89f, -33f, -86f, -30f), new AreaRect(-99f, -27.8f, -88.8f, -25.5f) }, 18, plantMat);
+                new List<AreaRect> { new AreaRect(-89f, -33f, -86f, -30f), new AreaRect(-99f, -27.8f, -88.8f, -25.5f),
+                    new AreaRect(-99.4f, -37.3f, -92.8f, -33.6f) }, 18, plantMat); // last: the standby generator and room to work at it
             PointLight(parent, new Vector3(-93f, -1f, -44f), 9f, 0.4f, FluorescentWhite, false);
             PointLight(parent, new Vector3(-93f, -1f, -31f), 9f, 0.4f, FluorescentWhite, false);
 
