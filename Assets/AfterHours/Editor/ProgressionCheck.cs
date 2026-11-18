@@ -46,9 +46,9 @@ namespace AfterHours.EditorTools
             ("8 Hidden", new[] { "screwdriver", "key_plantroom", "mech_handle", "gear" }),
         };
 
-        [MenuItem("After Hours/Check Progression", priority = 50)]
         public static bool LastOk = true;
 
+        [MenuItem("After Hours/Check Progression", priority = 50)]
         public static void Run()
         {
             var have = new HashSet<string>();

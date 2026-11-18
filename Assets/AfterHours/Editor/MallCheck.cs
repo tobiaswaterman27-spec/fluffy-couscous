@@ -25,9 +25,9 @@ namespace AfterHours.EditorTools
     /// </summary>
     public static class MallCheck
     {
-        [MenuItem("After Hours/7 - Check Mall", priority = 7)]
         public static int LastProblems;
 
+        [MenuItem("After Hours/7 - Check Mall", priority = 7)]
         public static void Run()
         {
             var problems = new List<string>();
