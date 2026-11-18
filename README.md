@@ -141,6 +141,10 @@ already has yours, you get the next one).
 
 You see your own arms, hands and legs in first person; your head isn't drawn for you but still casts your shadow.
 The characters are built by `tools/chargen` from MakeHuman's CC0 body (run `python3 fetch.py` there first).
+They move with real motion capture (walking, running, a low creep, backing away, standing idle, standing scared)
+from the CMU Graphics Lab Motion Capture Database, rebuilt on each person's own bones (`tools/mocap`). They also
+breathe, pant, gasp, grunt with effort, whimper when hiding and scream when caught (`tools/sfxgen/gen_human.py`);
+you hear other players' breathing and footsteps from where they are.
 
 ## Getting new updates later
 
