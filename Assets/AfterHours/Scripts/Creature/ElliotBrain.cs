@@ -96,8 +96,14 @@ namespace AfterHours.Creature
         readonly Dictionary<Object, float> recentlyChecked = new Dictionary<Object, float>();
         readonly List<Object> searchTargets = new List<Object>();
 
+        /// <summary>Every creature in the scene, running or not (co-op clients keep theirs disabled).</summary>
+        public static readonly List<ElliotBrain> All = new List<ElliotBrain>();
+
+        void OnDestroy() => All.Remove(this);
+
         void Awake()
         {
+            if (!All.Contains(this)) All.Add(this);
             agent = GetComponent<NavMeshAgent>();
             agent.updatePosition = false;
             agent.updateRotation = false;

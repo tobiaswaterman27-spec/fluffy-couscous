@@ -66,7 +66,7 @@ namespace AfterHours.Player
     {
         [Header("Body dimensions (metres)")]
         public float standHeight = 1.8f;
-        public float crouchHeight = 1.2f;
+        public float crouchHeight = 1.3f;
         public float crawlHeight = 0.55f;
         public float standRadius = 0.3f;
         public float crawlRadius = 0.25f;
@@ -81,7 +81,7 @@ namespace AfterHours.Player
         public float crawlStepOffset = 0.18f;
 
         [Header("Speeds (m/s)")]
-        public float walkSpeed = 2.1f;
+        public float walkSpeed = 1.75f;           // a brisk real walk (mocap: ~0.9 m steps, 2 steps a second)
         public float sprintSpeed = 6.2f;          // creature top speed will be slightly lower (~5.9)
         public float backwardSprintSpeed = 3.4f;  // running backwards
         public float sprintStrafeSpeed = 3.6f;
@@ -120,9 +120,9 @@ namespace AfterHours.Player
         public float maxPushSpeed = 2.2f;
 
         [Header("Strides (metres per footstep)")]
-        public float walkStride = 0.72f;
-        public float sprintStride = 1.35f;
-        public float crouchStride = 0.5f;
+        public float walkStride = 0.88f;
+        public float sprintStride = 1.75f;
+        public float crouchStride = 0.6f;
         public float crawlStride = 0.42f;
 
         [Header("Noise radius (metres, before surface multiplier)")]
@@ -142,7 +142,7 @@ namespace AfterHours.Player
         public float CurrentHeight => currentHeight;
         public float CurrentRadius => controller != null ? controller.radius : standRadius;
         // a real crouch is a deep squat: the eyes sit lower in the crouch capsule than when standing
-        public float EyeHeight => currentHeight - eyeBelowTop - 0.15f * Mathf.Clamp01(Mathf.InverseLerp(standHeight, crouchHeight, currentHeight)) * (currentHeight >= crouchHeight - 0.01f ? 1f : Mathf.InverseLerp(crawlHeight, crouchHeight, currentHeight));
+        public float EyeHeight => currentHeight - eyeBelowTop - 0.05f * Mathf.Clamp01(Mathf.InverseLerp(standHeight, crouchHeight, currentHeight)) * (currentHeight >= crouchHeight - 0.01f ? 1f : Mathf.InverseLerp(crawlHeight, crouchHeight, currentHeight));
         public float CrawlBlend => 1f - Mathf.InverseLerp(crawlHeight, crouchHeight, currentHeight);
         public bool IsGrounded => grounded;
         public SurfaceType GroundSurface { get; private set; } = SurfaceType.Tile;

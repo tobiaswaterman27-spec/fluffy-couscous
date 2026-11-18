@@ -48,6 +48,14 @@ namespace AfterHours.Player
             if (GameLayers.CreatureLayer >= 0) m &= ~(1 << GameLayers.CreatureLayer);
             if (GameLayers.PropLayer >= 0) m &= ~(1 << GameLayers.PropLayer);
             groundMask = m;
+            if (GetComponent<AfterHours.Audio.HumanVoice>() == null) gameObject.AddComponent<AfterHours.Audio.HumanVoice>();
+        }
+
+        AfterHours.Audio.HumanVoice voice;
+        float VoiceOpen()
+        {
+            if (voice == null) voice = GetComponent<AfterHours.Audio.HumanVoice>();
+            return voice != null ? voice.MouthOpen : 0f;
         }
 
         bool Find()
@@ -113,6 +121,7 @@ namespace AfterHours.Player
             lastStride = l.stridePhase;
             if (ds >= 0f && ds < 1f) stepRate = Mathf.Lerp(stepRate, ds / dt, 1f - Mathf.Exp(-6f * dt));
             float stepLen = stepRate > 0.2f ? Mathf.Clamp(speed / stepRate, 0f, 1.4f) : 0f;
+            float stepLenRaw = stepLen;   // the real one (mocap stride warping needs it exact)
             stepLen *= Mathf.Lerp(1f, 0.6f, Mathf.Clamp01(Mathf.InverseLerp(motor.standHeight, motor.crouchHeight, motor.CurrentHeight)));   // short steps crouched
             float phase = l.stridePhase * 0.5f;
             Vector2 lv = l.localPlanarVelocity;
@@ -177,6 +186,16 @@ namespace AfterHours.Player
                     if (hand[s] != null) hand[s].SetPositionAndRotation(handP, Quaternion.LookRotation(Vector3.ProjectOnPlane(-up, hd).normalized, -hd));
                 }
                 Fingers(0.35f);
+                return;
+            }
+
+            // ---------------- upright, from motion capture (real people walking, running, crouching, idling) ----------------
+            if (!caught && MocapUpright(motor, l, root, rot, fwd, up, right, speed, crouch, phase, stepLenRaw, moveW, runW, headPos, headRot, t, dt))
+            {
+                if (mouth == null) { mouth = GetComponent<VoiceMouth>(); if (mouth == null) mouth = gameObject.AddComponent<VoiceMouth>(); }
+                float talkM = Mathf.Max(mouth.Open, VoiceOpen());
+                if (jaw != null) jaw.localRotation = Quaternion.Euler(1f + exertion * 6f * Mathf.Max(0f, breath) + talkM * 15f, 0f, 0f);
+                Face(t, dt, false, talkM);
                 return;
             }
 
@@ -295,11 +314,146 @@ namespace AfterHours.Player
             Fingers(caught ? 0.8f : carrying ? 0.6f : (handGrip[0] || handGrip[1]) ? 0.7f : 0.25f + 0.2f * runW);
             // the mouth: open with fright when caught, panting when out of breath, and moving with your voice
             if (mouth == null) mouth = GetComponent<VoiceMouth>() ?? gameObject.AddComponent<VoiceMouth>();
-            float talk = mouth.Open;
+            float talk = Mathf.Max(mouth.Open, VoiceOpen());
             if (jaw != null) jaw.localRotation = Quaternion.Euler(caught ? 8f + 14f * struggle + Mathf.Sin(t * 20f) * 4f * struggle : 1f + exertion * 6f * Mathf.Max(0f, breath) + talk * 15f, 0f, 0f);
             Face(t, dt, caught, talk);
 
         }
+
+        // =====================================================================
+        // Motion capture
+        // =====================================================================
+
+        readonly MocapRunner mocap = new MocapRunner();
+        float fear, fearTimer;
+
+        /// <summary>How frightened this person looks: how close the nearest creature is (any player, also co-op ones).</summary>
+        float Fear(float dt)
+        {
+            fearTimer -= dt;
+            if (fearTimer > 0f) return fear;
+            fearTimer = 0.4f;
+            float want = 0f;
+            foreach (ElliotBrain b in ElliotBrain.All)
+            {
+                if (b == null || !b.isActiveAndEnabled && !b.gameObject.activeInHierarchy) continue;
+                float d = Vector3.Distance(b.transform.position, transform.position);
+                want = Mathf.Max(want, Mathf.Clamp01(1f - (d - 6f) / 20f));
+            }
+            fear = Mathf.MoveTowards(fear, want, 0.4f * (want > fear ? 1.5f : 0.3f));
+            return fear;
+        }
+
+        /// <summary>
+        /// The captured body rebuilt on this person's bones: pelvis and spine from the clip, the head kept where the
+        /// eyes (camera) are - exactly sideways, on average up and down so the natural bob stays - the feet on the
+        /// captured footholds pinned to the real floor, arms swinging as captured (or doing what the hands are doing).
+        /// </summary>
+        bool MocapUpright(PlayerMotor motor, LocomotionState l, Vector3 root, Quaternion rot, Vector3 fwd, Vector3 up, Vector3 right,
+                          float speed, float crouch, float phase, float stepLen, float moveW, float runW, Vector3 headPos, Quaternion headRot, float t, float dt)
+        {
+            float Lt = Thigh + Shin;
+            Vector2 lv = l.localPlanarVelocity;
+            bool back = lv.y < -0.15f * Mathf.Max(speed, 0.01f);
+            if (!mocap.Evaluate(speed, back, crouch, phase, stepLen, Fear(dt), Lt, dt)) return false;
+            float[] P = mocap.Pose;
+
+            float legYaw = speed > 0.1f ? Mathf.Atan2(back ? -lv.x : lv.x, back ? -lv.y : lv.y) * Mathf.Rad2Deg : 0f;
+            legYaw = Mathf.Clamp(legYaw, -80f, 80f) * moveW;
+            Quaternion legQ = rot * Quaternion.Euler(0f, legYaw, 0f), upQ = rot * Quaternion.Euler(0f, legYaw * 0.3f, 0f);
+
+            Quaternion pelvisRot = legQ * Mocap.Q(P, Mocap.PQ);
+            Vector3 pelvisPos = root + legQ * (Mocap.V(P, Mocap.P) * Lt) - pelvisRot * new Vector3(0f, HipOff.y, HipOff.z);   // the clip gives the hip joints
+            Vector3 dS = upQ * Mocap.Dir(P, Mocap.Spine), tS = upQ * Mocap.Twist(P, Mocap.Spine);
+            Vector3 dN = upQ * Mocap.Dir(P, Mocap.NeckS), tN = upQ * Mocap.Twist(P, Mocap.NeckS);
+            // lower than the clip (a deeper crouch than was captured): fold a little further forward at the hips
+            float deeper = Mathf.Clamp01(-(mocap.HasCorr ? mocap.CorrY : 0f) / 0.3f);
+            if (deeper > 0f)
+            {
+                Quaternion bend = Quaternion.AngleAxis(15f * deeper, upQ * Vector3.right);
+                dS = bend * dS; tS = bend * tS; dN = bend * dN; tN = bend * tN;
+            }
+
+            // the head goes where the eyes are: exactly sideways, on average vertically
+            Vector3 headJoint = pelvisPos + dS * Spine + dN * Neck;
+            Vector3 corr = headPos - headJoint;
+            float cy = Vector3.Dot(corr, up);
+            if (!mocap.HasCorr) { mocap.CorrY = cy; mocap.HasCorr = true; }
+            mocap.CorrY = Mathf.Lerp(mocap.CorrY, cy, 1f - Mathf.Exp(-dt / 0.45f));
+            Vector3 corrH = corr - up * cy;     // the whole body moves with the head, feet too (keeps the captured balance)
+            pelvisPos += corrH + up * mocap.CorrY;
+
+            // footholds, on the real floor
+            Vector3[] ank = ankBuf;
+            for (int s = 0; s < 2; s++)
+            {
+                Vector3 a = root + legQ * (Mocap.V(P, Mocap.ANK + s * 3) * Lt) + corrH;
+                float groundY = Vector3.Dot(root, up);
+                if (l.grounded && Physics.Raycast(a + up * 0.45f, -up, out RaycastHit hit, 0.9f, groundMask, QueryTriggerInteraction.Ignore))
+                    groundY = Vector3.Dot(hit.point, up);
+                if (!l.grounded) a += up * 0.12f;
+                ank[s] = a + up * (groundY - Vector3.Dot(root, up));
+            }
+            // the hips never higher than the legs can reach
+            for (int s = 0; s < 2; s++)
+            {
+                float side = s == 0 ? -1f : 1f;
+                Vector3 hip = pelvisPos + pelvisRot * new Vector3(HipW * side, HipOff.y, HipOff.z);
+                float reach = Thigh + Shin - 0.01f;
+                Vector3 d = hip - ank[s];
+                float hz = Vector3.ProjectOnPlane(d, up).magnitude;
+                float maxY = Mathf.Sqrt(Mathf.Max(0f, reach * reach - hz * hz));
+                float over = Vector3.Dot(d, up) - maxY;
+                if (over > 0f) pelvisPos -= up * Mathf.Min(0.02f, over);   // drop a little; beyond that the foot comes in instead
+            }
+            Vector3 headAt = pelvisPos + dS * Spine + dN * Neck;
+            headAt += Vector3.ProjectOnPlane(headPos - headAt, up);
+            Vector3 mid = SolveIK(pelvisPos, headAt, Spine, Neck, dS - dN - upQ * Vector3.forward * 0.05f, out Vector3 end);
+            Quaternion spineRot = Aim(mid - pelvisPos, tS), neckRot = Aim(end - mid, tN);
+            SetBody(pelvisPos, pelvisRot, spineRot, neckRot, headRot, up);
+
+            for (int s = 0; s < 2; s++)
+            {
+                float side = s == 0 ? -1f : 1f;
+                Vector3 hip = pelvisPos + pelvisRot * new Vector3(HipW * side, HipOff.y, HipOff.z);
+                Vector3 to = ank[s] - hip;
+                float reachMax = Thigh + Shin - 0.005f;
+                if (to.magnitude > reachMax) ank[s] = hip + to.normalized * reachMax;
+                LegIK(s, hip, ank[s], legQ * Mocap.Twist(P, s == 0 ? Mocap.ThighL : Mocap.ThighR), legQ * Mocap.Q(P, Mocap.FQ + s * 4));
+            }
+
+            Vector3 chestPos = pelvisPos + spineRot * Vector3.up * Spine;
+            bool carrying = controller.GetComponent<PlayerGrab>() is PlayerGrab g && g.IsHolding;
+            for (int s = 0; s < 2; s++)
+            {
+                float side = s == 0 ? -1f : 1f;
+                int U = s == 0 ? Mocap.UpperL : Mocap.UpperR, F = s == 0 ? Mocap.ForeL : Mocap.ForeR, H = s == 0 ? Mocap.HandL : Mocap.HandR;
+                Vector3 shoulder = chestPos + spineRot * new Vector3(ShW * side, ShoulderOff.y, ShoulderOff.z) + upQ * (Mocap.V(P, Mocap.SH + s * 3) * Lt);
+                Vector3 dU = upQ * Mocap.Dir(P, U), dF = upQ * Mocap.Dir(P, F), dH = upQ * Mocap.Dir(P, H);
+                Vector3 tU = -(upQ * Mocap.Twist(P, U)), tF = -(upQ * Mocap.Twist(P, F)), palm = upQ * Mocap.Twist(P, H);
+                Vector3 elbow = shoulder + dU * Upper, wrist = elbow + dF * Fore;
+                Vector3 target = wrist;
+                Vector3 gpalm = palm;
+                bool busy = false;
+                if (carrying) { target = shoulder + fwd * 0.42f - up * 0.12f - right * (0.05f * side); gpalm = -right * side; busy = true; }
+                if (GestureArm(s, side, shoulder, headPos, fwd, up, right, ref target, ref gpalm)) { handGrip[s] = true; busy = true; }
+                else handGrip[s] = false;
+                if (busy || (target - wrist).sqrMagnitude > 1e-6f)
+                {
+                    ArmIK(s, shoulder, target, tU, gpalm);
+                    continue;
+                }
+                Place(upper[s], shoulder, elbow, tU);
+                Place(fore[s], elbow, wrist, tF);
+                Vector3 pf = Vector3.ProjectOnPlane(palm, dH);
+                if (pf.sqrMagnitude < 1e-6f) pf = Vector3.ProjectOnPlane(fwd, dH);
+                if (hand[s] != null) hand[s].SetPositionAndRotation(wrist, Quaternion.LookRotation(pf.normalized, -dH));
+            }
+            Fingers(carrying ? 0.6f : (handGrip[0] || handGrip[1]) ? 0.7f : 0.3f + 0.15f * runW);
+            return true;
+        }
+
+        readonly Vector3[] ankBuf = new Vector3[2];
 
         void SetBody(Vector3 pelvisPos, Quaternion pelvisRot, Quaternion spineRot, Quaternion neckRot, Quaternion headRot, Vector3 up)
         {

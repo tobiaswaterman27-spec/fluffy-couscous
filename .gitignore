@@ -17,3 +17,4 @@
 *.apk
 *.unitypackage
 __pycache__/
+tools/mocap/bvh/
