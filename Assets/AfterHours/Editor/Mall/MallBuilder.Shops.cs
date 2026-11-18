@@ -211,6 +211,21 @@ namespace AfterHours.EditorTools
             int seed = MallLayout.Hash((int)u.floor, (int)w, side, (int)(u.u0 * 10f));
             Furnish(parent, floorArea, y, u.style, keepClear, seed, categoryMats[u.category]);
 
+            // Shelving along both side walls (products facing into the shop), for shops that sell things off shelves.
+            if (u.style == FurnishStyle.Shelving || u.style == FurnishStyle.Rails || u.style == FurnishStyle.Tables ||
+                u.style == FurnishStyle.Department || u.style == FurnishStyle.Supermarket)
+            {
+                FixtureMaterials();
+                var kit = new MeshKit();
+                Material[] pal = u.style == FurnishStyle.Supermarket ? groceryMats : u.style == FurnishStyle.Rails ? clothMats : productMats;
+                float v0 = MallLayout.ConcourseHalf + 2.6f, v1 = 13.3f;
+                Transform wg = Group("Wall shelving", parent);
+                Vector3 fwdW = MallLayout.WingForward(w);
+                WallShelving(kit, wg, MallLayout.WingPoint(w, u.u0 + 0.1f, side * (v0 + v1) * 0.5f, y), Quaternion.LookRotation(fwdW), v1 - v0, 2.2f, pal, seed + 101);
+                WallShelving(kit, wg, MallLayout.WingPoint(w, u.u1 - 0.1f, side * (v0 + v1) * 0.5f, y), Quaternion.LookRotation(-fwdW), v1 - v0, 2.2f, pal, seed + 202);
+                kit.Build(wg, "Wall shelving");
+            }
+
             // Counter near the back.
             Vector3 c0 = MallLayout.WingPoint(w, u.u0 + 1f, side * 11.2f, y);
             Vector3 c1 = MallLayout.WingPoint(w, Mathf.Min(u.u0 + 3.5f, u.u1 - 3.4f), side * 12f, y + 1.05f);

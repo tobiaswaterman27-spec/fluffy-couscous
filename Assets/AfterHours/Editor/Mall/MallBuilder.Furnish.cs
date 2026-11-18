@@ -17,22 +17,30 @@ namespace AfterHours.EditorTools
         {
             if (area.Width < 1.5f || area.Depth < 1.5f) return;
             Transform g = Group("Fittings (" + style + ")", parent);
+            FixtureMaterials();
+            var kit = new MeshKit();
+            int n = seed;
             switch (style)
             {
                 case FurnishStyle.Shelving:
-                    Rows(g, area, y, 2.4f, 0.6f, 1.9f, 2.3f, 1.3f, metal, SurfaceType.Metal, keepClear, seed % 2 == 0 ? stockBeauty : stockBoxes, seed);
+                    Rows(g, area, y, 2.4f, 0.9f, 1.9f, 2.5f, 1.3f, metal, SurfaceType.Metal, keepClear, null, seed,
+                        r => Gondola(kit, g, r, y, 1.75f, metal, productMats, n++, false));
                     break;
                 case FurnishStyle.Rails:
-                    Rows(g, area, y, 1.8f, 0.5f, 1.4f, 2.0f, 1.5f, railMat, SurfaceType.Metal, keepClear, stockClothes, seed);
+                    Rows(g, area, y, 1.8f, 0.6f, 1.4f, 2.0f, 1.5f, railMat, SurfaceType.Metal, keepClear, null, seed,
+                        r => ClothesRail(kit, g, r, y, n++));
                     break;
                 case FurnishStyle.Tables:
-                    PlaceGrid(g, area, y, 1.4f, 0.9f, 0.9f, 2.7f, accent, SurfaceType.Wood, keepClear, null);
+                    PlaceGrid(g, area, y, 1.4f, 0.9f, 0.9f, 2.7f, accent, SurfaceType.Wood, keepClear, null,
+                        r => DisplayTable(kit, g, r, y, accent, n++, seed % 3 == 0));
                     break;
                 case FurnishStyle.Department:
-                    PlaceGrid(g, area, y, 1.8f, 1.2f, 1.0f, 3.8f, accent, SurfaceType.Wood, keepClear, null);
+                    PlaceGrid(g, area, y, 1.8f, 0.7f, 1.0f, 3.4f, accent, SurfaceType.Wood, keepClear, null,
+                        r => { if ((n++ & 1) == 0) GlassCounter(kit, g, r, y, accent, n); else DisplayTable(kit, g, r, y, woodMat, n, false); });
                     break;
                 case FurnishStyle.Supermarket:
-                    Rows(g, area, y, 8f, 1.0f, 1.8f, 3.0f, 2.2f, metal, SurfaceType.Metal, keepClear, stockGrocery, seed);
+                    Rows(g, area, y, 8f, 1.1f, 1.8f, 3.0f, 2.2f, metal, SurfaceType.Metal, keepClear, null, seed,
+                        r => Gondola(kit, g, r, y, 1.85f, metal, groceryMats, n++, true));
                     break;
                 case FurnishStyle.Food:
                     PlaceGrid(g, area, y, 0.9f, 0.9f, 0.75f, 2.9f, woodMat, SurfaceType.Wood, keepClear, (centre) => { if (!Chairs(g, centre, y)) Leftovers(g, centre + Vector3.up * 0.75f); });
@@ -59,6 +67,7 @@ namespace AfterHours.EditorTools
                     PlaceGrid(g, area, y, 0.8f, 0.9f, 1.8f, 1.9f, accent, SurfaceType.Metal, keepClear, null);
                     break;
             }
+            kit.Build(g, "Shop fittings");
         }
 
         static bool Blocked(AreaRect r, List<AreaRect> keepClear)
@@ -74,7 +83,7 @@ namespace AfterHours.EditorTools
 
         /// <summary>Long fixtures in rows along the room's longer axis, with aisles between them.</summary>
         static void Rows(Transform g, AreaRect area, float y, float length, float width, float height, float rowSpacing, float gap,
-                         Material m, SurfaceType s, List<AreaRect> keepClear, Material stock = null, int seed = 0)
+                         Material m, SurfaceType s, List<AreaRect> keepClear, Material stock = null, int seed = 0, System.Action<AreaRect> build = null)
         {
             bool alongX = area.Width >= area.Depth;
             float longMin = alongX ? area.minX : area.minZ, longMax = alongX ? area.maxX : area.maxZ;
@@ -89,6 +98,7 @@ namespace AfterHours.EditorTools
                         ? new AreaRect(l, c - width * 0.5f, l + length, c + width * 0.5f)
                         : new AreaRect(c - width * 0.5f, l, c + width * 0.5f, l + length);
                     if (Blocked(r, keepClear)) continue;
+                    if (build != null) { build(r); continue; }
                     BoxRect("Fixture", g, r, y, y + height, m, s);
                     if (stock != null) Stock(g, r, y, height, stock, seed++);
                 }
@@ -99,7 +109,7 @@ namespace AfterHours.EditorTools
 
         /// <summary>Free-standing items on a grid (tables, machines, cabinets).</summary>
         static void PlaceGrid(Transform g, AreaRect area, float y, float w, float d, float h, float spacing, Material m, SurfaceType s,
-                         List<AreaRect> keepClear, Extra extra)
+                         List<AreaRect> keepClear, Extra extra, System.Action<AreaRect> build = null)
         {
             const float margin = 1.3f;
             for (float x = area.minX + margin + w * 0.5f; x <= area.maxX - margin - w * 0.5f; x += spacing)
@@ -108,6 +118,7 @@ namespace AfterHours.EditorTools
                 {
                     AreaRect r = new AreaRect(x - w * 0.5f, z - d * 0.5f, x + w * 0.5f, z + d * 0.5f);
                     if (Blocked(r.Expanded(0.6f), keepClear)) continue;
+                    if (build != null) { build(r); continue; }
                     BoxRect("Fixture", g, r, y, y + h, m, s);
                     extra?.Invoke(new Vector3(x, y, z));
                 }

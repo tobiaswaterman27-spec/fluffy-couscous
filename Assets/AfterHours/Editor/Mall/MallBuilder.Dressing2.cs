@@ -371,7 +371,9 @@ namespace AfterHours.EditorTools
 
                 // Till on the counter.
                 Vector3 till = MallLayout.WingPoint(w, u.u0 + 2f, side * 11.6f, y + 1.05f);
-                Detail("Till", g, till + Vector3.up * 0.12f, new Vector3(0.35f, 0.24f, 0.3f), blackMat, faceOut);
+                var tillKit = new MeshKit();
+                TillPoint(tillKit, till, faceOut, MallLayout.Hash((int)u.floor, (int)w, side, (int)u.u0));
+                tillKit.Build(g, "Till point");
 
                 switch (u.category)
                 {
