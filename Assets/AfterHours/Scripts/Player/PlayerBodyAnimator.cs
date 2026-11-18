@@ -415,7 +415,7 @@ namespace AfterHours.Player
             headAt += Vector3.ProjectOnPlane(headPos - headAt, up);
             Vector3 mid = SolveIK(pelvisPos, headAt, Spine, Neck, dS - dN - upQ * Vector3.forward * 0.05f, out Vector3 end);
             Quaternion spineRot = Aim(mid - pelvisPos, tS), neckRot = Aim(end - mid, tN);
-            SetBody(pelvisPos, pelvisRot, spineRot, neckRot, headRot, up);
+            SetBody(pelvisPos, pelvisRot, spineRot, neckRot, LiveHead(headRot, P, t, speed), up);
 
             for (int s = 0; s < 2; s++)
             {
@@ -461,6 +461,25 @@ namespace AfterHours.Player
         }
 
         readonly Vector3[] ankBuf = new Vector3[2];
+
+        /// <summary>
+        /// The head isn't bolted to where you look: on top of it, the captured head moves relative to the chest
+        /// (nods and bobs with each step, little turns), and when standing still it drifts and glances a little.
+        /// (Your own head isn't drawn for you, so your view stays steady; everyone else sees it move.)
+        /// </summary>
+        Quaternion LiveHead(Quaternion look, float[] P, float t, float speed)
+        {
+            Quaternion rel = Quaternion.Inverse(Mocap.Q(P, Mocap.CQ)) * Mocap.Q(P, Mocap.HQ);
+            rel = Quaternion.Slerp(Quaternion.identity, rel, 0.7f);
+            float still = 1f - Mathf.Clamp01(speed / 0.5f);
+            float seed = GetInstanceID() * 0.137f;
+            Quaternion drift = Quaternion.Euler(
+                (Mathf.PerlinNoise(t * 0.23f, seed) - 0.5f) * 6f * still,
+                (Mathf.PerlinNoise(seed, t * 0.17f) - 0.5f) * 14f * still,
+                (Mathf.PerlinNoise(t * 0.11f, seed + 3f) - 0.5f) * 4f * still);
+            return look * drift * rel;
+        }
+
 
         // =====================================================================
         // Planting: a foot (or a hand, crawling) stays exactly where it was put while the body turns on the spot,
@@ -548,7 +567,7 @@ namespace AfterHours.Player
             pelvisPos += corrH;
             Vector3 mid = SolveIK(pelvisPos, headPos, Spine, Neck, up - dS * 0.2f, out Vector3 end);
             Quaternion spineRot = Aim(mid - pelvisPos, tS), neckRot = Aim(end - mid, tN);
-            SetBody(pelvisPos, pelvisRot, spineRot, neckRot, headRot, up);
+            SetBody(pelvisPos, pelvisRot, spineRot, neckRot, LiveHead(headRot, P, t, speed), up);
 
             float floorY = Vector3.Dot(root, up);
             for (int s = 0; s < 2; s++)
