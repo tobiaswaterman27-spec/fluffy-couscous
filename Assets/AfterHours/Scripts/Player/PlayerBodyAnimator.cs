@@ -467,12 +467,15 @@ namespace AfterHours.Player
         /// (nods and bobs with each step, little turns), and when standing still it drifts and glances a little.
         /// (Your own head isn't drawn for you, so your view stays steady; everyone else sees it move.)
         /// </summary>
+        float headSeed = -1f;
+
         Quaternion LiveHead(Quaternion look, float[] P, float t, float speed)
         {
             Quaternion rel = Quaternion.Inverse(Mocap.Q(P, Mocap.CQ)) * Mocap.Q(P, Mocap.HQ);
             rel = Quaternion.Slerp(Quaternion.identity, rel, 0.7f);
             float still = 1f - Mathf.Clamp01(speed / 0.5f);
-            float seed = GetInstanceID() * 0.137f;
+            if (headSeed < 0f) headSeed = Random.Range(0f, 100f);   // each person's head wanders differently
+            float seed = headSeed;
             Quaternion drift = Quaternion.Euler(
                 (Mathf.PerlinNoise(t * 0.23f, seed) - 0.5f) * 6f * still,
                 (Mathf.PerlinNoise(seed, t * 0.17f) - 0.5f) * 14f * still,
