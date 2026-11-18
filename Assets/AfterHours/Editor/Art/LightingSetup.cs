@@ -235,7 +235,7 @@ namespace AfterHours.EditorTools
             LightingSettings lsMode = Lightmapping.lightingSettings;
             if (lsMode != null) { lsMode.mixedBakeMode = mixed ? MixedLightingMode.Shadowmask : MixedLightingMode.IndirectOnly; EditorUtility.SetDirty(lsMode); }
             int converted = 0;
-            foreach (BakeableLight b in Object.FindObjectsByType<BakeableLight>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (BakeableLight b in Object.FindObjectsByType<BakeableLight>(FindObjectsInactive.Include))
             {
                 Light l = b.GetComponent<Light>();
                 if (l == null) continue;
@@ -267,7 +267,7 @@ namespace AfterHours.EditorTools
         {
             Lightmapping.Clear();
             Lightmapping.ClearLightingDataAsset();
-            foreach (BakeableLight b in Object.FindObjectsByType<BakeableLight>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (BakeableLight b in Object.FindObjectsByType<BakeableLight>(FindObjectsInactive.Include))
             {
                 Light l = b.GetComponent<Light>();
                 if (l == null) continue;

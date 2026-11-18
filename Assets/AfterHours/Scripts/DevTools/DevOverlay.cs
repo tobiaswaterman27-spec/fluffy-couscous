@@ -68,7 +68,7 @@ namespace AfterHours.DevTools
                 RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
                 RenderSettings.ambientLight = new Color(0.75f, 0.75f, 0.75f);
                 disabledVolumes.Clear();
-                foreach (var v in FindObjectsByType<UnityEngine.Rendering.Volume>(FindObjectsSortMode.None))
+                foreach (var v in FindObjectsByType<UnityEngine.Rendering.Volume>())
                 {
                     if (v.enabled) { v.enabled = false; disabledVolumes.Add(v); }
                 }

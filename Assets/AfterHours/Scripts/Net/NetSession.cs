@@ -830,7 +830,7 @@ namespace AfterHours.Net
             int solved(NetPlayer p)
             {
                 int n = 0;
-                foreach (MonoBehaviour m in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+                foreach (MonoBehaviour m in FindObjectsByType<MonoBehaviour>())
                     if (m is IPuzzleInput input && input.Satisfied && input.LastActor != null && p.pc != null && input.LastActor == p.pc.gameObject) n++;
                 return n;
             }

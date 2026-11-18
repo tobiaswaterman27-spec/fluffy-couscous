@@ -85,8 +85,8 @@ namespace AfterHours.Flow
 
         int ProgressLevel()
         {
-            if (gates == null || gates.Length == 0) gates = FindObjectsByType<PuzzleGate>(FindObjectsSortMode.None);
-            if (generators == null) generators = FindObjectsByType<Generator>(FindObjectsSortMode.None);
+            if (gates == null || gates.Length == 0) gates = FindObjectsByType<PuzzleGate>();
+            if (generators == null) generators = FindObjectsByType<Generator>();
             ElliotBrain.Hotspots.Clear();
             int level = 0, totalDone = 0;
             foreach (PuzzleGate g in gates)
@@ -114,7 +114,7 @@ namespace AfterHours.Flow
         void Apply()
         {
             ElliotBrain.Threat = Threat;
-            foreach (ElliotBrain b in FindObjectsByType<ElliotBrain>(FindObjectsSortMode.None))
+            foreach (ElliotBrain b in FindObjectsByType<ElliotBrain>())
             {
                 if (b.motor == null || b.senses == null) continue;
                 if (!bases.TryGetValue(b, out Base o))

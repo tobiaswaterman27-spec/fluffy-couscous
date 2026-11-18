@@ -587,7 +587,7 @@ namespace AfterHours.EditorTools
         {
             Transform g = Group("Door frames", parent);
             Physics.SyncTransforms();
-            foreach (DoorSlot slot in Object.FindObjectsByType<DoorSlot>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (DoorSlot slot in Object.FindObjectsByType<DoorSlot>(FindObjectsInactive.Include))
             {
                 switch (slot.kind)
                 {

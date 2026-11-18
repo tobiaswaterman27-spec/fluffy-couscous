@@ -32,7 +32,7 @@ namespace AfterHours.EditorTools
         {
             var problems = new List<string>();
             var info = new StringBuilder();
-            T[] All<T>() where T : Object => Object.FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            T[] All<T>() where T : Object => Object.FindObjectsByType<T>(FindObjectsInactive.Include);
             void Need(bool ok, string what) { if (!ok) problems.Add(what); }
 
             // The game.

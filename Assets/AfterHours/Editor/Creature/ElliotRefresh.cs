@@ -19,7 +19,7 @@ namespace AfterHours.EditorTools
                 EditorUtility.DisplayDialog("After Hours", "Stop Play mode first, then try again.", "OK");
                 return;
             }
-            ElliotBrain[] all = Object.FindObjectsByType<ElliotBrain>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            ElliotBrain[] all = Object.FindObjectsByType<ElliotBrain>(FindObjectsInactive.Include);
             if (all.Length == 0)
             {
                 EditorUtility.DisplayDialog("After Hours", "There is no Elliot in this scene. Open the mall scene first (or run 3 - Build Mall).", "OK");

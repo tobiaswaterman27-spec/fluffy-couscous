@@ -13,7 +13,7 @@ namespace AfterHours.EditorTools
         {
             Physics.SyncTransforms();
             int n = 0;
-            foreach (DoorSlot slot in Object.FindObjectsByType<DoorSlot>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (DoorSlot slot in Object.FindObjectsByType<DoorSlot>(FindObjectsInactive.Include))
             {
                 int h = MallLayout.Hash((int)(slot.transform.position.x * 10f), (int)(slot.transform.position.z * 10f), (int)slot.kind, 31);
                 bool hasPanel = slot.GetComponent<Collider>() != null;

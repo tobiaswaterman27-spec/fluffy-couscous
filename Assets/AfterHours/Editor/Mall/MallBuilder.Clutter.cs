@@ -256,7 +256,7 @@ namespace AfterHours.EditorTools
         static void DirtyGlass(Transform g)
         {
             int i = 0;
-            foreach (MeshRenderer r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+            foreach (MeshRenderer r in Object.FindObjectsByType<MeshRenderer>())
             {
                 if (r.sharedMaterial != glassMat) continue;
                 Bounds b = r.bounds;

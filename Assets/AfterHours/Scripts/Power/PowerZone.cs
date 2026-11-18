@@ -54,7 +54,7 @@ namespace AfterHours.Power
                 if (a.kind != ProceduralSounds.Ambience.FluorescentHum && a.kind != ProceduralSounds.Ambience.Buzz) continue;
                 if (Contains(a.transform.position)) hums.Add(a.GetComponent<AudioSource>());
             }
-            foreach (FluorescentFlicker f in FindObjectsByType<FluorescentFlicker>(FindObjectsSortMode.None))
+            foreach (FluorescentFlicker f in FindObjectsByType<FluorescentFlicker>())
             {
                 if (!Contains(f.transform.position)) continue;
                 flickers.Add(f);

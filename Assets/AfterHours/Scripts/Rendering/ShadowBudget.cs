@@ -31,7 +31,7 @@ namespace AfterHours.Rendering
             {
                 rescan = 5f;
                 lights.Clear();
-                foreach (Light l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+                foreach (Light l in Object.FindObjectsByType<Light>())
                 {
                     if (l.type != LightType.Point && l.type != LightType.Spot) continue;
                     if (l.name == "Spark flash") continue;

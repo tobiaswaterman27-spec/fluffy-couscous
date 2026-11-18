@@ -34,12 +34,12 @@ namespace AfterHours.Net
         {
             byKey.Clear();
             keys.Clear();
-            foreach (Interactable i in Sorted(UnityEngine.Object.FindObjectsByType<Interactable>(FindObjectsInactive.Include, FindObjectsSortMode.None)))
+            foreach (Interactable i in Sorted(UnityEngine.Object.FindObjectsByType<Interactable>(FindObjectsInactive.Include)))
                 Add(i, i is ItemPickup ip && !string.IsNullOrEmpty(ip.instanceId) ? "Item:" + ip.instanceId : KeyFor(i));
-            foreach (HeavyMovable h in Sorted(UnityEngine.Object.FindObjectsByType<HeavyMovable>(FindObjectsInactive.Include, FindObjectsSortMode.None))) Add(h, KeyFor(h));
-            foreach (LiftController l in Sorted(UnityEngine.Object.FindObjectsByType<LiftController>(FindObjectsInactive.Include, FindObjectsSortMode.None))) Add(l, KeyFor(l));
-            foreach (Escalator e in Sorted(UnityEngine.Object.FindObjectsByType<Escalator>(FindObjectsInactive.Include, FindObjectsSortMode.None))) Add(e, KeyFor(e));
-            foreach (EscapeTrigger t in Sorted(UnityEngine.Object.FindObjectsByType<EscapeTrigger>(FindObjectsInactive.Include, FindObjectsSortMode.None))) Add(t, KeyFor(t));
+            foreach (HeavyMovable h in Sorted(UnityEngine.Object.FindObjectsByType<HeavyMovable>(FindObjectsInactive.Include))) Add(h, KeyFor(h));
+            foreach (LiftController l in Sorted(UnityEngine.Object.FindObjectsByType<LiftController>(FindObjectsInactive.Include))) Add(l, KeyFor(l));
+            foreach (Escalator e in Sorted(UnityEngine.Object.FindObjectsByType<Escalator>(FindObjectsInactive.Include))) Add(e, KeyFor(e));
+            foreach (EscapeTrigger t in Sorted(UnityEngine.Object.FindObjectsByType<EscapeTrigger>(FindObjectsInactive.Include))) Add(t, KeyFor(t));
         }
 
         static string KeyFor(Component c)

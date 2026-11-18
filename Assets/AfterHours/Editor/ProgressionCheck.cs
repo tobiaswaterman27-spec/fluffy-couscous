@@ -98,10 +98,10 @@ namespace AfterHours.EditorTools
 
             // The built scene: every shuffled item's group must have enough spots, and no item may share its group's lock.
             var spots = new Dictionary<string, int>();
-            foreach (AfterHours.Items.ItemSpot sp in Object.FindObjectsByType<AfterHours.Items.ItemSpot>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (AfterHours.Items.ItemSpot sp in Object.FindObjectsByType<AfterHours.Items.ItemSpot>(FindObjectsInactive.Include))
                 spots[sp.group] = (spots.TryGetValue(sp.group, out int c) ? c : 0) + 1;
             var counts = new Dictionary<string, int>();
-            foreach (AfterHours.Items.ItemPickup ip in Object.FindObjectsByType<AfterHours.Items.ItemPickup>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (AfterHours.Items.ItemPickup ip in Object.FindObjectsByType<AfterHours.Items.ItemPickup>(FindObjectsInactive.Include))
             {
                 if (string.IsNullOrEmpty(ip.shuffleGroup)) continue;
                 counts[ip.shuffleGroup] = (counts.TryGetValue(ip.shuffleGroup, out int c) ? c : 0) + 1;

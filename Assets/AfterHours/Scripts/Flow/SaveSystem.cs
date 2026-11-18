@@ -73,12 +73,12 @@ namespace AfterHours.Flow
             Register<HeavyMovable>();
             {
                 var stateful = new List<MonoBehaviour>();
-                foreach (MonoBehaviour m in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                foreach (MonoBehaviour m in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
                     if (m is IStateful && !keys.ContainsKey(m)) stateful.Add(m);
                 stateful.Sort((a, b) => string.CompareOrdinal(AfterHours.Net.NetWorld.HierarchyPath(a.transform), AfterHours.Net.NetWorld.HierarchyPath(b.transform)));
                 foreach (MonoBehaviour m in stateful) Add(m, KeyFor(m));
             }
-            foreach (ItemPickup p in FindObjectsByType<ItemPickup>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (ItemPickup p in FindObjectsByType<ItemPickup>(FindObjectsInactive.Include))
                 Add(p, !string.IsNullOrEmpty(p.instanceId) ? "Item:" + p.instanceId : KeyFor(p));
         }
 
@@ -86,7 +86,7 @@ namespace AfterHours.Flow
 
         void Register<T>() where T : Component
         {
-            T[] found = FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            T[] found = FindObjectsByType<T>(FindObjectsInactive.Include);
             System.Array.Sort(found, (a, b) => string.CompareOrdinal(AfterHours.Net.NetWorld.HierarchyPath(a.transform), AfterHours.Net.NetWorld.HierarchyPath(b.transform)));
             foreach (T c in found) Add(c, KeyFor(c));
         }

@@ -49,7 +49,7 @@ namespace AfterHours.Machines
             if (roll < 0.3)
             {
                 var running = new List<Escalator>();
-                foreach (Escalator e in FindObjectsByType<Escalator>(FindObjectsSortMode.None))
+                foreach (Escalator e in FindObjectsByType<Escalator>())
                     if (e.state == EscalatorState.Running) running.Add(e);
                 if (running.Count > 0) { running[rng.Next(running.Count)].Break(); return; }
             }

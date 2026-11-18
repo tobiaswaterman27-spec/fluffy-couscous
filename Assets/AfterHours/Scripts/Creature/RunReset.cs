@@ -32,11 +32,11 @@ namespace AfterHours.Creature
                 p.Teleport(start.position + Quaternion.Euler(0f, start.yaw, 0f) * new Vector3((i - 0.5f * (PlayerController.All.Count - 1)) * 1.1f, 0f, 0f), start.yaw);
                 i++;
             }
-            foreach (MonoBehaviour m in Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            foreach (MonoBehaviour m in Object.FindObjectsByType<MonoBehaviour>())
             {
                 if (m is IResettable r) r.ResetState();
             }
-            foreach (ElliotBrain b in Object.FindObjectsByType<ElliotBrain>(FindObjectsSortMode.None))
+            foreach (ElliotBrain b in Object.FindObjectsByType<ElliotBrain>())
             {
                 b.ResetToStart(ElliotStart, ElliotStartYaw);
             }

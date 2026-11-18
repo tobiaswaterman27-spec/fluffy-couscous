@@ -114,7 +114,7 @@ namespace AfterHours.Audio
         static float cacheTime = -10f;
         static ElliotBrain[] FindCreatures()
         {
-            if (Time.time - cacheTime > 2f || cached == null) { cached = FindObjectsByType<ElliotBrain>(FindObjectsSortMode.None); cacheTime = Time.time; }
+            if (Time.time - cacheTime > 2f || cached == null) { cached = FindObjectsByType<ElliotBrain>(); cacheTime = Time.time; }
             return cached;
         }
 
@@ -198,7 +198,7 @@ namespace AfterHours.Audio
             float musicVol = AfterHours.Settings.SettingsService.CurrentOrDefault.musicVolume;
             bool hunted = false;
             float nearest = 999f;
-            foreach (ElliotBrain b in FindObjectsByType<ElliotBrain>(FindObjectsSortMode.None))
+            foreach (ElliotBrain b in FindObjectsByType<ElliotBrain>())
             {
                 if (b == null || b.motor == null || !b.gameObject.activeInHierarchy) continue;
                 float d = Vector3.Distance(b.transform.position, transform.position);
@@ -258,7 +258,7 @@ namespace AfterHours.Audio
         float NearestCreature()
         {
             float best = 9999f;
-            foreach (ElliotBrain b in FindObjectsByType<ElliotBrain>(FindObjectsSortMode.None))
+            foreach (ElliotBrain b in FindObjectsByType<ElliotBrain>())
                 if (b != null && b.gameObject.activeInHierarchy) best = Mathf.Min(best, Vector3.Distance(b.transform.position, transform.position));
             return best;
         }

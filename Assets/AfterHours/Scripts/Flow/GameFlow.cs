@@ -147,8 +147,8 @@ namespace AfterHours.Flow
         void SetWorldRunning(bool on)
         {
             bool simulate = on && !NetSession.IsClient; // co-op clients only show the host's creatures and faults
-            foreach (ElliotBrain b in FindObjectsByType<ElliotBrain>(FindObjectsSortMode.None)) b.enabled = simulate;
-            foreach (MalfunctionDirector m in FindObjectsByType<MalfunctionDirector>(FindObjectsSortMode.None)) m.enabled = simulate;
+            foreach (ElliotBrain b in FindObjectsByType<ElliotBrain>()) b.enabled = simulate;
+            foreach (MalfunctionDirector m in FindObjectsByType<MalfunctionDirector>()) m.enabled = simulate;
         }
 
         // =====================================================================

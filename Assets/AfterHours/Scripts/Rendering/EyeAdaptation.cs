@@ -31,7 +31,7 @@ namespace AfterHours.Rendering
         {
             // The main global post-processing volume (not a power-cut area or the ending's daylight).
             Volume volume = null;
-            foreach (Volume v in FindObjectsByType<Volume>(FindObjectsSortMode.None))
+            foreach (Volume v in FindObjectsByType<Volume>())
             {
                 if (!v.isGlobal || v.GetComponent<AfterHours.Power.PowerZone>() != null) continue;
                 if (volume == null || v.priority < volume.priority) volume = v;

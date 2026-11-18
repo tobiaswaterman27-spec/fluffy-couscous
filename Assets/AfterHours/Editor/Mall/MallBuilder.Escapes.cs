@@ -106,7 +106,7 @@ namespace AfterHours.EditorTools
         static void AxeableDoors()
         {
             int n = 0;
-            foreach (Door d in Object.FindObjectsByType<Door>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (Door d in Object.FindObjectsByType<Door>(FindObjectsInactive.Include))
             {
                 if (!d.locked || d.leaf == null) continue;
                 if (d.kind != DoorKind.Staff && d.kind != DoorKind.Restricted && d.kind != DoorKind.Storage) continue;
@@ -207,7 +207,7 @@ namespace AfterHours.EditorTools
         {
             Door best = null;
             float bestD = maxDistance;
-            foreach (DoorSlot slot in Object.FindObjectsByType<DoorSlot>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (DoorSlot slot in Object.FindObjectsByType<DoorSlot>(FindObjectsInactive.Include))
             {
                 if (slot.built == null) continue;
                 float d = Vector3.Distance(slot.transform.position, near);
@@ -221,7 +221,7 @@ namespace AfterHours.EditorTools
         {
             RollerShutter best = null;
             float bestD = maxDistance;
-            foreach (RollerShutter r in Object.FindObjectsByType<RollerShutter>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (RollerShutter r in Object.FindObjectsByType<RollerShutter>(FindObjectsInactive.Include))
             {
                 float d = Vector3.Distance(r.GetComponent<Collider>().bounds.center, near);
                 if (d < bestD) { bestD = d; best = r; }

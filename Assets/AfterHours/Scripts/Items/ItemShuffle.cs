@@ -22,13 +22,13 @@ namespace AfterHours.Items
 
             var spots = new Dictionary<string, List<(Vector3 p, Quaternion r, bool keep)>>();
             var items = new Dictionary<string, List<ItemPickup>>();
-            foreach (ItemSpot s in Object.FindObjectsByType<ItemSpot>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (ItemSpot s in Object.FindObjectsByType<ItemSpot>(FindObjectsInactive.Include))
             {
                 if (string.IsNullOrEmpty(s.group)) continue;
                 if (!spots.TryGetValue(s.group, out var l)) spots[s.group] = l = new List<(Vector3, Quaternion, bool)>();
                 l.Add((s.transform.position, s.transform.rotation, s.fixedRotation));
             }
-            foreach (ItemPickup i in Object.FindObjectsByType<ItemPickup>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (ItemPickup i in Object.FindObjectsByType<ItemPickup>(FindObjectsInactive.Include))
             {
                 if (string.IsNullOrEmpty(i.shuffleGroup)) continue;
                 if (!items.TryGetValue(i.shuffleGroup, out var l)) items[i.shuffleGroup] = l = new List<ItemPickup>();
