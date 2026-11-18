@@ -145,6 +145,14 @@ They move with real motion capture (walking, running, a low creep, backing away,
 from the CMU Graphics Lab Motion Capture Database, rebuilt on each person's own bones (`tools/mocap`). You hear other
 players' footsteps from where they are.
 
+## The one-click way (use this)
+
+**After Hours > ★ Update and Build Everything** does it all in one go: downloads the latest update, waits for
+Unity to reload, sets up the project, builds the whole mall (Elliot, the players, items, escape routes, sound,
+lighting setup) and checks it. It takes several minutes; Unity may look frozen while the progress bar runs.
+If it asks about saving the current scene, click **Don't Save**. When the box says it's done, press **Play**.
+(Only the slow **5 - Bake Lighting** is left out - run that separately when you have time.)
+
 ## Getting new updates later
 
 In Unity: **After Hours > Get Latest Update**. (Or in a terminal, then click back into Unity:)

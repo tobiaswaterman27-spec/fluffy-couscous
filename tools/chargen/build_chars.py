@@ -137,7 +137,8 @@ def build(spec):
             d = (wr - sh) / np.linalg.norm(wr - sh)
             sel = (Wp[:, I["UpperArm" + s]] + Wp[:, I["ForeArm" + s]] > 0.5)
             # the sleeve falls from the widest part of the upper arm straight past the elbow (no dip into it)
-            hang(pt, sh + d * 0.06, wr, sel, window=0.32, loose={"hoodie": 0.9, "jacket": 0.85, "workjacket": 0.88}.get(top, 0.75))
+            # (a short window: roomy at the upper arm, tapering down the forearm like a real sleeve - not one wide tube)
+            hang(pt, sh + d * 0.06, wr, sel, window=0.1, loose={"hoodie": 0.6, "jacket": 0.6, "workjacket": 0.6}.get(top, 0.5))
             # and the cloth over the elbow is relaxed so the crease there softens
             Ap = neighbours(pt.F, len(pt.V)); dp = np.asarray(Ap.sum(1)).ravel()
             elb = P("ForeArm" + s)
@@ -180,7 +181,7 @@ def build(spec):
             d = (wr - sh) / np.linalg.norm(wr - sh); L = np.linalg.norm(wr - sh)
             sel = (Wp2[:, I["UpperArm" + s]] + Wp2[:, I["ForeArm" + s]] > 0.5)
             tt = (pt.V - sh) @ d / L
-            hang(pt, sh + d * 0.06, wr, sel, window=0.35, loose=0.85, apply=smoothstep(0.22, 0.42, tt) * (1 - smoothstep(0.66, 0.84, tt)))
+            hang(pt, sh + d * 0.06, wr, sel, window=0.1, loose=0.6, apply=smoothstep(0.22, 0.42, tt) * (1 - smoothstep(0.66, 0.84, tt)))
         # then relax the sleeves along their length so nothing is left stepped
         Ap = neighbours(pt.F, len(pt.V)); dp = np.asarray(Ap.sum(1)).ravel()
         arms = (Wp2[:, I["UpperArmL"]] + Wp2[:, I["ForeArmL"]] + Wp2[:, I["UpperArmR"]] + Wp2[:, I["ForeArmR"]] > 0.5) & ~boundary_vertices(pt.F, len(pt.V))
@@ -777,7 +778,18 @@ def export(c, size):
         if part.rigid:
             w = np.zeros((len(part.V), len(sk.names))); w[:, sk.index[part.rigid]] = 1
         else:
-            w = W[part.src]
+            w = W[part.src].copy()
+            if part.tag in ("top", "undershirt"):
+                for s in "LR":
+                    iu, i_f = sk.index["UpperArm" + s], sk.index["ForeArm" + s]
+                    sh, el, wr = sk.pos[iu], sk.pos[i_f], sk.pos[sk.index["Hand" + s]]
+                    d = (wr - sh) / np.linalg.norm(wr - sh)
+                    tot = w[:, iu] + w[:, i_f]
+                    sel = tot > 0.25
+                    t = (part.V - el) @ d                   # metres past the elbow along the arm
+                    f = smoothstep(-0.07, 0.09, t)
+                    w[sel, iu] = tot[sel] * (1 - f[sel])
+                    w[sel, i_f] = tot[sel] * f[sel]
         Ws.append(w)
         if hasattr(part, "vtag"):
             Vt.append(part.vtag)

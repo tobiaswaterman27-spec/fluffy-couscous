@@ -165,7 +165,7 @@ namespace AfterHours.EditorTools
                 EditorUtility.ClearProgressBar();
             }
 
-            EditorUtility.DisplayDialog("After Hours",
+            if (!OneClickBuild.Quiet) EditorUtility.DisplayDialog("After Hours",
                 "Mall built and saved to\n" + ScenePath +
                 "\n\nPress Play to explore (Esc > Teleport jumps around).\n\nFor the final look run After Hours > 5 - Bake Lighting (slow; leave it running).", "OK");
         }

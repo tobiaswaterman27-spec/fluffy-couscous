@@ -61,6 +61,23 @@ namespace AfterHours.EditorTools
                 "OK");
         }
 
+        /// <summary>git pull in the project folder. Returns null on success, or what went wrong.</summary>
+        public static string Pull(out bool nothingNew)
+        {
+            nothingNew = false;
+            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            if (!Directory.Exists(Path.Combine(projectRoot, ".git"))) return "This project is not connected to GitHub yet. Follow the setup steps in README.md first.";
+            try
+            {
+                int code = RunGit(projectRoot, "pull --ff-only", out string output);
+                Debug.Log("[AfterHours] Update:\n" + output);
+                if (code != 0) return "The download failed. The details are in the Console - copy them to Claude.";
+                nothingNew = output.Contains("Already up to date") || output.Contains("Already up-to-date");
+                return null;
+            }
+            catch (Exception e) { return "Could not run git: " + e.Message + " (is git installed?)"; }
+        }
+
         static int RunGit(string workingDirectory, string arguments, out string output)
         {
             var info = new ProcessStartInfo("git", arguments)

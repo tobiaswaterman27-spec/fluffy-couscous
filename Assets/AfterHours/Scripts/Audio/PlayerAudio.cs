@@ -8,8 +8,7 @@ using AfterHours.World;
 namespace AfterHours.Audio
 {
     /// <summary>
-    /// Your own body: breathing that follows how hard you've been running and how scared you are, a heartbeat
-    /// that climbs when something is close, and holding your breath while hidden (hold Crouch). Heavy breathing
+    /// Your own body (silent): how hard you've been running and how scared you are, and holding your breath while hidden (hold Crouch). Heavy breathing
     /// is a sound too: in a locker with Elliot outside, panting can give you away. Hold your breath too long and
     /// you gasp.
     /// </summary>
@@ -29,9 +28,9 @@ namespace AfterHours.Audio
         {
             player = GetComponent<PlayerController>();
             if (player == null || !player.isLocallyControlled) { Destroy(this); return; }
-            // (No breathing or voice sounds for you: just your heart and the duct around you.)
+            // (No breathing, voice or heartbeat sounds for you: just the duct around you.)
             duct = Loop("amb_duct", 0f);
-            heart = Make();
+
             oneShots = Make();
         }
 
@@ -101,16 +100,6 @@ namespace AfterHours.Audio
 
             // In the vents: the hollow sound of the duct around you.
             Fade(duct, VentDuct.Contains(transform.position + Vector3.up * 0.3f) ? 0.4f : 0f, dt);
-
-            // Heartbeat: felt when afraid (or out of breath from holding it).
-            float bpm = Mathf.Lerp(62f, 150f, Mathf.Max(fear, heldFor / MaxHold));
-            float heartVol = Mathf.Clamp01(Mathf.Max(fear - 0.15f, heldFor / MaxHold - 0.3f) * 1.4f);
-            heartTimer -= dt;
-            if (heartTimer <= 0f)
-            {
-                heartTimer = 60f / bpm;
-                if (heartVol > 0.02f) { AudioClip h = AudioLibrary.Get("heartbeat"); if (h != null) heart.PlayOneShot(h, heartVol * 0.9f); }
-            }
 
             // Panting is audible (the host's creatures hear it through the network noise forward).
             breathNoiseTimer -= dt;

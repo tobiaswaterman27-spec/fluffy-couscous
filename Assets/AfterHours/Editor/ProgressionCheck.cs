@@ -47,6 +47,8 @@ namespace AfterHours.EditorTools
         };
 
         [MenuItem("After Hours/Check Progression", priority = 50)]
+        public static bool LastOk = true;
+
         public static void Run()
         {
             var have = new HashSet<string>();
@@ -115,7 +117,8 @@ namespace AfterHours.EditorTools
             }
 
             Debug.Log("[AfterHours] Progression order:\n" + order + "\n" + report);
-            EditorUtility.DisplayDialog("After Hours - progression check",
+            LastOk = ok;
+            if (!OneClickBuild.Quiet) EditorUtility.DisplayDialog("After Hours - progression check",
                 (ok ? "All eight escape routes can be completed without the fire axe. No dead ends.\n\n" : "PROBLEMS FOUND:\n\n") + report +
                 "\n(Full order of play is in the Console.)", "OK");
         }

@@ -518,7 +518,7 @@ def render(out, rng):
         out(f"gore/sfx_crunch_{i}", crunch(rng))
         out(f"gore/sfx_tear_{i}", tear(rng))
         out(f"gore/sfx_splatter_{i}", splatter(rng))
-        out(f"player/heartbeat_{i}", heartbeat(rng))
+        pass  # (no heartbeat: removed at the player's request)
     for i in range(3):
         out(f"music/sub_hit_{i}", sub_hit(rng))
     out("gore/feeding_0", chewing(rng))

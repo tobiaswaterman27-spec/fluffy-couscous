@@ -500,12 +500,20 @@ namespace AfterHours.Player
                 dev.y = P[Mocap.WR + s * 3 + 1] * Lt;
                 Vector3 sFloor = shoulder - up * (Vector3.Dot(shoulder, up) - floorY);
                 Vector3 w = sFloor + legQ * (dev + Vector3.forward * 0.04f);
-                if (Vector3.Dot(w, up) < floorY + 0.03f) w += up * (floorY + 0.03f - Vector3.Dot(w, up));
+                w += up * 0.03f;
+                if (Vector3.Dot(w, up) < floorY + 0.055f) w += up * (floorY + 0.055f - Vector3.Dot(w, up));   // a palm's thickness above the floor
                 Vector3 tU = -(legQ * Mocap.Twist(P, U));
                 Vector3 target = w, palm = legQ * Mocap.Twist(P, H);
                 if (GestureArm(s, side, shoulder, headPos, rot * Vector3.forward, up, right, ref target, ref palm)) handGrip[s] = true;
                 else handGrip[s] = false;
                 ArmIK(s, shoulder, target, tU + right * (0.6f * side), palm);
+                if (!handGrip[s] && hand[s] != null)
+                {
+                    // flat on the floor: palm down, fingers forward and a little in (tipping up as the hand swings)
+                    float lift = Mathf.Clamp01((Vector3.Dot(w, up) - floorY - 0.055f) / 0.06f);
+                    Vector3 fingersDir = (legQ * new Vector3(-0.2f * side, -0.35f * lift, 1f)).normalized;
+                    hand[s].rotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(-up, fingersDir).normalized, -fingersDir);
+                }
             }
             Fingers(0.15f);
             return true;

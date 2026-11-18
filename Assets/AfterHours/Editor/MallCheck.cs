@@ -26,6 +26,8 @@ namespace AfterHours.EditorTools
     public static class MallCheck
     {
         [MenuItem("After Hours/7 - Check Mall", priority = 7)]
+        public static int LastProblems;
+
         public static void Run()
         {
             var problems = new List<string>();
@@ -122,7 +124,8 @@ namespace AfterHours.EditorTools
             string summary = problems.Count == 0 ? "Everything checks out.\n\n" + info : $"{problems.Count} problem(s):\n- " + string.Join("\n- ", problems.GetRange(0, Mathf.Min(15, problems.Count))) + (problems.Count > 15 ? "\n(more in the Console)" : "") + "\n\n" + info;
             foreach (string p in problems) Debug.LogWarning("[AfterHours check] " + p);
             Debug.Log("[AfterHours check] " + info);
-            EditorUtility.DisplayDialog("After Hours - mall check", summary, "OK");
+            LastProblems = problems.Count;
+            if (!OneClickBuild.Quiet) EditorUtility.DisplayDialog("After Hours - mall check", summary, "OK");
         }
     }
 }
