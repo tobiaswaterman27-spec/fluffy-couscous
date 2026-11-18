@@ -51,7 +51,11 @@ namespace AfterHours.Flow
 
         NightDirector Night()
         {
-            if (night == null) night = GetComponent<NightDirector>() ?? gameObject.AddComponent<NightDirector>();
+            if (night == null)
+            {
+                night = GetComponent<NightDirector>();
+                if (night == null) night = gameObject.AddComponent<NightDirector>();
+            }
             return night;
         }
 

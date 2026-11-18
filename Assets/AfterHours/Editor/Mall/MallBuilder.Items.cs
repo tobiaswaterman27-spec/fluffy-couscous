@@ -231,18 +231,18 @@ namespace AfterHours.EditorTools
                 Quaternion axeRot = Quaternion.LookRotation(w.n, Vector3.up);
                 // Item local X is the handle: align it with the wall.
                 axeRot = Quaternion.FromToRotation(axeRot * Vector3.right, w.dir) * axeRot;
-                Vector3 axePos = shelfTop - w.dir * 0.38f - w.n * 0.02f;
+                Vector3 axePos = shelfTop; // handle spans about +-0.44 m along the 1.05 m cabinet, head +-0.16 m deep
                 if (!placed)
                 {
                     ItemPickup axe = make("fire_axe", "", axePos, 0f);
                     if (axe != null)
                     {
                         axe.transform.rotation = axeRot;
-                        axe.shuffleGroup = "axe";
+                        axe.shuffleGroup = "axe_cabinet";
                     }
                     placed = true;
                 }
-                spot("axe", axePos, axeRot);
+                spot("axe_cabinet", axePos, axeRot);
             }
         }
     }

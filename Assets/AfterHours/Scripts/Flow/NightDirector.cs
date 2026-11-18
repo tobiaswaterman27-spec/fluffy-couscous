@@ -101,8 +101,8 @@ namespace AfterHours.Flow
                 }
                 totalDone += done;
                 float f = done / (float)g.inputs.Count;
-                if (g.Done || (g.inputs.Count >= 2 && done == g.inputs.Count - 1)) level = Mathf.Max(level, 3);
-                else if (f >= 0.6f) level = Mathf.Max(level, 2);
+                if (g.Done || (g.inputs.Count >= 3 && done == g.inputs.Count - 1)) level = Mathf.Max(level, 3);
+                else if (f >= 0.5f) level = Mathf.Max(level, 2);
                 else if (f >= 0.34f) level = Mathf.Max(level, 1);
             }
             foreach (Generator gen in generators) if (gen != null && gen.Running) ElliotBrain.Hotspots.Add(gen.transform.position);

@@ -95,6 +95,11 @@ namespace AfterHours.EditorTools
                 Need(ItemCatalog.Get(i.itemId) != null, $"Item '{i.itemId}' isn't in the catalogue");
                 Need(!string.IsNullOrEmpty(i.instanceId) && ids.Add(i.instanceId), $"Item {i.name} has a missing or repeated id");
             }
+            bool axe = false;
+            foreach (ItemPickup i in items) if (i.itemId == "fire_axe") axe = true;
+            Need(axe, "No fire axe (no stairwell wall had room for its cabinet)");
+            Need(All<AfterHours.Puzzles.Generator>().Length == 1, "The standby generator is missing");
+            Need(All<AfterHours.Items.ItemSpot>().Length > 40, "Too few item spots for the run shuffle");
             EscapeTrigger[] exits = All<EscapeTrigger>();
             var routes = new HashSet<EscapeRouteId>();
             foreach (EscapeTrigger t in exits) routes.Add(t.route);

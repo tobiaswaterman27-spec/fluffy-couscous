@@ -23,7 +23,7 @@ public items. Saves keep the run's layout. In co-op the host deals the items out
 | card_restricted | Mall management, Records office, Roof access plant, Staff exit lobby | security key, security token, lift key, fire exit key, shop master key, combination dial, roof hatch key, special access card |
 | key_security | Security office | security card, loading bay key, loading bay remote, control switch |
 | key_loading | Loading bay, Goods in | pry bar, door actuator, machine part |
-| axe | fire axe cabinets in up to four stairwells | the fire axe (only one cabinet has it) |
+| axe_cabinet | fire axe cabinets in up to four stairwells | the fire axe (only one cabinet has it) |
 
 The main entrance key always stays in the locked staff locker.
 
