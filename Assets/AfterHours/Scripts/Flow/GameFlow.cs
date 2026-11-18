@@ -745,16 +745,6 @@ namespace AfterHours.Flow
                 GUI.DrawTexture(full, Texture2D.whiteTexture);
             }
 
-            // "11:30 PM" after waking.
-            if (captionT >= 0f && captionT < 7f)
-            {
-                float a = Mathf.Clamp01(captionT / 1.5f) * Mathf.Clamp01((7f - captionT) / 1.5f);
-                GUI.color = new Color(1f, 1f, 1f, a * 0.85f);
-                GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1f));
-                GUI.Label(new Rect(80f, 1080f - 150f, 600f, 50f), "11:30 PM", buttonStyle);
-                GUI.matrix = Matrix4x4.identity;
-            }
-
             // The ending: white out, daylight, white out, words.
             if (State == FlowState.Ending)
             {

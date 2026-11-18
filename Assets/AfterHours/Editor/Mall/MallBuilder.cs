@@ -39,6 +39,7 @@ namespace AfterHours.EditorTools
             {
                 Progress("Preparing materials", 0f);
                 ProjectSetup.EnsureLayers();
+                ProjectSetup.EnsureRendering();
                 EditorBuild.EnsureFolder(EditorBuild.Root + "/Scenes");
                 Walls.Clear();
                 CreateMaterials();
@@ -539,8 +540,19 @@ namespace AfterHours.EditorTools
             go.transform.SetParent(parent, false);
             go.transform.localPosition = pos;
             Light l = go.AddComponent<Light>();
-            l.type = LightType.Point;
+            // A ceiling fitting lights the room below it, not the floor above or the room behind the wall:
+            // a wide downward spot that casts shadows. (Only the big lamps high in the atrium shine all round.)
+            bool ceiling = range < 20f;
+            l.type = ceiling ? LightType.Spot : LightType.Point;
+            if (ceiling)
+            {
+                go.transform.rotation = Quaternion.LookRotation(Vector3.down, Vector3.forward);
+                l.spotAngle = 150f;
+                l.innerSpotAngle = 95f;
+                range *= 1.25f;
+            }
             l.range = range;
+            intensity *= 2.6f;
             l.intensity = intensity;
             // No two old tubes are quite the same: a touch greener or pinker, a little brighter or dimmer.
             int h = MallLayout.Hash((int)(pos.x * 10f), (int)(pos.y * 10f), (int)(pos.z * 10f), 61);
@@ -548,7 +560,11 @@ namespace AfterHours.EditorTools
             Color drift = v < 0.33f ? new Color(0.88f, 1f, 0.9f) : v < 0.66f ? new Color(1f, 0.93f, 0.96f) : Color.white;
             l.color = Color.Lerp(color, color * drift, 0.5f);
             l.intensity = intensity * (0.88f + 0.24f * ((h / 1000 % 100) / 100f));
-            l.shadows = LightShadows.None;
+            l.shadows = LightShadows.Soft;      // light stops at walls, floors and ceilings
+            l.shadowStrength = 0.95f;
+            l.shadowBias = 0.03f;
+            l.shadowNormalBias = 0.3f;
+            l.shadowNearPlane = 0.1f;
             go.AddComponent<AfterHours.Rendering.BakeableLight>();
             if (fixture)
             {

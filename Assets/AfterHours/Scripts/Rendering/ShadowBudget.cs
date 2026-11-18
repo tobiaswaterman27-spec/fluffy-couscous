@@ -12,10 +12,10 @@ namespace AfterHours.Rendering
     public class ShadowBudget : MonoBehaviour
     {
         [Tooltip("How many point lights may cast real-time shadows at once (each costs six shadow maps).")]
-        public int pointLights = 4;
+        public int pointLights = 4;      // (only the few big atrium lamps are point lights now)
         [Tooltip("How many spot lights may cast real-time shadows at once.")]
-        public int spotLights = 6;
-        public float maxDistance = 28f;
+        public int spotLights = 24;      // ceiling fittings: shadows mean their light stops at walls and floors
+        public float maxDistance = 40f;
 
         readonly List<Light> lights = new List<Light>();
         readonly List<(float score, Light l)> scored = new List<(float, Light)>();

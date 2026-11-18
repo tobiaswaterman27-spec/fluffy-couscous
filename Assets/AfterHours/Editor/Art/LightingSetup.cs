@@ -40,7 +40,7 @@ namespace AfterHours.EditorTools
 
             // Early-2000s night-time fluorescent look: slightly green, a little washed out, low saturation.
             ColorAdjustments color = Add<ColorAdjustments>();
-            color.postExposure.value = 0.35f;
+            color.postExposure.value = 0.7f;
             color.contrast.value = 14f;
             color.saturation.value = -22f;
             color.colorFilter.value = new Color(0.97f, 1f, 0.95f);
@@ -116,7 +116,7 @@ namespace AfterHours.EditorTools
 
             // Night inside a sealed building: almost no ambient light; everything comes from the fittings.
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = forBake ? new Color(0.035f, 0.038f, 0.042f) : new Color(0.08f, 0.085f, 0.09f);
+            RenderSettings.ambientLight = forBake ? new Color(0.05f, 0.054f, 0.06f) : new Color(0.11f, 0.115f, 0.125f);
             RenderSettings.defaultReflectionMode = DefaultReflectionMode.Custom;
             RenderSettings.customReflectionTexture = null;
         }
@@ -272,7 +272,7 @@ namespace AfterHours.EditorTools
                 Light l = b.GetComponent<Light>();
                 if (l == null) continue;
                 l.lightmapBakeType = LightmapBakeType.Realtime;
-                l.shadows = LightShadows.None;
+                l.shadows = LightShadows.Soft;
             }
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         }

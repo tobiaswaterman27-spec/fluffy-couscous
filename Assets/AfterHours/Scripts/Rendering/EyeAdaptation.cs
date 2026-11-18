@@ -13,7 +13,7 @@ namespace AfterHours.Rendering
     [RequireComponent(typeof(Camera))]
     public class EyeAdaptation : MonoBehaviour
     {
-        public float targetLuminance = 0.22f;
+        public float targetLuminance = 0.3f;
         [Tooltip("How strongly exposure follows the light level (0 = off, 1 = full).")]
         public float strength = 0.55f;
         public float minExposure = -0.8f;
