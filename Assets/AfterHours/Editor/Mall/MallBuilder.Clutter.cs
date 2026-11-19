@@ -195,11 +195,6 @@ namespace AfterHours.EditorTools
                 else if (roll < 0.7) DecalQuad(g, p + Vector3.up * 0.013f, Vector3.up, 0.9f, 1.6f, R(0f, 360f), decalPrintsShoe);
             }
             FootprintTrail(g, new Vector3(30f, cp, 66f), new Vector3(-13f, cp, 9f), rng);
-            // A few cars left overnight (staff, a breakdown, someone who never came back for theirs).
-            var carSpots = new[] { (new Vector3(-21.2f, cp, 18.6f), 0f), (new Vector3(-26f, cp, 18.6f), 180f), (new Vector3(42.8f, cp, -45.4f), 0f),
-                                   (new Vector3(-61.6f, cp, -13.4f), 180f), (new Vector3(5.2f, cp, 61.4f), 0f), (new Vector3(78f, cp, 29.4f), 180f) };
-            for (int c = 0; c < carSpots.Length; c++)
-                if (Free(carSpots[c].Item1, 1.2f)) ParkedCar(g, carSpots[c].Item1, carSpots[c].Item2 + R(-4f, 4f), c);
             DirtyGlass(g);
 
             // Cobwebs high in the corners of the service corridors and stairwells; the odd dirty handprint.
@@ -374,14 +369,6 @@ namespace AfterHours.EditorTools
             var prop = root.AddComponent<PhysicsProp>();
             prop.material = SurfaceType.Metal;
             EditorBuild.SetLayerRecursive(root, AfterHours.Core.GameLayers.PropLayer);
-        }
-
-        static void ParkedCar(Transform g, Vector3 floor, float yaw, int index)
-        {
-            if (carPaints == null || carPaints[0] == null) CarMaterials();
-            ParkedCar(g, floor, yaw, index % 3 == 2 ? 2 : index % 2, carPaints[(index * 3 + 1) % carPaints.Length], false);
-            DecalQuad(g, floor + Vector3.up * 0.014f, Vector3.up, 1.6f, 1.6f, yaw, decalOil);
-            if (index == 2) DecalQuad(g, floor + Vector3.up * 0.75f + Quaternion.Euler(0f, yaw, 0f) * new Vector3(0.9f, 0f, -0.6f), Quaternion.Euler(0f, yaw, 0f) * Vector3.right, 0.22f, 0.32f, -20f, decalHandprint);
         }
 
         static void Cone(Transform g, Vector3 floor)

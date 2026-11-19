@@ -122,21 +122,7 @@ namespace AfterHours.EditorTools
             glass.transform.position = EndingOrigin + new Vector3(0.25f, 1.75f, 0.3f);
             flow.glassPoint = glass.transform;
 
-            // Parked cars left overnight, dead lamp posts, trees in the mist.
-            Color[] carColours = { new Color(0.5f, 0.52f, 0.55f), new Color(0.15f, 0.2f, 0.3f), new Color(0.45f, 0.08f, 0.07f), new Color(0.75f, 0.75f, 0.72f), new Color(0.1f, 0.1f, 0.1f) };
-            Vector3[] cars = { new Vector3(-21f, 0f, -35f), new Vector3(-9f, 0f, -35f), new Vector3(15f, 0f, -35f), new Vector3(-3f, 0f, -58f), new Vector3(27f, 0f, -58f) };
-            for (int i = 0; i < cars.Length; i++)
-            {
-                Material paint = ArtLibrary.Plain("Car_Paint_" + i, carColours[i], 0.8f, 0.4f);
-                Vector3 c = cars[i];
-                EndBox("Car body", g, c + new Vector3(-0.9f, 0.3f, -2.2f), c + new Vector3(0.9f, 1.0f, 2.2f), paint, SurfaceType.Metal);
-                EndBox("Car cabin", g, c + new Vector3(-0.8f, 1.0f, -1.1f), c + new Vector3(0.8f, 1.5f, 1.0f), darkGlass, SurfaceType.Glass);
-                for (int w = 0; w < 4; w++)
-                {
-                    float wx = (w % 2 == 0 ? -0.92f : 0.92f), wz = (w < 2 ? -1.4f : 1.4f);
-                    EndBox("Wheel", g, c + new Vector3(wx - 0.1f, 0f, wz - 0.33f), c + new Vector3(wx + 0.1f, 0.62f, wz + 0.33f), blackMat, SurfaceType.Metal, false);
-                }
-            }
+            // An empty car park: nobody's car left. Dead lamp posts, trees in the mist.
             for (int i = -2; i <= 2; i++)
             {
                 Vector3 b = EndingOrigin + new Vector3(i * 22f + 8f, 0f, -46f);

@@ -35,11 +35,6 @@ namespace AfterHours.EditorTools
             List<AreaRect> keepOut = CarParkKeepOut();
             float FloorY(float x, float z) => raised.Contains(x, z) ? -2.5f : MallLayout.CarParkY;
             bool Blocked(AreaRect r) { foreach (AreaRect k in keepOut) if (k.Overlaps(r)) return true; return Mathf.Abs(r.minZ - raised.minZ) < 0.5f || Mathf.Abs(r.maxX - raised.maxX) < 0.5f; }
-            if (carPaints == null || carPaints[0] == null) CarMaterials();
-            carsParked = 0;
-            Physics.SyncTransforms();
-            Transform cars = Group("Parked cars", g);
-            bool hazardsUsed = false;
 
             // Bay rows straddle every second line of pillars; 6.4 m driving aisles between them.
             for (float zr = -96f; zr <= 96f; zr += 16f)
@@ -65,19 +60,6 @@ namespace AfterHours.EditorTools
                             if (h % 23 == 0)
                             {
                                 Detail("Wheel stop", g, new Vector3(cx, fy + 0.06f, zr + side * 4.3f), new Vector3(1.6f, 0.12f, 0.15f), concrete);
-                            }
-                            else if (h % 61 == 17 && carsParked < MaxCars && Mathf.Abs(zr + side * 5f) < 99f)
-                            {
-                                // left here overnight: nose in or reversed in, never quite straight
-                                bool reversed = (h / 61) % 3 == 0;
-                                float yaw = (side > 0 ? 0f : 180f) + (reversed ? 180f : 0f) + Rand(-3f, 3f);
-                                int kind = (h / 7) % 7 == 0 ? 2 : (h / 7) % 2;
-                                bool hazards = !hazardsUsed && carsParked >= 3;
-                                Vector3 at = new Vector3(cx + Rand(-0.12f, 0.12f), fy - 0.006f, zr + side * 2.6f);
-                                // not on top of a cone, a pallet or one of the cars from the clutter pass
-                                if (Physics.CheckBox(at + Vector3.up * 0.85f, new Vector3(1.05f, 0.6f, 2.45f), Quaternion.Euler(0f, yaw, 0f), ~0, QueryTriggerInteraction.Ignore)) continue;
-                                hazardsUsed |= hazards;
-                                ParkedCar(cars, at, yaw, kind, carPaints[(h / 3) % carPaints.Length], hazards);
                             }
                         }
                     }
