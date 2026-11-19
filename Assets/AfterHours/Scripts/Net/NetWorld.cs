@@ -41,6 +41,7 @@ namespace AfterHours.Net
             foreach (LiftController l in Sorted(UnityEngine.Object.FindObjectsByType<LiftController>(FindObjectsInactive.Include))) Add(l, KeyFor(l));
             foreach (Escalator e in Sorted(UnityEngine.Object.FindObjectsByType<Escalator>(FindObjectsInactive.Include))) Add(e, KeyFor(e));
             foreach (EscapeTrigger t in Sorted(UnityEngine.Object.FindObjectsByType<EscapeTrigger>(FindObjectsInactive.Include))) Add(t, KeyFor(t));
+            foreach (AfterHours.World.Weather w in Sorted(UnityEngine.Object.FindObjectsByType<AfterHours.World.Weather>(FindObjectsInactive.Include))) Add(w, KeyFor(w));
         }
 
         static string KeyFor(Component c)

@@ -152,6 +152,8 @@ namespace AfterHours.Creature
             // Loud surroundings hide quiet sounds.
             float masking = AmbientSound.MaskingAt(e.Position);
             if (e.Radius < 10f) effective *= 1f - 0.65f * masking;
+            // ...and so does thunder rolling overhead (anything short of a real crash)
+            if (e.Radius < 25f) effective *= 1f - 0.7f * AfterHours.World.Weather.ThunderMask;
             if (dist > effective) return;
 
             // It only knows roughly where: worse with distance, walls, and echoing spaces.
