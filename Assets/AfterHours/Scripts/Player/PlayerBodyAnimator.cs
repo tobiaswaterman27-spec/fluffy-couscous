@@ -360,7 +360,10 @@ namespace AfterHours.Player
             float Lt = Thigh + Shin;
             Vector2 lv = l.localPlanarVelocity;
             bool back = lv.y < -0.15f * Mathf.Max(speed, 0.01f);
-            if (!mocap.Evaluate(speed, back, crouch, phase, stepLen, Fear(dt), Lt, dt)) return false;
+            float fearNow = Fear(dt);
+            if (!mocap.Evaluate(speed, back, crouch, phase, stepLen, fearNow, Lt, dt)) return false;
+            // walking scared (it's close): hunched a little, shoulders up, arms held in instead of swinging
+            float tense = fearNow * moveW * (1f - runW);
             float[] P = mocap.Pose;
 
             float legYaw = speed > 0.1f ? Mathf.Atan2(back ? -lv.x : lv.x, back ? -lv.y : lv.y) * Mathf.Rad2Deg : 0f;
@@ -373,9 +376,9 @@ namespace AfterHours.Player
             Vector3 dN = upQ * Mocap.Dir(P, Mocap.NeckS), tN = upQ * Mocap.Twist(P, Mocap.NeckS);
             // lower than the clip (a deeper crouch than was captured): fold a little further forward at the hips
             float deeper = Mathf.Clamp01(-(mocap.HasCorr ? mocap.CorrY : 0f) / 0.3f);
-            if (deeper > 0f)
+            if (deeper > 0f || tense > 0f)
             {
-                Quaternion bend = Quaternion.AngleAxis(15f * deeper, upQ * Vector3.right);
+                Quaternion bend = Quaternion.AngleAxis(15f * deeper + 9f * tense, upQ * Vector3.right);
                 dS = bend * dS; tS = bend * tS; dN = bend * dN; tN = bend * tN;
             }
 
@@ -438,6 +441,13 @@ namespace AfterHours.Player
                 Vector3 shoulder = chestPos + spineRot * new Vector3(ShW * side, ShoulderOff.y, ShoulderOff.z) + upQ * (Mocap.V(P, Mocap.SH + s * 3) * Lt);
                 Vector3 dU = upQ * Mocap.Dir(P, U), dF = upQ * Mocap.Dir(P, F), dH = upQ * Mocap.Dir(P, H);
                 Vector3 tU = -(upQ * Mocap.Twist(P, U)), tF = -(upQ * Mocap.Twist(P, F)), palm = upQ * Mocap.Twist(P, H);
+                if (tense > 0f)
+                {
+                    shoulder += up * (0.03f * tense) - (upQ * Vector3.right) * (0.012f * side * tense);
+                    dU = Vector3.Lerp(dU, (upQ * new Vector3(0.1f * side, -1f, 0.18f)).normalized, 0.8f * tense).normalized;
+                    dF = Vector3.Lerp(dF, (upQ * new Vector3(-0.12f * side, -0.55f, 0.85f)).normalized, 0.55f * tense).normalized;
+                    dH = Vector3.Lerp(dH, dF, 0.5f * tense).normalized;
+                }
                 Vector3 elbow = shoulder + dU * Upper, wrist = elbow + dF * Fore;
                 Vector3 target = wrist;
                 Vector3 gpalm = palm;
@@ -456,7 +466,7 @@ namespace AfterHours.Player
                 if (pf.sqrMagnitude < 1e-6f) pf = Vector3.ProjectOnPlane(fwd, dH);
                 if (hand[s] != null) hand[s].SetPositionAndRotation(wrist, Quaternion.LookRotation(pf.normalized, -dH));
             }
-            Fingers(carrying ? 0.6f : (handGrip[0] || handGrip[1]) ? 0.7f : 0.3f + 0.15f * runW);
+            Fingers(carrying ? 0.6f : (handGrip[0] || handGrip[1]) ? 0.7f : 0.3f + 0.15f * runW + 0.25f * tense);
             return true;
         }
 
