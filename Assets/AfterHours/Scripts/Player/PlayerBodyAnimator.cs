@@ -376,9 +376,9 @@ namespace AfterHours.Player
             Vector3 dN = upQ * Mocap.Dir(P, Mocap.NeckS), tN = upQ * Mocap.Twist(P, Mocap.NeckS);
             // lower than the clip (a deeper crouch than was captured): fold a little further forward at the hips
             float deeper = Mathf.Clamp01(-(mocap.HasCorr ? mocap.CorrY : 0f) / 0.3f);
-            if (deeper > 0f || tense > 0f)
+            if (deeper > 0f || tense > 0f || runW > 0f)     // (and sprinting: the trunk leans into the run)
             {
-                Quaternion bend = Quaternion.AngleAxis(15f * deeper + 9f * tense, upQ * Vector3.right);
+                Quaternion bend = Quaternion.AngleAxis(15f * deeper + 9f * tense + 7f * runW * moveW, upQ * Vector3.right);
                 dS = bend * dS; tS = bend * tS; dN = bend * dN; tN = bend * tN;
             }
 
