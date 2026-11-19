@@ -311,7 +311,8 @@ namespace AfterHours.Player
                     else
                     {
                         // clutching at the wrists of the hands that hold them, tugging
-                        Vector3 grip = s == 0 ? gripL : gripR;
+                        // (whichever of his hands is on this arm's side: never reaching across the chest)
+                        Vector3 grip = (gripL - shoulder).sqrMagnitude < (gripR - shoulder).sqrMagnitude ? gripL : gripR;
                         Vector3 toward = headRot * Vector3.forward;
                         fight = grip + toward * 0.1f - Vector3.up * 0.05f + toward * (Mathf.Sin(t * 7f + s * 1.7f) * 0.04f);
                         if ((fight - shoulder).magnitude > armLen) fight = shoulder + (fight - shoulder).normalized * armLen;
