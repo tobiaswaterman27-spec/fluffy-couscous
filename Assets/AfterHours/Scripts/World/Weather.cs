@@ -71,6 +71,7 @@ namespace AfterHours.World
                 near = Random.value < 0.35f;
                 flashT = 0f;
                 thunderAt = Time.time + (near ? Random.Range(0.4f, 1.5f) : Random.Range(3f, 7f));
+                if (near) AfterHours.Rendering.FluorescentFlicker.Surge(Random.Range(0.4f, 0.9f));   // the surge gets into the wiring
             }
             if (flashT >= 0f && lightning != null)
             {

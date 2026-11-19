@@ -31,6 +31,15 @@ namespace AfterHours.Rendering
         float stepTimer;
         float burstUntil;
         float nextBurst;
+        float surgeStep, surgeLevel = 1f;
+
+        static float surgeUntil = -1f;
+
+        /// <summary>A close lightning strike: every faulty tube in the building stutters for a moment.</summary>
+        public static void Surge(float seconds) => surgeUntil = Time.time + seconds;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => surgeUntil = -1f;
 
         void Start()
         {
@@ -95,6 +104,13 @@ namespace AfterHours.Rendering
                     break;
             }
 
+            // (a surge uses its own dice, so the seeded rhythm stays the same for everyone afterwards)
+            if (t < surgeUntil)
+            {
+                surgeStep -= Time.deltaTime;
+                if (surgeStep <= 0f) { surgeStep = Random.Range(0.02f, 0.09f); surgeLevel = Random.value < 0.55f ? Random.Range(0f, 0.2f) : 1f; }
+                level = Mathf.Min(level, surgeLevel);
+            }
             if (lightSource != null) lightSource.intensity = baseIntensity * level;
             if (panels != null && block != null)
             {
@@ -103,7 +119,7 @@ namespace AfterHours.Rendering
             }
             if (buzz != null)
             {
-                bool unstable = level < 0.95f || t < burstUntil;
+                bool unstable = level < 0.95f || t < burstUntil || t < surgeUntil;
                 buzz.volume = Mathf.MoveTowards(buzz.volume, unstable ? 0.5f : 0.12f, Time.deltaTime * 4f);
             }
         }
