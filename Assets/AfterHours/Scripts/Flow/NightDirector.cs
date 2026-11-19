@@ -99,7 +99,7 @@ namespace AfterHours.Flow
                 {
                     if (!(m is IPuzzleInput i) || !i.Satisfied) continue;
                     done++;
-                    ElliotBrain.Hotspots.Add(m.transform.position);
+                    ElliotBrain.Hotspots.Add(m is AnyOfInput any ? any.Where : m.transform.position);
                 }
                 totalDone += done;
                 float f = done / (float)g.inputs.Count;

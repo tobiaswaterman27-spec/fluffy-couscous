@@ -46,7 +46,8 @@ namespace AfterHours.EditorTools
                 if (!EditorUtility.DisplayDialog("After Hours", err + "\n\nBuild with what you have anyway?", "Build anyway", "Stop")) return;
             }
             SessionState.SetBool(Key, true);
-            AssetDatabase.Refresh();
+            SessionState.SetFloat(Key + ".t", (float)EditorApplication.timeSinceStartup);
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             // If scripts changed, Unity reloads them now and the static constructor above carries on afterwards.
             EditorApplication.delayCall += Continue;
         }
@@ -54,7 +55,9 @@ namespace AfterHours.EditorTools
         static void Continue()
         {
             if (!SessionState.GetBool(Key, false)) return;
-            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+            // give Unity a moment to notice changed scripts and start compiling (and wait while it does)
+            bool tooSoon = EditorApplication.timeSinceStartup - SessionState.GetFloat(Key + ".t", 0f) < 3.0;
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating || tooSoon)
             {
                 EditorApplication.delayCall += Continue;
                 return;

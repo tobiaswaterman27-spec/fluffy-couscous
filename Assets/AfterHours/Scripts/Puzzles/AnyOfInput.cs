@@ -23,6 +23,16 @@ namespace AfterHours.Puzzles
             }
         }
 
+        /// <summary>Where it was done (the satisfied option), for anything that wants a place.</summary>
+        public Vector3 Where
+        {
+            get
+            {
+                foreach (MonoBehaviour m in options) if (m is IPuzzleInput i && i.Satisfied) return m.transform.position;
+                return transform.position;
+            }
+        }
+
         public GameObject LastActor
         {
             get

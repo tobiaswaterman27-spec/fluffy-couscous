@@ -90,7 +90,7 @@ namespace AfterHours.Creature
             {
                 // Behind a door: unseen. Under a desk or behind a curtain: only if it gets right up close and looks.
                 var spot = p.CurrentHidingSpot;
-                if (spot == null || !spot.open || Vector3.Distance(EyePosition, p.transform.position) > spot.exposedWithin) return false;
+                if (spot == null || !spot.open || Vector3.ProjectOnPlane(EyePosition - p.transform.position, Vector3.up).magnitude > spot.exposedWithin) return false;
             }
             Vector3 eye = EyePosition;
             Vector3 target = p.EyePosition;

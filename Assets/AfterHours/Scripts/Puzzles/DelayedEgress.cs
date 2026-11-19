@@ -82,7 +82,8 @@ namespace AfterHours.Puzzles
             if (alarmT < 0f) return;
             alarmT += Time.deltaTime;
             bool powered = powerCut == null || !powerCut.Satisfied;
-            if (!Satisfied && (alarmT >= delay || !powered)) Release();
+            bool client = AfterHours.Items.ItemPickup.NetDriven;     // co-op client: the host decides; we only show it
+            if (!client && !Satisfied && (alarmT >= delay || !powered)) Release();
             if (!Ringing || !powered)
             {
                 if (bell != null && bell.isPlaying) bell.Stop();
@@ -116,14 +117,14 @@ namespace AfterHours.Puzzles
                 }
             }
             noiseTimer -= Time.deltaTime;
-            if (noiseTimer <= 0f)
+            if (!client && noiseTimer <= 0f)
             {
                 noiseTimer = 2f;
                 NoiseBus.Emit(new NoiseEvent(transform.position, alarmRadius, NoiseKind.Machinery, LastActor));
             }
         }
 
-        public string CaptureState() => Satisfied ? "1" : alarmT >= 0f ? "a " + alarmT.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) : "0";
+        public string CaptureState() => Satisfied ? "1" : alarmT >= 0f ? "a " + Mathf.Floor(alarmT).ToString("0", System.Globalization.CultureInfo.InvariantCulture) : "0";
 
         public void RestoreState(string data)
         {

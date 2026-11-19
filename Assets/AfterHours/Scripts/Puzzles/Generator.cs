@@ -56,7 +56,7 @@ namespace AfterHours.Puzzles
             if (a != null) a.Play(Player.Gesture.Reach, transform.position + Vector3.up * 0.6f, (who.Position - transform.position).normalized, Vector3.up, 0.8f);
 
             bool fuelled = (fuel == null || fuel.Satisfied) && (controlFuse == null || controlFuse.Satisfied);
-            pulls++;
+            if (fuelled) pulls++;                  // dry pulls don't warm anything up
             // A cold engine: the first pulls only cough. Without petrol it never catches.
             float chance = fuelled ? Mathf.Clamp01(-0.15f + 0.22f * pulls) : 0f;
             bool starts = UnityEngine.Random.value < chance;
@@ -123,6 +123,12 @@ namespace AfterHours.Puzzles
         public void RestoreState(string data)
         {
             bool on = data != null && data.StartsWith("1");
+            if (on && !Running && AfterHours.Items.ItemPickup.NetDriven)
+            {
+                // co-op client: someone else got it going - hear it catch
+                AudioClip c = AudioLibrary.Get("generator_start");
+                if (c != null) AudioPool.PlayAt(c, transform.position, 1f, 1f, 40f);
+            }
             if (on != Running) SetRunning(on);
             runTime = settleSeconds; // a loaded / joined game: it has been running a while
         }

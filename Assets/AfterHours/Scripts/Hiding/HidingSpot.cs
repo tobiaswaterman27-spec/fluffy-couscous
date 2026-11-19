@@ -164,7 +164,8 @@ namespace AfterHours.Hiding
                     d.locked = false;
                     if (!d.IsOpen) d.Open(outsidePoint + (outsidePoint - insidePoint), 2.4f, actor);
                 }
-            InteractionFx.Play(ProceduralSounds.Sfx.Slam, transform.position, 1f, 20f, actor, NoiseKind.Door);
+            if (doors != null && doors.Length > 0) InteractionFx.Play(ProceduralSounds.Sfx.Slam, transform.position, 1f, 20f, actor, NoiseKind.Door);
+            else InteractionFx.Play(ProceduralSounds.Sfx.Bump, transform.position, 0.8f, 8f, actor, NoiseKind.Interaction);   // shoving the chair / curtain aside
             return Occupant;
         }
 
