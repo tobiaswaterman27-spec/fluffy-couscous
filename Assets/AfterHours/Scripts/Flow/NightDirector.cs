@@ -38,6 +38,61 @@ namespace AfterHours.Flow
         void Awake()
         {
             Instance = this;
+            if (GetComponent<BlackoutDirector>() == null) gameObject.AddComponent<BlackoutDirector>();
+        }
+
+        public const int Easy = 0, Normal = 1, Hard = 2, Nightmare = 3, OneLife = 4;
+        public static readonly string[] DifficultyNames = { "Easy", "Normal", "Hard", "Nightmare", "One Life" };
+        public static readonly string[] DifficultyHelp =
+        {
+            "It takes longer to get worse, and hears and sees less.",
+            "As intended.",
+            "It roams everywhere from the start, gets worse fast, hears and sees more.",
+            "Harder than Hard - and at 3 AM a second one comes up from the car park. It's faster.",
+            "Nightmare, and you only get caught once: then the night is over. (In co-op it plays as Nightmare.)",
+        };
+
+        /// <summary>The Nightmare second creature arrives at this time on the night clock (3 AM).</summary>
+        public const float LateArrivalClock = 3f * 3600f;
+        public static readonly Vector3 LateStart = new Vector3(-40f, AfterHours.World.Layout.MallLayout.CarParkY + 0.05f, -60f);
+        bool lateReleased;
+
+        /// <summary>Single player on Nightmare / One Life: makes the second creature (hidden until 3 AM).</summary>
+        void EnsureLateCreature()
+        {
+            if (NetSession.Active) return;                 // co-op: NetCreatures made it at the start
+            foreach (ElliotBrain b in ElliotBrain.All) if (b != null && b.lateArrival) return;
+            ElliotBrain first = null;
+            foreach (ElliotBrain b in ElliotBrain.All) if (b != null && b.gameObject.activeSelf) { first = b; break; }
+            if (first == null) return;
+            GameObject copy = Instantiate(first.gameObject, LateStart, Quaternion.Euler(0f, 90f, 0f));
+            copy.name = "Elliot (the second one)";
+            ElliotBrain late = copy.GetComponent<ElliotBrain>();
+            late.lateArrival = true;
+            late.lateStart = LateStart;
+            copy.SetActive(false);
+        }
+
+        void ReleaseLate()
+        {
+            lateReleased = true;
+            foreach (ElliotBrain b in ElliotBrain.All)
+            {
+                if (b == null || !b.lateArrival || b.gameObject.activeSelf) continue;
+                b.transform.position = b.lateStart;
+                b.gameObject.SetActive(true);
+                b.Rouse();
+                // it announces itself: a scream from deep in the car park
+                AudioClip c = AudioLibrary.Get("elliot_scream");
+                if (c != null) AudioPool.PlayAt(c, b.transform.position + Vector3.up * 2f, 1f, Random.Range(1.05f, 1.15f), 200f);
+            }
+        }
+
+        void HoldLate()
+        {
+            lateReleased = false;
+            foreach (ElliotBrain b in ElliotBrain.All)
+                if (b != null && b.lateArrival && b.gameObject.activeSelf) { b.transform.position = b.lateStart; b.gameObject.SetActive(false); }
         }
 
         void OnDestroy()
@@ -60,22 +115,31 @@ namespace AfterHours.Flow
         {
             NightTime = 0f;
             Threat = 0;
+            HoldLate();
+            BlackoutDirector bd = GetComponent<BlackoutDirector>();
+            if (bd != null) bd.End();
             Apply();
         }
 
         void Update()
         {
             GameFlow flow = GameFlow.Instance;
-            if (flow == null || flow.State != FlowState.Playing || NetSession.IsClient) return;
+            if (flow == null || flow.State != FlowState.Playing || NetSession.IsClient || TutorialDirector.Running) return;
             if (!GamePause.IsPaused) NightTime += Time.deltaTime;
             evalTimer -= Time.deltaTime;
             if (evalTimer > 0f) return;
             evalTimer = 2f;
 
             int level = 0;
-            float tScale = Difficulty == 0 ? 1.5f : Difficulty == 2 ? 0.6f : 1f;
+            int diff = Difficulty;
+            float tScale = diff == Easy ? 1.5f : diff == Hard ? 0.6f : diff >= Nightmare ? 0.45f : 1f;
             for (int i = TimeLevels.Length - 1; i >= 0; i--) if (NightTime >= TimeLevels[i] * tScale) { level = i; break; }
-            if (Difficulty == 2) level = Mathf.Max(level, 1);           // hard: it's already roaming
+            if (diff >= Hard) level = Mathf.Max(level, 1);              // hard and up: it's already roaming
+            if (diff >= Nightmare)
+            {
+                EnsureLateCreature();
+                if (!lateReleased && NightTime * ClockScale >= LateArrivalClock) ReleaseLate();
+            }
             level = Mathf.Max(level, ProgressLevel());
             if (level > Threat)
             {
@@ -119,7 +183,7 @@ namespace AfterHours.Flow
             get
             {
                 var s = AfterHours.Settings.SettingsService.CurrentOrDefault;
-                return s != null ? s.difficulty : 1;
+                return s != null ? Mathf.Clamp(s.difficulty, 0, 4) : 1;
             }
         }
 
@@ -139,8 +203,10 @@ namespace AfterHours.Flow
                     bases[b] = o;
                 }
                 float k = Threat / 3f;
-                float senses = Difficulty == 0 ? 0.8f : Difficulty == 2 ? 1.25f : 1f;
-                float pace = Difficulty == 0 ? 0.9f : Difficulty == 2 ? 1.08f : 1f;
+                int diff = Difficulty;
+                float senses = diff == Easy ? 0.8f : diff == Hard ? 1.25f : diff >= Nightmare ? 1.35f : 1f;
+                float pace = diff == Easy ? 0.9f : diff == Hard ? 1.08f : diff >= Nightmare ? 1.12f : 1f;
+                if (b.lateArrival) pace *= 1.15f;                       // the second one is quicker
                 // Searching and stalking get much quicker; its sprint barely changes (you can still outrun it, just).
                 b.motor.slowWalkSpeed = o.slow * (1f + 0.25f * k) * pace;
                 b.motor.walkSpeed = o.walk * (1f + 0.3f * k) * pace;

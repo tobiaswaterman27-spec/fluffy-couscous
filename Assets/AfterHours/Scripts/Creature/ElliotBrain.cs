@@ -50,6 +50,10 @@ namespace AfterHours.Creature
 
         /// <summary>Night escalation (NightDirector, host only): 0 = first hour .. 3 = it knows you're nearly out.</summary>
         public static int Threat;
+
+        /// <summary>Nightmare: the second one, waiting (inactive) until 3 AM. Faster than the first.</summary>
+        [System.NonSerialized] public bool lateArrival;
+        [System.NonSerialized] public Vector3 lateStart;
         /// <summary>Places someone has been working on a way out (fitted parts, a running generator...).</summary>
         public static readonly List<Vector3> Hotspots = new List<Vector3>();
 
@@ -220,6 +224,7 @@ namespace AfterHours.Creature
             else if (state == ElliotState.CrawlVent) UpdateCrawl(dt);
             else UpdateWander();
             if (catching) return;
+            FollowPrints(dt);
 
             if (state != ElliotState.CrawlVent)
             {
@@ -249,6 +254,35 @@ namespace AfterHours.Creature
         }
 
         void Pause(float seconds) => pauseUntil = Mathf.Max(pauseUntil, Time.time + seconds);
+
+        // ---------------- wet footprints ----------------
+        float printCheck, trailNewest = -1f;
+
+        /// <summary>
+        /// Fresh wet shoe prints (someone walked through a leak): it stops, sniffs, and follows them print by print,
+        /// faster the fresher they are. Only when it isn't already chasing or checking something.
+        /// </summary>
+        void FollowPrints(float dt)
+        {
+            if (state == ElliotState.Hunt || state == ElliotState.CheckHidingSpot || state == ElliotState.CheckVent || state == ElliotState.CrawlVent) return;
+            printCheck -= dt;
+            if (printCheck > 0f) return;
+            printCheck = 0.5f;
+            if (!AfterHours.Player.WetFootprints.FreshPrintNear(transform.position, 7f, trailNewest, 45f, out Vector3 at, out float born)) return;
+            bool newTrail = state != ElliotState.Investigate || trailNewest < 0f;
+            trailNewest = born;
+            goal = at;
+            hasGoal = TrySetDestination(goal);
+            gait = Time.time - born < 15f ? ElliotGait.FastWalk : ElliotGait.Walk;
+            Enter(ElliotState.Investigate, false);
+            animator.LookTarget = at;
+            leftStartArea = true;
+            if (newTrail && audioOut != null && audioOut.voice != null && !audioOut.voice.isPlaying)
+            {
+                AudioClip c = AfterHours.Audio.AudioLibrary.Get("elliot_sniff");
+                if (c != null) audioOut.PlayVoice(c, 0.9f);
+            }
+        }
 
         bool CanSeeTarget() => target != null && senses.CanSee(target, out _);
 
@@ -531,6 +565,31 @@ namespace AfterHours.Creature
 
             if (!d.locked)
             {
+                // Barricaded (someone pushed something heavy against the other side): it rams the door into it,
+                // again and again, louder each time, until the whole lot gives way.
+                AfterHours.World.HeavyMovable bar = doorTime > 0.3f ? d.BarricadeAgainst(transform.position) : null;
+                if (bar != null)
+                {
+                    if (doorTime > (state == ElliotState.Hunt ? 0.8f : 1.2f) * (bangs + 1))
+                    {
+                        bangs++;
+                        animator.PlayAction(ElliotAction.BangDoor, d.transform.position + Vector3.up * 1.4f, 1.1f);
+                        d.Bang(gameObject);
+                        Vector3 push = bar.transform.position - d.transform.position;
+                        bar.Shove(push, 0.35f);
+                        if (audioOut != null && audioOut.voice != null && !audioOut.voice.isPlaying && Random.value < 0.5f)
+                        {
+                            AudioClip v = AfterHours.Audio.AudioLibrary.Get(Random.value < 0.5f ? "elliot_snarl" : "elliot_shriek");
+                            if (v != null) audioOut.PlayVoice(v, 1f);
+                        }
+                        if (bangs >= (state == ElliotState.Hunt ? 3 : 5))
+                        {
+                            if (bar.Moved) AfterHours.Flow.Stats.Event("barricade_smashed");
+                            d.SmashThrough(transform.position, bar, gameObject);
+                        }
+                    }
+                    return;
+                }
                 if (doorTime < 0.15f) animator.PlayAction(ElliotAction.ReachHandle, d.leaf != null ? d.leaf.position : d.transform.position, 0.7f);
                 if (doorTime > 0.5f) d.Open(transform.position, state == ElliotState.Hunt ? 2.2f : 0.9f, gameObject);
                 return;

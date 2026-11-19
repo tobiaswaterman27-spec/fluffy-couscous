@@ -258,7 +258,7 @@ namespace AfterHours.Net
         public void HostStartGame()
         {
             if (!IsHost || phase != Phase.Lobby) return;
-            creatureCount = NetCreatures.CountFor(Players.Count);
+            creatureCount = NetCreatures.CountFor(Players.Count) + (AfterHours.Flow.NightDirector.Difficulty >= AfterHours.Flow.NightDirector.Nightmare ? 1 : 0);
             transport.BroadcastReliable(StartMessage());
             BeginGame();
         }
@@ -280,7 +280,7 @@ namespace AfterHours.Net
                 p.pc = p.proxy.controller;
             }
             world.Build();
-            creatures.Setup(creatureCount, transport.IsHost);
+            creatures.Setup(creatureCount, transport.IsHost, transport.IsHost && AfterHours.Flow.NightDirector.Difficulty >= AfterHours.Flow.NightDirector.Nightmare);
             GamePause.CannotFreeze = Players.Count > 1;
 
             // Wire the game's hooks to the network.

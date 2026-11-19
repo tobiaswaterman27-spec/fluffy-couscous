@@ -226,8 +226,11 @@ namespace AfterHours.EditorTools
                         Vector3 inward = -MallLayout.WingRight(w) * p.side; // from the shop line towards the concourse
                         Quaternion face = Quaternion.LookRotation(inward);
                         Vector3 vm = MallLayout.WingPoint(w, p.u0 + 0.45f, p.side * (MallLayout.ConcourseHalf - 0.42f), y);
-                        GameObject body = EditorBuild.Box("Vending machine", g, vm + Vector3.up * 0.92f, new Vector3(0.82f, 1.84f, 0.78f), vendBody, SurfaceType.Metal, face);
-                        body.isStatic = true;
+                        // Heavy but movable: drag it (hold E) in front of a door and Elliot has to smash through.
+                        var vroot = new GameObject("Vending machine (movable)");
+                        vroot.transform.SetParent(g, false);
+                        vroot.transform.SetPositionAndRotation(vm, face);
+                        GameObject body = EditorBuild.Box("Vending machine", g, vm + Vector3.up * 0.92f, new Vector3(0.82f, 1.84f, 0.78f), vendBody, SurfaceType.Metal, face, false);
                         GameObject front = Detail("Vending machine front", g, vm + Vector3.up * 1.05f + inward * 0.392f, new Vector3(0.6f, 1.2f, 0.01f), vendFront, face);
                         // still on, all night: a cold glow on the floor, and the compressor's hum
                         int vh = Mathf.Abs(MallLayout.Hash((int)f, (int)w, (int)(p.u0 * 10f), 41));
@@ -259,6 +262,20 @@ namespace AfterHours.EditorTools
                             AmbientSound a = hum.AddComponent<AmbientSound>();
                             a.kind = ProceduralSounds.Ambience.Buzz; a.volume = 0.12f; a.maxDistance = 7f; a.maskingLevel = 0.15f;
                         }
+                        // everything that belongs to the machine moves with it
+                        foreach (Transform part in new[] { body.transform, front.transform, lgo.transform })
+                            part.SetParent(vroot.transform, true);
+                        foreach (Transform t in g.GetComponentsInChildren<Transform>())
+                            if ((t.name == "Moths" || t.name == "Vending hum") && t.parent == g && (t.position - vm).sqrMagnitude < 4f) t.SetParent(vroot.transform, true);
+                        Rigidbody vrb = vroot.AddComponent<Rigidbody>();
+                        vrb.mass = 220f;
+                        AfterHours.World.HeavyMovable vhm = vroot.AddComponent<AfterHours.World.HeavyMovable>();
+                        vhm.soloSpeed = 0.38f;
+                        vhm.material = SurfaceType.Metal;
+                        vhm.scrapeNoiseRadius = 14f;
+                        EditorBuild.SetLayerRecursive(vroot, GameLayers.PropLayer);
+                        foreach (Transform t in vroot.GetComponentsInChildren<Transform>(true))
+                            UnityEditor.GameObjectUtility.SetStaticEditorFlags(t.gameObject, 0);   // it moves: never batched or baked
                         Vector3 pp = MallLayout.WingPoint(w, p.u1 - 0.45f, p.side * (MallLayout.ConcourseHalf - 0.15f), y);
                         Detail("Payphone hood", g, pp + Vector3.up * 1.6f, new Vector3(0.6f, 0.9f, 0.3f), metal, face);
                         EditorBuild.Box("Payphone", g, pp + Vector3.up * 1.3f + inward * 0.05f, new Vector3(0.32f, 0.5f, 0.18f), blackMat, SurfaceType.Metal, face);

@@ -197,6 +197,7 @@ namespace AfterHours.Flow
             if (NetSession.IsHost) { SaveSystem.DeleteSave(); NewLayout(); }
             Deaths = 0;
             caughtThisGame = 0;
+            chasedThisGame = false;
             Stats.NightStarted();
             BeginOpening();
         }
@@ -221,15 +222,39 @@ namespace AfterHours.Flow
             playTime = 0f;
             Deaths = 0;
             caughtThisGame = 0;
+            chasedThisGame = false;
             Stats.NightStarted();
             NewLayout();
             BeginOpening();
         }
 
+        /// <summary>Main menu > Tutorial: the empty mall, step by step. Nothing is saved; your saved night is untouched.</summary>
+        void StartTutorial()
+        {
+            playTime = 0f;
+            NewLayout();
+            LeaveMenu();
+            DevLocation start = MallLayout.DevLocations[0];
+            if (player != null)
+            {
+                player.Teleport(start.position, start.yaw);
+                player.SetControlLock(false, false);
+                if (player.Look != null) player.Look.ExternallyDriven = false;
+            }
+            BeginPlaying();
+            TutorialDirector td = GetComponent<TutorialDirector>();
+            if (td == null) td = gameObject.AddComponent<TutorialDirector>();
+            td.Begin(player);
+        }
+
+        /// <summary>The tutorial is finished (or abandoned): back to the menu.</summary>
+        public void EndTutorial() => ReloadScene();
+
         void ContinueGame()
         {
             if (!SaveSystem.TryLoad(out SaveData data)) { NewGame(); return; }
             playTime = data.playTime;
+            chasedThisGame = true;     // (not saved: a continued night can't count as never chased)
             LeaveMenu();
             if (player != null) player.SetControlLock(false, false);
             if (data.runSeed == 0) NewLayout(); // a save from before the shuffle: keep the items where they were saved
@@ -383,13 +408,22 @@ namespace AfterHours.Flow
         }
 
         int caughtThisGame;
-        bool wasCaughtStat;
+        bool wasCaughtStat, chasedThisGame;
 
         void UpdatePlaying(float dt)
         {
-            if (!GamePause.IsPaused) { playTime += dt; Stats.AddTime(dt); }
+            if (!GamePause.IsPaused) { playTime += dt; if (!TutorialDirector.Running) Stats.AddTime(dt); }
             bool caughtNow = player != null && CatchSequence.IsBeingCaught(player);
             if (caughtNow && !wasCaughtStat) { caughtThisGame++; Stats.Caught(); }
+            if (!chasedThisGame && player != null)
+                foreach (ElliotBrain b in ElliotBrain.All)
+                {
+                    if (b == null || !b.gameObject.activeInHierarchy) continue;
+                    bool hunting = NetSession.IsClient
+                        ? b.motor != null && b.motor.Gait == ElliotGait.Run && Vector3.Distance(b.transform.position, player.transform.position) < 30f   // (clients only see it run)
+                        : b.isActiveAndEnabled && b.State == ElliotState.Hunt && b.Target == player;
+                    if (hunting) { chasedThisGame = true; break; }
+                }
             wasCaughtStat = caughtNow;
             autosaveTimer -= dt;
             if (autosaveTimer <= 0f && SafeToSave())
@@ -401,7 +435,7 @@ namespace AfterHours.Flow
 
         bool SafeToSave()
         {
-            if (player == null || NetSession.IsClient || CatchSequence.AnyActive || AfterHours.Puzzles.EscapeDirector.Escaping) return false;
+            if (player == null || NetSession.IsClient || CatchSequence.AnyActive || AfterHours.Puzzles.EscapeDirector.Escaping || TutorialDirector.Running) return false;
             if (elliot != null && elliot.State == ElliotState.Hunt) return false;
             return !player.ControlLocked || player.IsHidden;
         }
@@ -413,9 +447,21 @@ namespace AfterHours.Flow
 
         float rewakeT = -1f;
 
+        float oneLifeT = -1f;
+
         void OnRunReset()
         {
             if (NetSession.Active) return; // co-op never resets the whole run
+            if (NightDirector.Difficulty == NightDirector.OneLife)
+            {
+                // One Life: that was it. No waking up on the atrium floor this time.
+                SaveSystem.DeleteSave();
+                Deaths++;
+                oneLifeT = 0f;
+                InputService.Instance?.SetGameplayEnabled(false);
+                if (player != null) player.SetControlLock(true, true);
+                return;
+            }
             // Caught: the run starts over, so the save goes too. You come to again on the atrium floor... at midnight.
             SaveSystem.DeleteSave();
             Deaths++;
@@ -464,7 +510,7 @@ namespace AfterHours.Flow
             {
                 bool coopAll = false;
                 if (net != null && net.Players.Count > 1) { coopAll = true; foreach (NetSession.NetPlayer p in net.Players) if (!p.escaped) coopAll = false; }
-                Stats.Escaped(r, playTime, caughtThisGame, night != null ? night.NightTime : 0f, NightDirector.Difficulty, coopAll);
+                Stats.Escaped(r, playTime, caughtThisGame, night != null ? night.NightTime : 0f, NightDirector.Difficulty, coopAll, chasedThisGame);
             }
             InputService.Instance?.SetGameplayEnabled(false);
             if (player != null) player.SetControlLock(true, true);
@@ -703,6 +749,13 @@ namespace AfterHours.Flow
                 case FlowState.Playing: UpdatePlaying(Time.deltaTime); break;
                 case FlowState.Ending: UpdateEnding(dt); break;
             }
+            if (oneLifeT >= 0f)
+            {
+                oneLifeT += dt;
+                bool anyKey = UnityEngine.InputSystem.Keyboard.current != null && UnityEngine.InputSystem.Keyboard.current.anyKey.wasPressedThisFrame;
+                bool anyClick = UnityEngine.InputSystem.Mouse.current != null && UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame;
+                if (oneLifeT > 12f || oneLifeT > 3.5f && (anyKey || anyClick)) ReloadScene();
+            }
             if (captionT >= 0f) captionT += dt;
             if (rewakeT >= 0f) { rewakeT += dt; if (rewakeT > 4f) rewakeT = -1f; }
             if (credits)
@@ -810,6 +863,28 @@ namespace AfterHours.Flow
                     GUI.matrix = Matrix4x4.identity;
                 }
             }
+            if (oneLifeT >= 0f)
+            {
+                GUI.color = new Color(0f, 0f, 0f, Mathf.Clamp01(oneLifeT / 1.2f));
+                GUI.DrawTexture(full, Texture2D.whiteTexture);
+                float a = Mathf.Clamp01((oneLifeT - 1.2f) / 1.5f);
+                GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1f));
+                float cx = w / scale;
+                GUI.color = new Color(1f, 1f, 1f, a);
+                Color tc = textStyle.normal.textColor;
+                textStyle.normal.textColor = new Color(0.75f, 0.2f, 0.18f);
+                GUI.Label(new Rect(0f, 430f, cx, 60f), "ONE LIFE", textStyle);
+                textStyle.normal.textColor = new Color(0.75f, 0.73f, 0.7f);
+                GUI.Label(new Rect(0f, 500f, cx, 50f), "It got you. There is no second go tonight.", textStyle);
+                GUI.Label(new Rect(0f, 560f, cx, 40f), "Time inside: " + FormatTime(playTime) + "   ·   " + (night != null ? NightDirector.ClockText(night.NightTime) : ""), smallCentered);
+                textStyle.normal.textColor = tc;
+                if (oneLifeT > 3.5f)
+                {
+                    GUI.color = new Color(1f, 1f, 1f, 0.5f + 0.3f * Mathf.Sin(oneLifeT * 2f));
+                    GUI.Label(new Rect(0f, 640f, cx, 40f), "press any key", smallCentered);
+                }
+                GUI.matrix = Matrix4x4.identity;
+            }
             GUI.color = Color.white;
         }
 
@@ -848,8 +923,8 @@ namespace AfterHours.Flow
                 }
             }
 
-            string[] items = { "New game", "Continue", "Settings", "Host LAN game", "Join LAN game", "Your record", "Quit" };
-            bool[] enabled = { true, hasSave, true, true, true, true, true };
+            string[] items = { "New game", "Continue", "Tutorial", "Settings", "Host LAN game", "Join LAN game", "Your record", "Quit" };
+            bool[] enabled = { true, hasSave, true, true, true, true, true, true };
             Vector2 mouse = Event.current.mousePosition;
             for (int i = 0; i < items.Length; i++)
             {
@@ -862,7 +937,8 @@ namespace AfterHours.Flow
                 GUI.Label(r, (over ? "—  " : "") + items[i], st);
                 st.normal.textColor = c;
                 if (i == 1 && hasSave) GUI.Label(new Rect(360f, 400f + i * 62f, 400f, 52f), saveInfo, smallStyle);
-                if (i == 3) GUI.Label(new Rect(420f, 400f + i * 62f, 400f, 52f), "up to 4 players, same network", smallStyle);
+                if (i == 2) GUI.Label(new Rect(360f, 400f + i * 62f, 400f, 52f), "learn the controls, nobody hunting you", smallStyle);
+                if (i == 4) GUI.Label(new Rect(420f, 400f + i * 62f, 400f, 52f), "up to 4 players, same network", smallStyle);
                 if (enabled[i] && Event.current.type == EventType.MouseDown && Event.current.button == 0 && r.Contains(mouse))
                 {
                     Event.current.Use();
@@ -871,11 +947,12 @@ namespace AfterHours.Flow
                     {
                         case 0: NewGame(); break;
                         case 1: ContinueGame(); break;
-                        case 2: AfterHours.UI.DevPauseMenu.OpenFromMenu(); break;
-                        case 3: sessionMessage = ""; SaveSystem.CoopSlot = true; continueCoop = false; Net().Host(); screen = MenuScreen.Host; break;
-                        case 4: sessionMessage = ""; SaveSystem.CoopSlot = false; Net().Browse(); screen = MenuScreen.Join; break;
-                        case 5: screen = MenuScreen.Stats; break;
-                        case 6:
+                        case 2: StartTutorial(); break;
+                        case 3: AfterHours.UI.DevPauseMenu.OpenFromMenu(); break;
+                        case 4: sessionMessage = ""; SaveSystem.CoopSlot = true; continueCoop = false; Net().Host(); screen = MenuScreen.Host; break;
+                        case 5: sessionMessage = ""; SaveSystem.CoopSlot = false; Net().Browse(); screen = MenuScreen.Join; break;
+                        case 6: screen = MenuScreen.Stats; break;
+                        case 7:
 #if UNITY_EDITOR
                             UnityEditor.EditorApplication.isPlaying = false;
 #else
@@ -890,13 +967,16 @@ namespace AfterHours.Flow
             GUI.matrix = Matrix4x4.identity;
         }
 
+        GUIStyle achieveSmall;
+
         /// <summary>Your record: nights, ways out, fastest escape... and the achievements (locked ones say how).</summary>
         void DrawStats(float scale)
         {
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1f));
             GUI.color = new Color(0f, 0f, 0f, 0.7f);
-            GUI.DrawTexture(new Rect(0f, 0f, 1100f, 1080f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(0f, 0f, 1300f, 1080f), Texture2D.whiteTexture);
             GUI.color = Color.white;
+            if (achieveSmall == null) { achieveSmall = new GUIStyle(smallStyle) { fontSize = 13 }; }
             GUI.Label(new Rect(110f, 120f, 900f, 110f), "YOUR RECORD", titleStyle);
             Stats.Data d = Stats.Current;
             string[] names = { "main entrance", "car park exit", "loading bay", "emergency exit", "roof", "service tunnel", "staff exit", "hidden hatch" };
@@ -920,15 +1000,20 @@ namespace AfterHours.Flow
             GUI.color = Color.white;
             y += 4 * 30f + 20f;
             GUI.Label(new Rect(120f, y, 700f, 34f), $"Achievements   {d.achievements.Count} / {Stats.All.Length}", smallStyle); y += 36f;
-            foreach (Stats.Achievement a in Stats.All)
+            // two columns: title on one line, how to get it underneath
+            for (int i = 0; i < Stats.All.Length; i++)
             {
+                Stats.Achievement a = Stats.All[i];
                 bool got = Stats.Has(a.id);
+                int half = (Stats.All.Length + 1) / 2;
+                float ax = 140f + (i / half) * 560f, ay = y + (i % half) * 32f;
                 GUI.color = got ? new Color(0.95f, 0.8f, 0.45f) : new Color(1f, 1f, 1f, 0.4f);
-                GUI.Label(new Rect(140f, y, 900f, 28f), (got ? "\u2605 " : "\u2606 ") + a.title + "  -  " + a.how, smallStyle);
-                y += 28f;
+                GUI.Label(new Rect(ax, ay, 540f, 20f), (got ? "\u2605 " : "\u2606 ") + a.title, smallStyle);
+                GUI.color = got ? new Color(0.95f, 0.8f, 0.45f, 0.75f) : new Color(1f, 1f, 1f, 0.3f);
+                GUI.Label(new Rect(ax + 22f, ay + 16f, 540f, 18f), a.how, achieveSmall);
             }
             GUI.color = Color.white;
-            if (LobbyButton(new Rect(120f, 1080f - 110f, 300f, 52f), "Back")) screen = MenuScreen.Main;
+            if (LobbyButton(new Rect(1000f, 1080f - 80f, 260f, 52f), "Back")) screen = MenuScreen.Main;
             GUI.matrix = Matrix4x4.identity;
         }
 
@@ -980,7 +1065,8 @@ namespace AfterHours.Flow
                 if (screen == MenuScreen.Host)
                 {
                     int creatures = NetCreatures.CountFor(n.Players.Count);
-                    GUI.Label(new Rect(120f, y + 10f, 700f, 40f), $"{creatures} creature{(creatures > 1 ? "s" : "")} will be hunting you.", smallStyle);
+                    bool nightmare = NightDirector.Difficulty >= NightDirector.Nightmare;
+                    GUI.Label(new Rect(120f, y + 10f, 760f, 40f), $"{creatures} creature{(creatures > 1 ? "s" : "")} will be hunting you" + (nightmare ? ", and one more from 3 AM (Nightmare)." : "."), smallStyle);
                     if (SaveSystem.HasSave)
                     {
                         if (LobbyButton(new Rect(120f, y + 60f, 700f, 48f), (continueCoop ? "[x] " : "[ ] ") + "Carry on the saved co-op game")) continueCoop = !continueCoop;

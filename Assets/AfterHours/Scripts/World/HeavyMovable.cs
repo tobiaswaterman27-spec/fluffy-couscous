@@ -61,6 +61,20 @@ namespace AfterHours.World
         float noiseTimer;
 
         public Rigidbody Body => body;
+
+        /// <summary>Has someone moved it from where it stood at the start (e.g. to barricade a door)?</summary>
+        public bool Moved => body != null && (body.position - startPos).sqrMagnitude > 0.36f;
+
+        /// <summary>Something shoved it (Elliot forcing a barricaded door): a jolt along 'dir'.</summary>
+        public void Shove(Vector3 dir, float speed)
+        {
+            if (body == null || body.isKinematic) return;
+            dir.y = 0f;
+            if (dir.sqrMagnitude < 1e-4f) return;
+            dir.Normalize();
+            Vector3 v = body.linearVelocity;
+            body.linearVelocity = new Vector3(dir.x * speed, v.y, dir.z * speed);
+        }
         public int GripCount => grips.Count;
         public float AllowedSpeed => Mathf.Min(maxSpeed, soloSpeed + extraSpeedPerHelper * Mathf.Max(0, grips.Count - 1));
         public float AllowedTurnRate => soloTurnRate + extraTurnPerHelper * Mathf.Max(0, grips.Count - 1);

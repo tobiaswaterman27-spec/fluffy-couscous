@@ -17,6 +17,7 @@ namespace AfterHours.Power
         public static readonly string[] Circuits = { Main, "north", "east", "south", "west", "atrium", "carpark", "lifts", "escalators" };
 
         static readonly Dictionary<string, bool> breakers = new Dictionary<string, bool>();
+        static readonly HashSet<string> faults = new HashSet<string>();
 
         /// <summary>Raised with the circuit id whenever any breaker changes.</summary>
         public static event Action<string> Changed;
@@ -33,7 +34,19 @@ namespace AfterHours.Power
 
         public static bool BreakerOn(string id) => string.IsNullOrEmpty(id) || !breakers.TryGetValue(id, out bool on) || on;
 
-        public static bool IsPowered(string circuit) => BreakerOn(Main) && BreakerOn(circuit);
+        public static bool IsPowered(string circuit) => BreakerOn(Main) && BreakerOn(circuit) && !faults.Contains(circuit ?? "");
+
+        /// <summary>A section blackout: the supply to this circuit fails for a while (no breaker to reset - it comes back by itself).</summary>
+        public static bool HasFault(string id) => !string.IsNullOrEmpty(id) && faults.Contains(id);
+
+        public static void SetFault(string id, bool fault)
+        {
+            if (string.IsNullOrEmpty(id) || HasFault(id) == fault) return;
+            if (fault) faults.Add(id); else faults.Remove(id);
+            Changed?.Invoke(id);
+        }
+
+        public static IEnumerable<string> Faults => faults;
 
         public static void SetBreaker(string id, bool on)
         {
@@ -47,7 +60,9 @@ namespace AfterHours.Power
         {
             var off = new List<string>();
             foreach (var kv in breakers) if (!kv.Value) off.Add(kv.Key);
+            off.AddRange(faults);
             breakers.Clear();
+            faults.Clear();
             foreach (string id in off) Changed?.Invoke(id);
         }
 
@@ -85,6 +100,7 @@ namespace AfterHours.Power
         static void ResetStatics()
         {
             breakers.Clear();
+            faults.Clear();
             Changed = null;
         }
     }

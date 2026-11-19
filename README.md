@@ -122,9 +122,12 @@ After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the cam
   loudly. Elliot hears it.
 - **Weather**: a storm outside. Rain you can hear and see: falling past the smoked-glass main doors onto the wet forecourt under an orange street lamp, splashing on the atrium skylight, dripping through it in places. Lightning lights up the sky through the glass, then thunder.
 - **Thunder covers you**: while thunder rolls (a few seconds after each flash) Elliot can barely hear footsteps and small knocks - a close strike also makes every faulty tube in the mall stutter. In co-op everyone gets the same strikes.
-- **Wet footprints**: walk through a leak's puddle and you leave shoe prints for a dozen steps, drying over a minute.
-- **Difficulty**: Easy / Normal / Hard in Settings (the host's counts in co-op).
-- **Your record**: on the main menu - nights, ways out found, fastest escape, and achievements.
+- **Wet footprints**: walk through a leak's puddle and you leave shoe prints for a dozen steps, drying over a minute. Elliot notices fresh ones and follows the trail.
+- **Barricades**: the vending machines can be pushed (hold E). Push one against the far side of a door and Elliot has to ram it until he smashes through - loud, but it buys time.
+- **Blackouts**: every few minutes a section of the mall loses power for about a minute - emergency lights only, for you and for him. It comes back by itself.
+- **Tutorial**: on the main menu. The empty mall, one control at a time. Nothing is saved.
+- **Difficulty** (Settings; the host's counts in co-op): Easy, Normal, Hard, **Nightmare** (harder still, and at 3 AM a second, faster Elliot comes up from the car park) and **One Life** (Nightmare, and the first time you're caught the night is over - single player).
+- **Your record**: on the main menu - nights, ways out found, fastest escape, and 19 achievements.
 - **CCTV**: the Security Office (ground floor, north-west back corridor) has live camera feeds of the atrium,
   the malls, the entrance and the car park. Watch them to see where Elliot is. They need power.
 

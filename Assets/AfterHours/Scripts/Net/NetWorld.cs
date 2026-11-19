@@ -88,6 +88,7 @@ namespace AfterHours.Net
         {
             string power = "";
             foreach (string id in PowerGrid.Circuits) if (!PowerGrid.BreakerOn(id)) power += id + ",";
+            foreach (string id in PowerGrid.Faults) power += "!" + id + ",";   // section blackouts
             Check(PowerKey, power, into);
             foreach (var kv in keys)
             {
@@ -140,7 +141,7 @@ namespace AfterHours.Net
             if (key == PowerKey)
             {
                 var off = new HashSet<string>(data.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries));
-                foreach (string id in PowerGrid.Circuits) PowerGrid.SetBreaker(id, !off.Contains(id));
+                foreach (string id in PowerGrid.Circuits) { PowerGrid.SetBreaker(id, !off.Contains(id)); PowerGrid.SetFault(id, off.Contains("!" + id)); }
                 return;
             }
             if (!byKey.TryGetValue(key, out Component c) || c == null) return;

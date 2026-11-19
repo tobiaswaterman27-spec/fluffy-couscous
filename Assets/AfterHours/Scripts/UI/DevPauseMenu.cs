@@ -166,14 +166,18 @@ namespace AfterHours.UI
             GUILayout.Space(6);
             GUILayout.Label("Difficulty");
             GUILayout.BeginHorizontal();
-            string[] dn = { "Easy", "Normal", "Hard" };
-            for (int d = 0; d < 3; d++)
+            string[] dn = AfterHours.Flow.NightDirector.DifficultyNames;
+            for (int row = 0; row < 2; row++)
             {
-                bool on = s.difficulty == d;
-                if (GUILayout.Toggle(on, dn[d], GUI.skin.button, GUILayout.Height(26)) && !on) { s.difficulty = d; GUI.changed = true; }
+                GUILayout.BeginHorizontal();
+                for (int d = row * 3; d < Mathf.Min(dn.Length, row * 3 + 3); d++)
+                {
+                    bool on = s.difficulty == d;
+                    if (GUILayout.Toggle(on, dn[d], GUI.skin.button, GUILayout.Height(26)) && !on) { s.difficulty = d; GUI.changed = true; }
+                }
+                GUILayout.EndHorizontal();
             }
-            GUILayout.EndHorizontal();
-            GUILayout.Label(s.difficulty == 0 ? "It takes longer to get worse, and hears and sees less." : s.difficulty == 2 ? "It roams everywhere from the start, gets worse fast, hears and sees more." : "As intended.");
+            GUILayout.Label(AfterHours.Flow.NightDirector.DifficultyHelp[Mathf.Clamp(s.difficulty, 0, 4)]);
             // who you play as
             GUILayout.Space(6);
             PlayerCharacters.Entry me = PlayerCharacters.Get(s.character);

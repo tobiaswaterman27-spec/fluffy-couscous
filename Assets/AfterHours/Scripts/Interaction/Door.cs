@@ -139,6 +139,7 @@ namespace AfterHours.Interaction
             if (!interactable) return null;
             if (locked) return who.Has(lockId) ? "Unlock" : "Locked";
             if (moving) return null;
+            if (!IsOpen && BarricadeAgainst(who.Position) != null) return "Something heavy is against it";
             return IsOpen ? "Close" : "Open";
         }
 
@@ -356,6 +357,71 @@ namespace AfterHours.Interaction
             }
         }
 
+        // ---------------- barricades ----------------
+        float ignoreBlocksUntil;
+
+        float SideAwayFrom(Vector3 fromPosition)
+        {
+            Vector3 normal = transform.parent != null ? transform.parent.rotation * closedRotation * Vector3.forward : closedRotation * Vector3.forward;
+            return fixedSide != 0 ? fixedSide : (Vector3.Dot(fromPosition - transform.position, normal) >= 0f ? 1f : -1f);
+        }
+
+        /// <summary>
+        /// A barricade: the heavy thing (a vending machine, a crate stack) standing where this door would swing when
+        /// opened from 'fromPosition'. Null if nothing heavy is in the way.
+        /// </summary>
+        public AfterHours.World.HeavyMovable BarricadeAgainst(Vector3 fromPosition)
+        {
+            if (locked || IsOpen || moving || leaf == null || leafCollider == null || GameLayers.PropLayer < 0) return null;
+            float side = SideAwayFrom(fromPosition);
+            foreach (float a in new[] { 20f, 45f, 75f })
+            {
+                Collider c = OverlapAt(side * a, 1 << GameLayers.PropLayer);
+                if (c == null) continue;
+                AfterHours.World.HeavyMovable hm = c.GetComponentInParent<AfterHours.World.HeavyMovable>();
+                if (hm != null) return hm;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Elliot breaks through a barricade: the door is rammed into what's behind it, the frame splits and the
+        /// heavy thing is shoved away across the floor. Very loud.
+        /// </summary>
+        public void SmashThrough(Vector3 fromPosition, AfterHours.World.HeavyMovable barricade, GameObject actor)
+        {
+            InteractionFx.Play(ProceduralSounds.Sfx.DoorBreak, HandlePosition, 1f, 45f, actor, NoiseKind.Door);
+            AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.DoorBreak), HandlePosition, 1f, 0.7f, 90f);
+            AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.WallHit), HandlePosition, 1f, 0.6f, 60f);
+            Vector3 away = HandlePosition - fromPosition; away.y = 0f;
+            WorldFX.Splinters(HandlePosition, away.normalized + Vector3.up * 0.3f, 60);
+            if (barricade != null)
+            {
+                Vector3 d = barricade.transform.position - transform.position; d.y = 0f;
+                barricade.Shove(d.sqrMagnitude > 1e-4f ? d : away, 2.6f);
+            }
+            Camera cam = Camera.main;
+            if (cam != null && Vector3.Distance(cam.transform.position, HandlePosition) < 12f)
+            {
+                AudioPool.Play2D(AudioLibrary.Get("sub_hit"), 1f, 0.8f);
+                AudioMix.Kick(1f, 1.2f);
+            }
+            ignoreBlocksUntil = Time.time + 1.2f;      // it bursts through, whatever is in the way
+            blows = 0;
+            Open(fromPosition, 2.6f, actor);
+        }
+
+        Collider OverlapAt(float testAngle, int mask)
+        {
+            Quaternion parentRot = transform.parent != null ? transform.parent.rotation : Quaternion.identity;
+            Quaternion rot = parentRot * closedRotation * Quaternion.Euler(0f, testAngle, 0f);
+            Vector3 centre = transform.position + rot * leaf.localPosition;
+            Vector3 half = Vector3.Scale(leaf.localScale, leafCollider.size) * 0.5f * 0.96f;
+            int n = Physics.OverlapBoxNonAlloc(centre, half, overlap, rot, mask, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++) if (!overlap[i].transform.IsChildOf(transform)) return overlap[i];
+            return null;
+        }
+
         /// <summary>Would the leaf overlap a person, creature or loose prop at this angle?</summary>
         bool Blocked(float testAngle)
         {
@@ -367,7 +433,7 @@ namespace AfterHours.Interaction
             int mask = 0;
             if (GameLayers.PlayerLayer >= 0) mask |= 1 << GameLayers.PlayerLayer;
             if (GameLayers.CreatureLayer >= 0) mask |= 1 << GameLayers.CreatureLayer;
-            if (GameLayers.PropLayer >= 0) mask |= 1 << GameLayers.PropLayer;
+            if (GameLayers.PropLayer >= 0 && Time.time >= ignoreBlocksUntil) mask |= 1 << GameLayers.PropLayer;
             int n = Physics.OverlapBoxNonAlloc(centre, half, overlap, rot, mask, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < n; i++)
             {

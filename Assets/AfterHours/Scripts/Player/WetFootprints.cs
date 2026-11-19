@@ -6,7 +6,9 @@ namespace AfterHours.Player
 {
     /// <summary>
     /// Walk through a puddle under a leak and your shoes are wet for the next dozen steps: dark, glossy prints on the
-    /// floor, fainter with every step, drying out over a minute. Purely visual (one shared pool of quads).
+    /// floor, fainter with every step, drying out over a minute. Elliot notices fresh ones and follows the trail
+    /// (see <see cref="FreshPrintNear"/>). Works from how far you've walked, so it runs for every player in co-op
+    /// (including the ones the host only sees as proxies). One shared pool of quads.
     /// </summary>
     public class WetFootprints : MonoBehaviour
     {
@@ -14,45 +16,85 @@ namespace AfterHours.Player
         public Material template;
         public int wetSteps = 12;
         public float dryAfter = 60f;
+        public float stepLength = 0.72f;
 
-        PlayerMotor motor;
         float wet;
+        Vector3 lastPos;
+        float walked;
+        int foot;
+        bool hasLast;
 
-        class Print { public Renderer r; public float born; }
+        class Print { public Renderer r; public float born, strength; public Vector3 at; public GameObject owner; }
         static readonly List<Print> pool = new List<Print>();
         static int next;
         static Material printMat;
         static MaterialPropertyBlock block;
         static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-        const int PoolSize = 40;
+        const int PoolSize = 48;
+        static float fadeTimer;
 
-        void Awake() { motor = GetComponent<PlayerMotor>(); }
-        void OnEnable() { if (motor != null) motor.Footstep += OnStep; }
-        void OnDisable() { if (motor != null) motor.Footstep -= OnStep; }
-
-        void OnStep(FootstepInfo info)
+        /// <summary>
+        /// The freshest wet print within 'radius' of 'from' that was made after 'newerThan' (Time.time) and is
+        /// still less than 'maxAge' seconds old. Elliot uses this to follow a trail print by print.
+        /// </summary>
+        public static bool FreshPrintNear(Vector3 from, float radius, float newerThan, float maxAge, out Vector3 at, out float born)
         {
-            Vector3 p = info.position;
-            foreach (Drip d in Drip.All)
+            at = Vector3.zero; born = -1f;
+            float best = -1f;
+            foreach (Print p in pool)
             {
-                if (d == null) continue;
-                Vector3 c = d.PuddleCentre;
-                if (Mathf.Abs(c.y - p.y) < 0.6f && new Vector2(c.x - p.x, c.z - p.z).sqrMagnitude < d.puddleRadius * d.puddleRadius) { wet = 1f; return; }
+                if (p.r == null || !p.r.gameObject.activeSelf || p.born <= newerThan || Time.time - p.born > maxAge) continue;
+                if (Mathf.Abs(p.at.y - from.y) > 2.5f || (p.at - from).sqrMagnitude > radius * radius) continue;
+                if (p.born > best) { best = p.born; at = p.at; born = p.born; }
             }
-            if (wet <= 0f || info.mode == MoveMode.Crawl || info.mode == MoveMode.Airborne || template == null) return;
-            float yaw = transform.eulerAngles.y;
+            return best > 0f;
+        }
+
+        void OnEnable() { hasLast = false; }
+
+        void Update()
+        {
+            Vector3 p = transform.position;
+            if (!hasLast) { lastPos = p; hasLast = true; }
+            Vector3 d = p - lastPos; d.y = 0f;
+            float moved = d.magnitude;
+            lastPos = p;
+            if (moved > 3f) { walked = 0f; FadeAll(); return; }   // teleported (respawn, load)
+            if (moved > 0.0005f)
+            {
+                // standing in a leak's puddle soaks the shoes
+                foreach (Drip dr in Drip.All)
+                {
+                    if (dr == null) continue;
+                    Vector3 c = dr.PuddleCentre;
+                    if (Mathf.Abs(c.y - p.y) < 0.6f && new Vector2(c.x - p.x, c.z - p.z).sqrMagnitude < dr.puddleRadius * dr.puddleRadius) { wet = 1f; walked = 0f; break; }
+                }
+                walked += moved;
+                if (walked >= stepLength)
+                {
+                    walked -= stepLength;
+                    foot = 1 - foot;
+                    if (wet > 0f && template != null) Step(p, d / Mathf.Max(moved, 1e-4f));
+                }
+            }
+            FadeAll();
+        }
+
+        void Step(Vector3 p, Vector3 dir)
+        {
+            float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
             Vector3 right = Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
-            Vector3 at = p + right * (info.foot == 0 ? -0.11f : 0.11f);
+            Vector3 at = p + right * (foot == 0 ? -0.11f : 0.11f);
             int mask = Physics.DefaultRaycastLayers;
             foreach (int l in new[] { AfterHours.Core.GameLayers.PlayerLayer, AfterHours.Core.GameLayers.LocalBodyLayer, AfterHours.Core.GameLayers.CreatureLayer })
                 if (l >= 0) mask &= ~(1 << l);
             if (!Physics.Raycast(at + Vector3.up * 0.4f, Vector3.down, out RaycastHit hit, 0.9f, mask, QueryTriggerInteraction.Ignore)) return;
             if (Vector3.Dot(hit.normal, Vector3.up) < 0.9f) return;
-            Place(hit.point + hit.normal * 0.006f, yaw, info.foot, 0.6f * wet);
+            Place(hit.point + hit.normal * 0.006f, yaw, foot, 0.6f * wet);
             wet -= 1f / Mathf.Max(1, wetSteps);
         }
 
-        void Place(Vector3 at, float yaw, int foot, float alpha)
+        void Place(Vector3 at, float yaw, int f, float alpha)
         {
             if (printMat == null)
             {
@@ -76,36 +118,33 @@ namespace AfterHours.Player
                 pr.r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
             Transform tr = pr.r.transform;
-            tr.SetPositionAndRotation(at, Quaternion.Euler(90f, yaw + Random.Range(-6f, 6f) + (foot == 0 ? -4f : 4f), 0f));
-            tr.localScale = new Vector3(foot == 0 ? -0.11f : 0.11f, 0.28f, 1f);   // mirrored for the left shoe
+            tr.SetPositionAndRotation(at, Quaternion.Euler(90f, yaw + Random.Range(-6f, 6f) + (f == 0 ? -4f : 4f), 0f));
+            tr.localScale = new Vector3(f == 0 ? -0.11f : 0.11f, 0.28f, 1f);
             pr.born = Time.time;
+            pr.strength = alpha;
+            pr.at = at;
+            pr.owner = gameObject;
             pr.r.gameObject.SetActive(true);
             Tint(pr, alpha);
-            prints[pr] = alpha;
         }
 
-        static readonly Dictionary<Print, float> prints = new Dictionary<Print, float>();
-        static float fadeTimer;
-
-        void Update()
+        void FadeAll()
         {
             fadeTimer -= Time.deltaTime;
-            if (fadeTimer > 0f || prints.Count == 0) return;
+            if (fadeTimer > 0f) return;
             fadeTimer = 0.5f;
-            var dead = new List<Print>();
-            foreach (var kv in prints)
+            foreach (Print pr in pool)
             {
-                Print pr = kv.Key;
-                if (pr.r == null) { dead.Add(pr); continue; }
+                if (pr.r == null || !pr.r.gameObject.activeSelf) continue;
                 float k = 1f - (Time.time - pr.born) / dryAfter;
-                if (k <= 0f) { pr.r.gameObject.SetActive(false); dead.Add(pr); continue; }
-                Tint(pr, kv.Value * k);
+                if (k <= 0f) { pr.r.gameObject.SetActive(false); continue; }
+                Tint(pr, pr.strength * k);
             }
-            foreach (Print pr in dead) prints.Remove(pr);
         }
 
         static void Tint(Print pr, float alpha)
         {
+            if (block == null) block = new MaterialPropertyBlock();
             block.SetColor(BaseColorId, new Color(0.2f, 0.22f, 0.24f, alpha));
             pr.r.SetPropertyBlock(block);
         }
@@ -121,13 +160,11 @@ namespace AfterHours.Player
                 for (int x = 0; x < W; x++)
                 {
                     float u = (x + 0.5f) / W * 2f - 1f, v = (y + 0.5f) / H;
-                    // half-width of the sole along its length (toe at the top), slightly asymmetric (big toe side)
                     float half = v > 0.55f ? Mathf.Sqrt(Mathf.Max(0f, 1f - Mathf.Pow((v - 0.66f) / 0.34f, 2f))) * 0.95f
                                : v > 0.3f ? Mathf.Lerp(0.62f, 0.9f, (v - 0.3f) / 0.25f)
                                : Mathf.Sqrt(Mathf.Max(0f, 1f - Mathf.Pow((v - 0.2f) / 0.2f, 2f))) * 0.72f;
                     float uu = u + (v > 0.55f ? 0.08f * (v - 0.55f) / 0.45f : 0f);
                     float edge = Mathf.Clamp01((half - Mathf.Abs(uu)) * 8f);
-                    // tread: bars across the forefoot and heel, a lighter waist (the arch barely touches)
                     float tread = Mathf.Repeat(v * 22f, 1f) < 0.55f ? 1f : 0.55f;
                     float arch = v > 0.3f && v < 0.52f ? 0.45f : 1f;
                     float n = Mathf.PerlinNoise(x * 0.35f, y * 0.35f) * 0.5f + 0.6f;
@@ -141,6 +178,6 @@ namespace AfterHours.Player
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { pool.Clear(); prints.Clear(); next = 0; printMat = null; }
+        static void ResetStatics() { pool.Clear(); next = 0; printMat = null; block = null; }
     }
 }

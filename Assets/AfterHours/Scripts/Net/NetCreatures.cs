@@ -20,20 +20,29 @@ namespace AfterHours.Net
         {
             new Vector3(-40f, MallLayout.CarParkY + 0.05f, -60f),
             new Vector3(70f, MallLayout.CarParkY + 0.05f, 10f),
+            new Vector3(-70f, MallLayout.CarParkY + 0.05f, 60f),
         };
 
-        public void Setup(int count, bool host)
+        /// <param name="lateOne">Nightmare: the last one waits (hidden) until 3 AM - the host's night director lets it out.</param>
+        public void Setup(int count, bool host, bool lateOne = false)
         {
             All.Clear();
             ElliotBrain first = Object.FindAnyObjectByType<ElliotBrain>();
             if (first == null) return;
             All.Add(first);
-            int extra = Mathf.Clamp(count, 1, 3) - 1;
+            int extra = Mathf.Clamp(count, 1, 4) - 1;
             for (int i = 0; i < extra; i++)
             {
                 GameObject copy = Object.Instantiate(first.gameObject, ExtraStarts[i], Quaternion.Euler(0f, 90f * i, 0f));
                 copy.name = "Elliot " + (i + 2);
                 All.Add(copy.GetComponent<ElliotBrain>());
+            }
+            if (host && lateOne && All.Count > 1)
+            {
+                ElliotBrain late = All[All.Count - 1];
+                late.lateArrival = true;
+                late.lateStart = late.transform.position;
+                late.gameObject.SetActive(false);
             }
             if (!host)
             {
