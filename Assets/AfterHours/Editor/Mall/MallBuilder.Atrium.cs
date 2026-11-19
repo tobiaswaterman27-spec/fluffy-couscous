@@ -428,6 +428,13 @@ namespace AfterHours.EditorTools
             BoxMinMax("Roof plant unit", parent, new Vector3(34f, y, 34f), new Vector3(39f, y + 2.2f, 37f), plantMat, SurfaceType.Metal);
             BoxMinMax("Roof plant unit", parent, new Vector3(28f, y, 38f), new Vector3(31f, y + 1.6f, 43f), plantMat, SurfaceType.Metal);
             PointLight(parent, new Vector3(32f, y + 4f, 32f), 22f, 0.35f, new Color(0.6f, 0.7f, 0.9f), false);
+            // Rainwater lying in the dips of the flat roof.
+            (float x, float z, float a, float b)[] puddles = { (24f, 40f, 2.6f, 1.4f), (36.5f, 26f, 1.8f, 3.2f), (42f, 41.5f, 3.4f, 1.6f), (27f, 29.5f, 1.2f, 0.9f), (40.5f, 33f, 1.5f, 1.1f) };
+            foreach (var (px, pz, pa, pb) in puddles)
+            {
+                GameObject pd = BoxMinMax("Roof puddle", parent, new Vector3(px - pa * 0.5f, y, pz - pb * 0.5f), new Vector3(px + pa * 0.5f, y + 0.004f, pz + pb * 0.5f), waterMat, SurfaceType.Concrete, false);
+                Object.DestroyImmediate(pd.GetComponent<Collider>());
+            }
         }
 
         // =====================================================================
