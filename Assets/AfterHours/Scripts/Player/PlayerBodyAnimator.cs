@@ -123,7 +123,14 @@ namespace AfterHours.Player
 
             // the head goes exactly where the camera is
             float pitch = controller.Look != null ? controller.Look.Pitch : 0f;
-            Quaternion headRot = rot * Quaternion.Euler(pitch * 0.9f, 0f, 0f);
+            // talking on voice chat: the head nods and tilts with the words (and, standing still, a hand joins in)
+            if (mouth == null) { mouth = GetComponent<VoiceMouth>(); if (mouth == null) mouth = gameObject.AddComponent<VoiceMouth>(); }
+            bool speaking = mouth.Open > 0.08f;
+            talkEnv = Mathf.MoveTowards(talkEnv, speaking || (talkEnv > 0.3f && mouth.Open > 0.01f) ? 1f : 0f, dt * (speaking ? 4f : 0.8f));
+            talkGesture = talkEnv * Mathf.Clamp01(1f - speed / 0.3f) * (1f - crouch);
+            float tn = Time.time;
+            Quaternion headRot = rot * Quaternion.Euler(pitch * 0.9f + talkEnv * (Mathf.Sin(tn * 3.3f) * 3f + Mathf.Sin(tn * 5.9f + 1f) * 2f),
+                                                        talkEnv * Mathf.Sin(tn * 0.9f) * 5f, talkEnv * Mathf.Sin(tn * 1.3f) * 4f);
             Vector3 eye = controller.Look != null && controller.Look.cameraRig != null ? controller.Look.cameraRig.position : root + up * motor.EyeHeight;
             if (caught && controller.Look != null && controller.Look.cameraRig != null) headRot = controller.Look.cameraRig.rotation;
             Vector3 headPos = eye - headRot * EyeInHead;
@@ -460,6 +467,15 @@ namespace AfterHours.Player
                     ArmIK(s, shoulder, target, tU, gpalm);
                     continue;
                 }
+                if (s == 1 && talkGesture > 0.01f)
+                {
+                    // a loose, open-handed gesture at the waist, moving with the words
+                    float tg = Time.time;
+                    Vector3 gesture = shoulder + fwd * (0.28f + 0.03f * Mathf.Sin(tg * 1.9f)) + up * (-0.27f + 0.05f * Mathf.Sin(tg * 2.3f) + 0.03f * Mathf.Sin(tg * 4.1f))
+                              + right * ((0.1f + 0.04f * Mathf.Sin(tg * 1.1f)) * side);
+                    ArmIK(s, shoulder, Vector3.Lerp(wrist, gesture, talkGesture), -up - fwd * 0.4f + right * 0.5f, up * 0.85f - right * (0.45f * side) + fwd * 0.1f);
+                    continue;
+                }
                 Place(upper[s], shoulder, elbow, tU);
                 Place(fore[s], elbow, wrist, tF);
                 Vector3 pf = Vector3.ProjectOnPlane(palm, dH);
@@ -575,10 +591,15 @@ namespace AfterHours.Player
             Vector3 pelvisPos = root + legQ * (Mocap.V(P, Mocap.P) * Lt) - pelvisRot * new Vector3(0f, HipOff.y, HipOff.z);
             Vector3 dS = legQ * Mocap.Dir(P, Mocap.Spine), tS = legQ * Mocap.Twist(P, Mocap.Spine);
             Vector3 tN = legQ * Mocap.Twist(P, Mocap.NeckS);
+            // On all fours nobody looks dead ahead with the neck flat: the head drops to watch the floor in front
+            // (only how it looks to others - the eyes stay where the camera is), and the shoulders sit below it.
+            Vector3 eyeAt = headPos + headRot * EyeInHead;
+            headRot = headRot * Quaternion.Euler(30f, 0f, 0f);
+            headPos = eyeAt - headRot * EyeInHead;
             Vector3 headJoint = pelvisPos + dS * Spine + (legQ * Mocap.Dir(P, Mocap.NeckS)) * Neck;
             Vector3 corrH = Vector3.ProjectOnPlane(headPos - headJoint, up);
             pelvisPos += corrH;
-            Vector3 mid = SolveIK(pelvisPos, headPos, Spine, Neck, up - dS * 0.2f, out Vector3 end);
+            Vector3 mid = SolveIK(pelvisPos, headPos, Spine, Neck, -up, out Vector3 end);   // the neck rises from low shoulders
             Quaternion spineRot = Aim(mid - pelvisPos, tS), neckRot = Aim(end - mid, tN);
             SetBody(pelvisPos, pelvisRot, spineRot, neckRot, LiveHead(headRot, P, Time.time, speed), up);
 
@@ -723,6 +744,7 @@ namespace AfterHours.Player
         }
 
         VoiceMouth mouth;
+        float talkEnv, talkGesture;
         Transform lidL, lidR;
         Quaternion lidRestL, lidRestR;
         float blinkT = -1f, nextBlink;
