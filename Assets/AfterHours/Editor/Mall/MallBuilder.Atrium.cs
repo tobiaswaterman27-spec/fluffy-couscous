@@ -376,6 +376,9 @@ namespace AfterHours.EditorTools
                 Material halo = AdditiveMaterial("Lamp_Halo", "decal_light_beam.png", new Color(1f, 0.55f, 0.2f, 0.05f));
                 Shaft(g, MallLayout.WingPoint(w, e + 9.1f, v, 6.25f), new Vector3(0.02f, -1f, 0f).normalized, 6.2f, 3.2f, halo);
             }
+            // Nobody can get out here (the doors are the escape), so nothing outside is solid: no stray island on
+            // Elliot's navigation map, nothing for physics to bother with.
+            foreach (Collider c in g.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
         }
 
         // Roof
