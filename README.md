@@ -120,7 +120,8 @@ After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the cam
   changing room behind the curtain. Quick to get into, but if Elliot comes right up close and looks, he sees you.
 - **Knocking things over**: wet-floor signs, bins, A-boards, stacked boxes and chairs go over if you run into them -
   loudly. Elliot hears it.
-- **Weather**: a storm outside. Rain on the skylight and the glass, lightning through the roof, thunder.
+- **Weather**: a storm outside. Rain you can hear and see: falling past the smoked-glass main doors onto the wet forecourt under an orange street lamp, splashing on the atrium skylight, dripping through it in places. Lightning lights up the sky through the glass, then thunder.
+- **Wet footprints**: walk through a leak's puddle and you leave shoe prints for a dozen steps, drying over a minute.
 - **Difficulty**: Easy / Normal / Hard in Settings (the host's counts in co-op).
 - **Your record**: on the main menu - nights, ways out found, fastest escape, and achievements.
 - **CCTV**: the Security Office (ground floor, north-west back corridor) has live camera feeds of the atrium,
