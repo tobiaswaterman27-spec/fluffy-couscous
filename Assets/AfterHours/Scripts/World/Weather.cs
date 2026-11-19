@@ -16,6 +16,9 @@ namespace AfterHours.World
         public Light lightning;
         public float minGap = 45f, maxGap = 120f;
 
+        /// <summary>How hard it's raining right now, 0..1 (leaks drip faster in heavy rain).</summary>
+        public static float Intensity { get; private set; } = 0.6f;
+
         float[] baseVolume;
         float nextStrike, flashT = -1f, thunderAt = -1f;
         bool near;
@@ -42,6 +45,7 @@ namespace AfterHours.World
             bool ending = GameFlow.Instance != null && GameFlow.Instance.State == FlowState.Ending;
             // how hard it's raining: slow swells over a couple of minutes
             float intensity = ending ? 0f : Mathf.Lerp(0.45f, 1f, Mathf.PerlinNoise(Time.time * 0.008f, seed));
+            Intensity = intensity;
             for (int i = 0; i < rainSources.Length; i++)
                 if (rainSources[i] != null) rainSources[i].volume = Mathf.MoveTowards(rainSources[i].volume, baseVolume[i] * intensity, Time.deltaTime * 0.2f);
             if (ending) { if (lightning != null) lightning.enabled = false; return; }

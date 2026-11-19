@@ -12,6 +12,8 @@ namespace AfterHours.World
         public Material dropMaterial;
         public float height = 3f;
         public float minInterval = 1.2f, maxInterval = 4f;
+        [Tooltip("Comes through the roof: drips faster when it's raining harder (Weather.Intensity).")]
+        public bool rainFed;
         ParticleSystem ps;
         float timer, fall;
         float landAt = -1f;
@@ -52,6 +54,7 @@ namespace AfterHours.World
             if (timer <= 0f)
             {
                 timer = Random.Range(minInterval, maxInterval);
+                if (rainFed) timer /= Mathf.Lerp(0.6f, 2.2f, Weather.Intensity);
                 if (ps != null) ps.Emit(1);
                 landAt = Time.time + fall;
             }

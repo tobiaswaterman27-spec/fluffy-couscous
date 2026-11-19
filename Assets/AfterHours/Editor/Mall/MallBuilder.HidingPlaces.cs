@@ -88,7 +88,7 @@ namespace AfterHours.EditorTools
             for (int i = 0; i < 2; i++)
             {
                 float vm = (vs[i] + vs[i + 1]) * 0.5f;
-                Detail("Changing room bench", g, MallLayout.WingPoint(w, uWall - 0.2f, side * vm, y + 0.45f), new Vector3(0.35f, 0.04f, 1.0f), woodMat, Quaternion.LookRotation(intoRoom));
+                Detail("Changing room bench", g, MallLayout.WingPoint(w, uWall - 0.2f, side * vm, y + 0.45f), new Vector3(1.0f, 0.04f, 0.35f), woodMat, Quaternion.LookRotation(intoRoom));   // along the back wall
                 Detail("Changing room mirror", g, MallLayout.WingPoint(w, uWall - 0.01f, side * vm, y + 1.3f), new Vector3(0.5f, 1.3f, 0.01f), mirrorMat, Quaternion.LookRotation(-intoRoom));
                 Cyl("Curtain rail", g, MallLayout.WingPoint(w, uOpen, side * vs[i], y + h - 0.05f), MallLayout.WingPoint(w, uOpen, side * vs[i + 1], y + h - 0.05f), 0.025f, metal);
                 // the curtain, pulled across about two thirds (no collider: you walk through the gap)

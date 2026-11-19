@@ -84,6 +84,34 @@ namespace AfterHours.EditorTools
                 DecalQuad(g, floor + Vector3.up * 0.015f, Vector3.up, Rand(0.9f, 1.6f), Rand(0.9f, 1.6f), Rand(0f, 360f), decalPuddle);
                 DecalQuad(g, floor + Vector3.up * (height - 0.02f), Vector3.down, 0.9f, 0.9f, Rand(0f, 360f), decalWater);
             }
+            // The atrium skylight leaks in the storm: drops falling the full height of the atrium onto the ground floor,
+            // one of them into a bucket somebody put out (knock it over and it's loud).
+            float roofDrop = MallLayout.RoofY - 0.45f;
+            Vector3[] skyLeaks = { new Vector3(7.4f, 0f, 6.3f), new Vector3(-8.2f, 0f, -4.4f), new Vector3(2.8f, 0f, -8.7f) };
+            for (int i = 0; i < skyLeaks.Length; i++)
+            {
+                Vector3 floor = skyLeaks[i];
+                var go = new GameObject("Skylight leak");
+                go.transform.SetParent(g, false);
+                go.transform.position = floor + Vector3.up * roofDrop;
+                AfterHours.World.Drip d = go.AddComponent<AfterHours.World.Drip>();
+                d.dropMaterial = drop;
+                d.height = roofDrop;
+                d.rainFed = true;
+                d.minInterval = 0.8f; d.maxInterval = 2.6f;
+                DecalQuad(g, floor + Vector3.up * 0.015f, Vector3.up, Rand(1.2f, 2f), Rand(1.0f, 1.8f), Rand(0f, 360f), decalPuddle);
+                if (i == 0) LeakBucket(g, floor);
+            }
+        }
+
+        /// <summary>A grey mop bucket left under a leak.</summary>
+        static void LeakBucket(Transform g, Vector3 at)
+        {
+            Material grey = Mat("Bucket plastic", new Color(0.45f, 0.47f, 0.5f), 0.35f);
+            GameObject r = KnockRoot(g, "Bucket", at, 20f, 2.5f, SurfaceType.Metal, 0.32f, 0.4f, 1.6f);
+            KPart(r, PrimitiveType.Cylinder, new Vector3(0f, 0.15f, 0f), new Vector3(0.3f, 0.15f, 0.3f), grey);
+            KPart(r, PrimitiveType.Cylinder, new Vector3(0f, 0.24f, 0f), new Vector3(0.27f, 0.005f, 0.27f), Mat("Bucket water", new Color(0.18f, 0.2f, 0.22f), 0.95f));
+            KDone(r, new Vector3(0f, 0.16f, 0f), new Vector3(0.3f, 0.32f, 0.3f));
         }
 
         /// <summary>A light shaft: two crossed soft quads running from 'start' along 'dir'.</summary>
