@@ -264,6 +264,86 @@ namespace AfterHours.EditorTools
             AfterHours.World.Weather w = parent.gameObject.AddComponent<AfterHours.World.Weather>();
             w.rainSources = sources;
             w.lightning = l;
+
+            // Rain you can see: a sheet of it outside the entrance glass (under the street lamps and every flash),
+            // and splashes hitting the skylight panes, seen from below.
+            Material streak = AdditiveMaterial("Rain_Streak", "decal_dust_mote.png", new Color(0.6f, 0.68f, 0.8f, 0.25f));
+            void Rain(string name, Vector3 centre, Vector3 size, bool splash, float rate)
+            {
+                var go = new GameObject(name);
+                go.transform.SetParent(parent, false);
+                go.transform.position = centre;
+                AfterHours.World.RainView rv = go.AddComponent<AfterHours.World.RainView>();
+                rv.material = streak;
+                rv.size = size;
+                rv.splashes = splash;
+                rv.rate = rate;
+            }
+            BuildForecourt(parent);
+            float end = MallLayout.EntranceHallEnd;
+            // beyond the canopy (it keeps the strip by the doors dry)
+            Rain("Rain outside the entrance", MallLayout.WingPoint(WingId.South, end + 8f, 0f, 3.5f), new Vector3(30f, 7f, 9f), false, 2600f);
+            Rain("Rain dripping off the canopy", MallLayout.WingPoint(WingId.South, end + 3.45f, 0f, 1.9f), new Vector3(16f, 3.8f, 0.1f), false, 260f);
+            Rain("Rain on the skylight", new Vector3(0f, roof + 0.02f, 0f), new Vector3(MallLayout.VoidHalf * 2f, 0f, MallLayout.VoidHalf * 2f), true, 500f);
+        }
+
+        /// <summary>
+        /// Outside the main entrance, seen through the smoked glass: a strip of wet paving under a canopy, a kerb and the
+        /// road, bollards, and one sodium street lamp throwing orange light through the rain (the other one is dead).
+        /// You can't get out there - the doors are locked - but you can see the storm.
+        /// </summary>
+        static void BuildForecourt(Transform parent)
+        {
+            Transform g = Group("Forecourt", parent);
+            WingId w = WingId.South;
+            float e = MallLayout.EntranceHallEnd;
+            Material paving = ArtLibrary.Surface("Paving_Wet", "concrete", 1.5f, new Color(0.42f, 0.42f, 0.44f), 1f, 1f);
+            Material road = ArtLibrary.Plain("Asphalt_Wet", new Color(0.05f, 0.05f, 0.055f), 0.88f);
+            Material sodiumGlow = ArtLibrary.Plain("Lamp_Sodium", new Color(1f, 0.6f, 0.25f), 0.5f, 0f, new Color(6f, 2.6f, 0.6f), false);
+
+            WingBox("Forecourt paving", g, w, e + 0.15f, e + 11f, -26f, 26f, -0.2f, 0f, paving, SurfaceType.Concrete);
+            WingBox("Kerb", g, w, e + 11f, e + 11.2f, -26f, 26f, -0.2f, 0.02f, concrete, SurfaceType.Concrete);
+            WingBox("Road", g, w, e + 11.2f, e + 30f, -40f, 40f, -0.35f, -0.13f, road, SurfaceType.Concrete);
+            for (float v = -24f; v <= 24.1f; v += 6f)
+                WingBox("Road marking", g, w, e + 20f, e + 20.12f, v - 1.5f, v + 1.5f, -0.13f, -0.125f, lineMat, SurfaceType.Concrete, false);
+            // Canopy over the doors, dripping at its edge.
+            WingBox("Entrance canopy", g, w, e + 0.15f, e + 3.4f, -8f, 8f, 3.75f, 4.05f, metal, SurfaceType.Metal);
+            WingBox("Canopy fascia", g, w, e + 3.3f, e + 3.4f, -8f, 8f, 3.55f, 4.05f, darkPanel, SurfaceType.Metal);
+            // Bollards along the kerb.
+            for (float v = -18f; v <= 18.1f; v += 3f)
+            {
+                if (Mathf.Abs(v) < 1f) continue;
+                WingBox("Bollard", g, w, e + 9.4f, e + 9.6f, v - 0.1f, v + 0.1f, 0f, 0.9f, darkPanel, SurfaceType.Metal);
+                WingBox("Bollard band", g, w, e + 9.38f, e + 9.62f, v - 0.11f, v + 0.11f, 0.72f, 0.78f, whiteFixture, SurfaceType.Metal, false);
+            }
+            // Two street lamps; only one works.
+            for (int i = 0; i < 2; i++)
+            {
+                float v = i == 0 ? 6.5f : -14f;
+                WingBox("Lamp post", g, w, e + 10.3f, e + 10.45f, v - 0.075f, v + 0.075f, 0f, 6.5f, metal, SurfaceType.Metal);
+                WingBox("Lamp arm", g, w, e + 9f, e + 10.45f, v - 0.05f, v + 0.05f, 6.4f, 6.5f, metal, SurfaceType.Metal, false);
+                WingBox("Lamp head", g, w, e + 8.7f, e + 9.5f, v - 0.22f, v + 0.22f, 6.3f, 6.45f, darkPanel, SurfaceType.Metal, false);
+                bool lit = i == 0;
+                GameObject lens = WingBox("Lamp lens", g, w, e + 8.75f, e + 9.45f, v - 0.18f, v + 0.18f, 6.27f, 6.3f, lit ? sodiumGlow : darkGlass, SurfaceType.Glass, false);
+                Object.DestroyImmediate(lens.GetComponent<Collider>());
+                if (!lit) continue;
+                var lg = new GameObject("Street lamp (sodium)");
+                lg.transform.SetParent(g, false);
+                lg.transform.position = MallLayout.WingPoint(w, e + 9.1f, v, 6.2f);
+                lg.transform.rotation = Quaternion.LookRotation(Vector3.down, Vector3.forward);
+                Light l = lg.AddComponent<Light>();
+                l.type = LightType.Spot;
+                l.spotAngle = 120f;
+                l.innerSpotAngle = 60f;
+                l.range = 16f;
+                l.intensity = 9f;
+                l.color = new Color(1f, 0.62f, 0.3f);
+                l.shadows = LightShadows.Soft;
+                l.lightmapBakeType = LightmapBakeType.Realtime;
+                // a faint orange halo hanging in the wet air around the head
+                Material halo = AdditiveMaterial("Lamp_Halo", "decal_light_beam.png", new Color(1f, 0.55f, 0.2f, 0.05f));
+                Shaft(g, MallLayout.WingPoint(w, e + 9.1f, v, 6.25f), new Vector3(0.02f, -1f, 0f).normalized, 6.2f, 3.2f, halo);
+            }
         }
 
         // Roof

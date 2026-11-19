@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using AfterHours.World;
 using AfterHours.World.Layout;
 
@@ -211,6 +212,13 @@ namespace AfterHours.EditorTools
             }
         }
 
+        /// <summary>A frame or bar that slides with its glass door: no collider of its own, never combined.</summary>
+        static void DoorPart(GameObject part, GameObject door)
+        {
+            Object.DestroyImmediate(part.GetComponent<Collider>());
+            part.transform.SetParent(door.transform, true);
+        }
+
         static void BuildAnchor(Transform g, MallUnit a)
         {
             MallFloor f = a.floor;
@@ -262,10 +270,16 @@ namespace AfterHours.EditorTools
 
             if (entranceHall)
             {
+                // Smoked glass: from inside at night you see the storm on the forecourt, under one orange street lamp.
+                Material entranceGlass = TransparentMat("Glass_Entrance_Night", new Color(0.16f, 0.19f, 0.21f, 0.5f));
                 for (int i = 0; i < 4; i++)
                 {
                     float v0 = -6f + i * 3f;
-                    GameObject door = WingBox("Main entrance glass door", g, w, end - 0.2f, end - 0.1f, v0 + 0.05f, v0 + 2.95f, y, y + 3f, darkGlass, SurfaceType.Glass, false);
+                    GameObject door = WingBox("Main entrance glass door", g, w, end - 0.2f, end - 0.1f, v0 + 0.05f, v0 + 2.95f, y, y + 3f, entranceGlass, SurfaceType.Glass, false);
+                    door.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+                    DoorPart(WingBox("Door frame", g, w, end - 0.22f, end - 0.08f, v0, v0 + 0.06f, y, y + 3f, metal, SurfaceType.Metal, false), door);
+                    DoorPart(WingBox("Door frame", g, w, end - 0.22f, end - 0.08f, v0 + 2.94f, v0 + 3f, y, y + 3f, metal, SurfaceType.Metal, false), door);
+                    DoorPart(WingBox("Push bar", g, w, end - 0.3f, end - 0.22f, v0 + 0.5f, v0 + 2.5f, y + 1.0f, y + 1.05f, metal, SurfaceType.Metal, false), door);
                     MainEntrancePanels.Add(door.transform);
                     if (i == 1) Slot(door, DoorKind.Glass, 12f, 3f, true, "Main entrance doors (escape route 1): locked, outside is black");
                 }
