@@ -39,6 +39,7 @@ namespace AfterHours.EditorTools
 
             go.AddComponent<AudioSource>();
             FootstepAudio steps = go.AddComponent<FootstepAudio>();
+            go.AddComponent<WetFootprints>().template = ArtLibrary.Decal("Puddle", "puddle", Color.white, 0.95f);
             steps.motor = motor;
 
             // Camera rig

@@ -14,8 +14,16 @@ namespace AfterHours.World
         public float minInterval = 1.2f, maxInterval = 4f;
         [Tooltip("Comes through the roof: drips faster when it's raining harder (Weather.Intensity).")]
         public bool rainFed;
+        /// <summary>Every leak in the level (its puddle is straight below it).</summary>
+        public static readonly System.Collections.Generic.List<Drip> All = new System.Collections.Generic.List<Drip>();
+        public Vector3 PuddleCentre => transform.position + Vector3.down * height;
+        public float puddleRadius = 0.75f;
+
         ParticleSystem ps;
         float timer, fall;
+
+        void OnEnable() { if (!All.Contains(this)) All.Add(this); }
+        void OnDisable() { All.Remove(this); }
         float landAt = -1f;
 
         void Start()
