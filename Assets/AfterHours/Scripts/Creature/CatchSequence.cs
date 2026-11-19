@@ -918,6 +918,9 @@ namespace AfterHours.Creature
             flash = 0f;
             lens = 0f;
             ReleasePlayer();
+            // he stays where the takedown left him (his body had come onto you), instead of snapping back
+            if (ctx != CatchContext.VentInside && brain != null && brain.motor != null && pinRoot.sqrMagnitude > 1e-4f)
+                brain.motor.Warp(brain.transform.position + Vector3.ProjectOnPlane(pinRoot, Vector3.up), brain.transform.eulerAngles.y);
             if (anim != null) { anim.Puppet = null; }
             // Co-op: only the caught player starts over (the others carry on). Single player: everything resets.
             if (CoopRespawn != null) { CoopRespawn(brain, player); return; }
