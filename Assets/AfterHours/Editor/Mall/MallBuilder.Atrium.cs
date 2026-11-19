@@ -264,6 +264,31 @@ namespace AfterHours.EditorTools
             AfterHours.World.Weather w = parent.gameObject.AddComponent<AfterHours.World.Weather>();
             w.rainSources = sources;
             w.lightning = l;
+            // The sky itself: sheets above the skylight and beyond the road, lit up by every strike.
+            Material sky = AdditiveMaterial("Storm_Sky", "decal_light_beam.png", new Color(0.75f, 0.82f, 1f, 0.025f));
+            sky.SetTexture("_BaseMap", null);
+            sky.mainTexture = null;
+            Renderer SkySheet(string name, Vector3 centre, Quaternion rot, Vector2 size)
+            {
+                GameObject q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                q.name = name;
+                Object.DestroyImmediate(q.GetComponent<Collider>());
+                q.transform.SetParent(parent, false);
+                q.transform.SetPositionAndRotation(centre, rot);
+                q.transform.localScale = new Vector3(size.x, size.y, 1f);
+                Renderer r = q.GetComponent<Renderer>();
+                r.sharedMaterial = sky;
+                r.shadowCastingMode = ShadowCastingMode.Off;
+                r.receiveShadows = false;
+                GameObjectUtility.SetStaticEditorFlags(q, 0);
+                return r;
+            }
+            float e = MallLayout.EntranceHallEnd;
+            w.skyFlash = new[]
+            {
+                SkySheet("Sky over the skylight", new Vector3(0f, roof + 6f, 0f), Quaternion.Euler(90f, 0f, 0f), new Vector2(60f, 60f)),
+                SkySheet("Sky beyond the road", MallLayout.WingPoint(WingId.South, e + 34f, 0f, 10f), Quaternion.LookRotation(MallLayout.WingForward(WingId.South)), new Vector2(120f, 30f)),
+            };
 
             // Rain you can see: a sheet of it outside the entrance glass (under the street lamps and every flash),
             // and splashes hitting the skylight panes, seen from below.
@@ -306,6 +331,13 @@ namespace AfterHours.EditorTools
             WingBox("Road", g, w, e + 11.2f, e + 30f, -40f, 40f, -0.35f, -0.13f, road, SurfaceType.Concrete);
             for (float v = -24f; v <= 24.1f; v += 6f)
                 WingBox("Road marking", g, w, e + 20f, e + 20.12f, v - 1.5f, v + 1.5f, -0.13f, -0.125f, lineMat, SurfaceType.Concrete, false);
+            // Standing water: puddles in the dips of the paving and along the gutter, catching the lamp.
+            (float u, float v, float a, float b)[] puddles = { (5.2f, -3f, 1.6f, 0.9f), (7.5f, 4.2f, 2.4f, 1.3f), (6.1f, 11f, 1.1f, 0.7f), (8.8f, -9.5f, 1.8f, 1.1f), (10.7f, 0f, 0.45f, 14f), (13.5f, 6f, 3f, 1.8f) };
+            foreach (var (u, v, a, b) in puddles)
+            {
+                GameObject pd = WingBox("Puddle", g, w, e + u - a * 0.5f, e + u + a * 0.5f, v - b * 0.5f, v + b * 0.5f, u > 11f ? -0.13f : 0f, (u > 11f ? -0.13f : 0f) + 0.004f, waterMat, SurfaceType.Concrete, false);
+                Object.DestroyImmediate(pd.GetComponent<Collider>());
+            }
             // Canopy over the doors, dripping at its edge.
             WingBox("Entrance canopy", g, w, e + 0.15f, e + 3.4f, -8f, 8f, 3.75f, 4.05f, metal, SurfaceType.Metal);
             WingBox("Canopy fascia", g, w, e + 3.3f, e + 3.4f, -8f, 8f, 3.55f, 4.05f, darkPanel, SurfaceType.Metal);

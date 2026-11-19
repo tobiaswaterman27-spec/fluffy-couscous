@@ -14,6 +14,8 @@ namespace AfterHours.World
     {
         public AudioSource[] rainSources;
         public Light lightning;
+        [Tooltip("Additive sky sheets seen through the skylight and the entrance glass: they flare white with each strike.")]
+        public Renderer[] skyFlash;
         public float minGap = 45f, maxGap = 120f;
 
         /// <summary>How hard it's raining right now, 0..1 (leaks drip faster in heavy rain).</summary>
@@ -23,6 +25,9 @@ namespace AfterHours.World
         float nextStrike, flashT = -1f, thunderAt = -1f;
         bool near;
         float seed;
+        MaterialPropertyBlock skyBlock;
+        float skyLevel = -1f;
+        static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
         void Start()
         {
@@ -40,6 +45,16 @@ namespace AfterHours.World
             nextStrike = Time.time + Random.Range(20f, 50f);
         }
 
+        /// <summary>The night sky through the glass: almost black, a cold white in a flash.</summary>
+        void SetSky(float flash)
+        {
+            if (skyFlash == null || skyFlash.Length == 0 || Mathf.Abs(flash - skyLevel) < 0.005f) return;
+            skyLevel = flash;
+            if (skyBlock == null) skyBlock = new MaterialPropertyBlock();
+            skyBlock.SetColor(BaseColorId, new Color(0.75f, 0.82f, 1f, 0.025f + 0.95f * flash));
+            foreach (Renderer r in skyFlash) if (r != null) r.SetPropertyBlock(skyBlock);
+        }
+
         void Update()
         {
             bool ending = GameFlow.Instance != null && GameFlow.Instance.State == FlowState.Ending;
@@ -48,7 +63,7 @@ namespace AfterHours.World
             Intensity = intensity;
             for (int i = 0; i < rainSources.Length; i++)
                 if (rainSources[i] != null) rainSources[i].volume = Mathf.MoveTowards(rainSources[i].volume, baseVolume[i] * intensity, Time.deltaTime * 0.2f);
-            if (ending) { if (lightning != null) lightning.enabled = false; return; }
+            if (ending) { if (lightning != null) lightning.enabled = false; SetSky(0f); return; }
 
             if (Time.time >= nextStrike)
             {
@@ -66,6 +81,7 @@ namespace AfterHours.World
                 lightning.intensity = f * (near ? 2.8f : 1.6f);
                 if (flashT > 0.4f) { flashT = -1f; lightning.enabled = false; }
             }
+            SetSky(lightning != null && lightning.enabled ? Mathf.Clamp01(lightning.intensity / 2.8f) : 0f);
             if (thunderAt > 0f && Time.time >= thunderAt)
             {
                 thunderAt = -1f;
