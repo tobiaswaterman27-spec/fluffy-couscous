@@ -264,6 +264,7 @@ namespace AfterHours.Interaction
         public void Bang(GameObject actor)
         {
             blows++;
+            AfterHours.Controls.Rumble.At(HandlePosition, 0.9f, 0.4f, 10f);
             InteractionFx.Play(ProceduralSounds.Sfx.Bang, HandlePosition, 1f, 24f, actor, NoiseKind.Door);
             // the frame shakes: dust and grit sift down from the top of it, more with every blow
             WorldFX.Dust(HandlePosition + Vector3.up * 1.0f, Vector3.down, 6 + blows * 4);
@@ -390,6 +391,7 @@ namespace AfterHours.Interaction
         /// </summary>
         public void SmashThrough(Vector3 fromPosition, AfterHours.World.HeavyMovable barricade, GameObject actor)
         {
+            AfterHours.Controls.Rumble.At(HandlePosition, 1f, 0.8f, 16f);
             InteractionFx.Play(ProceduralSounds.Sfx.DoorBreak, HandlePosition, 1f, 45f, actor, NoiseKind.Door);
             AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.DoorBreak), HandlePosition, 1f, 0.7f, 90f);
             AudioPool.PlayAt(ProceduralSounds.Effect(ProceduralSounds.Sfx.WallHit), HandlePosition, 1f, 0.6f, 60f);

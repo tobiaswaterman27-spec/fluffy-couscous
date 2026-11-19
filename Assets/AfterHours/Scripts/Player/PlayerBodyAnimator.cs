@@ -128,6 +128,8 @@ namespace AfterHours.Player
             if (caught && controller.Look != null && controller.Look.cameraRig != null) headRot = controller.Look.cameraRig.rotation;
             Vector3 headPos = eye - headRot * EyeInHead;
 
+            if (caught && CaughtBody(t, dt)) return;
+
             Vector3 pelvisPos;
             Quaternion spineRot, neckRot;
             bool proneCaught = false;
@@ -630,6 +632,66 @@ namespace AfterHours.Player
             return true;
         }
 
+
+        /// <summary>
+        /// Being taken down and pinned by Elliot: the whole body from where the eyes are and which way it's turned -
+        /// standing, falling backwards, flat on your back - the hands pushing at his arms, the heels kicking at the
+        /// floor, weaker as you give up. (Caught inside a duct uses the prone pose; once limp it's a ragdoll.)
+        /// </summary>
+        bool CaughtBody(float t, float dt)
+        {
+            if (!CatchSequence.VictimBody(controller, out Vector3 eye, out Quaternion body, out Vector3 gripL, out Vector3 gripR, out float st, out bool crouched, out float floorY))
+                return false;
+            Vector3 bF = body * Vector3.forward, bU = body * Vector3.up, bR = body * Vector3.right;
+            Quaternion headRot = controller.Look != null && controller.Look.cameraRig != null ? controller.Look.cameraRig.rotation : body;
+            Vector3 headPos = eye - headRot * EyeInHead;
+            float lying = Mathf.Clamp01(Mathf.Max(-bF.y, 1f - Mathf.Abs(bU.y)));
+            float span = Spine + Neck;
+            Vector3 pelvisPos = headPos - bU * (span * 0.97f) - bF * (crouched ? 0.12f : 0.02f);
+            if (crouched) pelvisPos = headPos - bU * (span * 0.9f) - bF * 0.12f;
+            pelvisPos.y = Mathf.Max(pelvisPos.y, floorY + 0.12f);
+            headPos.y = Mathf.Max(headPos.y, floorY + 0.09f);
+            Quaternion pelvisRot = Quaternion.LookRotation(bF, bU);
+            Vector3 m2 = SolveIK(pelvisPos, headPos, Spine, Neck, bF + bU * 0.2f, out Vector3 e2);
+            Quaternion spineRot = Aim(m2 - pelvisPos, bF), neckRot = Aim(e2 - m2, bF);
+            SetBody(pelvisPos, pelvisRot, spineRot, neckRot, headRot, bU);
+            for (int s = 0; s < 2; s++)
+            {
+                float side = s == 0 ? -1f : 1f;
+                // legs: straight down from the hips; knees drawn up and kicking while you fight (on your back: heels scraping the floor)
+                Vector3 hip = pelvisPos + pelvisRot * new Vector3(HipW * side, HipOff.y, HipOff.z);
+                float kick = Mathf.Max(0f, Mathf.Sin(t * 6.5f + s * Mathf.PI)) * st;
+                Vector3 foot = hip - bU * (Thigh + Shin - 0.04f - 0.35f * kick * lying - 0.08f * kick);
+                if (crouched) { foot = hip - bU * 0.35f + bF * 0.3f; foot.y = floorY + AnkleH; }
+                foot.y = Mathf.Max(foot.y, floorY + AnkleH * 0.9f);
+                LegIK(s, hip, foot, bF + bU * 0.2f + Vector3.up * (lying * 0.6f) + bR * (0.15f * side), body);
+            }
+            Vector3 chestPos = pelvisPos + spineRot * Vector3.up * Spine;
+            for (int s = 0; s < 2; s++)
+            {
+                float side = s == 0 ? -1f : 1f;
+                Vector3 shoulder = chestPos + spineRot * new Vector3(ShW * side, ShoulderOff.y, ShoulderOff.z);
+                float armLen = (Upper + Fore) * 0.96f;
+                // at your sides (on the floor when lying), or pushing at his arms while you still fight
+                Vector3 rest = shoulder - bU * (armLen * 0.9f) + bR * (0.12f * side);
+                Vector3 fight = rest;
+                bool hasGrip = gripL.sqrMagnitude > 1e-6f || gripR.sqrMagnitude > 1e-6f;
+                if (hasGrip)
+                {
+                    Vector3 grip = (gripL - shoulder).sqrMagnitude < (gripR - shoulder).sqrMagnitude ? gripL : gripR;
+                    fight = grip + bF * 0.04f + new Vector3(Mathf.Sin(t * 7f + side * 1.7f), 0f, Mathf.Cos(t * 6f + side)) * 0.04f;
+                    if ((fight - shoulder).magnitude > armLen) fight = shoulder + (fight - shoulder).normalized * armLen;
+                }
+                Vector3 hand = Vector3.Lerp(rest, fight, st);
+                hand.y = Mathf.Max(hand.y, floorY + 0.05f);
+                ArmIK(s, shoulder, hand, -bU + bR * (0.6f * side) - bF * (0.4f * lying), hasGrip ? (fight - hand + bF * 0.2f) : -bF);
+            }
+            Fingers(0.5f + 0.3f * st);
+            if (mouth == null) { mouth = GetComponent<VoiceMouth>(); if (mouth == null) mouth = gameObject.AddComponent<VoiceMouth>(); }
+            if (jaw != null) jaw.localRotation = Quaternion.Euler(8f + 14f * st + Mathf.Sin(t * 20f) * 4f * st, 0f, 0f);
+            Face(t, dt, true, 0f);
+            return true;
+        }
 
         void SetBody(Vector3 pelvisPos, Quaternion pelvisRot, Quaternion spineRot, Quaternion neckRot, Quaternion headRot, Vector3 up)
         {

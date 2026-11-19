@@ -68,6 +68,8 @@ namespace AfterHours.Net
                 w.Vec(b.motor.Velocity);
                 w.Byte((byte)b.motor.Gait);
                 w.Float(b.motor.Hunch);
+                w.Byte((byte)Mathf.RoundToInt(Mathf.Clamp01(b.motor.CeilingW) * 255f));   // on the ceiling
+                w.Float(b.motor.CeilingHeight);
                 bool look = a.LookTarget.HasValue;
                 w.Bool(look);
                 if (look) w.Vec(a.LookTarget.Value);
@@ -87,6 +89,8 @@ namespace AfterHours.Net
                 Vector3 vel = r.Vec();
                 var gait = (ElliotGait)r.Byte();
                 float hunch = r.Float();
+                float ceilW = r.Byte() / 255f;
+                float ceilH = r.Float();
                 bool hasLook = r.Bool();
                 Vector3 look = hasLook ? r.Vec() : Vector3.zero;
                 var action = (ElliotAction)r.Byte();
@@ -100,6 +104,7 @@ namespace AfterHours.Net
                 if (CatchSequence.IsCreatureBusy(b)) continue; // the catch sequence is posing it
                 if (gait == ElliotGait.Run && b.motor.Gait != ElliotGait.Run && b.audioOut != null) b.audioOut.Spot();
                 b.motor.ApplyRemote(pos, yaw, vel, gait, hunch);
+                b.motor.ApplyRemoteCeiling(ceilW, ceilH);
                 ElliotAnimator a = b.animator;
                 a.LookTarget = hasLook ? look : (Vector3?)null;
                 if (action != a.CurrentAction || (action != ElliotAction.None && (a.ActionTarget - target).sqrMagnitude > 0.25f))

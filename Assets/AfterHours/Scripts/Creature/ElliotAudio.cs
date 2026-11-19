@@ -149,6 +149,7 @@ namespace AfterHours.Creature
 
         public void Footstep(Vector3 position, SurfaceType surface, float weight)
         {
+            AfterHours.Controls.Rumble.At(position, 0.35f * weight, 0.05f, 14f);       // you feel it through the floor
             string kind = surface == SurfaceType.Carpet ? "carpet" : surface == SurfaceType.Metal || surface == SurfaceType.VentMetal ? "metal" : "hard";
             AudioClip clip = AudioLibrary.Get("elliot_step_" + kind);
             // Running: heavier, louder, carrying further - you hear the gap closing.

@@ -36,6 +36,38 @@ namespace AfterHours.Creature
         public float Hunch { get; private set; }
 
         public ElliotGait Gait { get; private set; } = ElliotGait.Idle;
+
+        // ---------------- on the ceiling ----------------
+        /// <summary>0 on the floor .. 1 upside down on the ceiling (in between: turning over in the air).</summary>
+        public float CeilingW { get; private set; }
+        /// <summary>Floor to ceiling where it climbed up.</summary>
+        public float CeilingHeight { get; private set; } = 3.6f;
+        /// <summary>Set by the catch sequence while it drops onto someone (null = normal).</summary>
+        public float? CeilingOverride { get; set; }
+        /// <summary>Up there (or getting up there).</summary>
+        public bool OnCeiling => wantCeiling;
+        bool wantCeiling;
+
+        /// <summary>Springs up onto the ceiling ('height' above the floor) and moves along it upside down.</summary>
+        public void Climb(float height) { wantCeiling = true; CeilingHeight = Mathf.Clamp(height, 2.6f, 6f); }
+        /// <summary>Lets go: it turns over in the air and lands on all fours.</summary>
+        public void Drop() => wantCeiling = false;
+
+        void UpdateCeiling(float dt)
+        {
+            CeilingW = CeilingOverride ?? Mathf.MoveTowards(CeilingW, wantCeiling ? 1f : 0f, dt / (wantCeiling ? 0.5f : 0.6f));
+            // up there, nobody walks into it on the floor (it still can't go through walls)
+            if (controller != null && controller.enabled) controller.detectCollisions = CeilingW < 0.3f;
+        }
+
+        /// <summary>LAN co-op client: the host says how far up it is.</summary>
+        public void ApplyRemoteCeiling(float w, float height)
+        {
+            CeilingHeight = height;
+            if (!CeilingOverride.HasValue) CeilingW = w;
+            else CeilingW = CeilingOverride.Value;
+            wantCeiling = w > 0.5f;
+        }
         public Vector3 Velocity => velocity;
         public float Speed => new Vector3(velocity.x, 0f, velocity.z).magnitude;
         public bool Grounded { get; private set; }
@@ -124,6 +156,7 @@ namespace AfterHours.Creature
 
         public void Warp(Vector3 position, float yaw)
         {
+            wantCeiling = false; CeilingW = 0f;
             controller.enabled = false;
             transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
             controller.enabled = !remote;
@@ -153,7 +186,8 @@ namespace AfterHours.Creature
         void UpdateHeight(float dt)
         {
             float target;
-            if (Gait == ElliotGait.Crawl) target = crawlHeight;
+            if (CeilingW > 0.3f) target = crawlHeight;          // (and it doesn't block anyone: see UpdateCeiling)
+            else if (Gait == ElliotGait.Crawl) target = crawlHeight;
             else
             {
                 Vector3 ahead = transform.position + transform.forward * 0.7f;
@@ -200,12 +234,14 @@ namespace AfterHours.Creature
             if (dt <= 0f) return;
             if (remote)
             {
+                if (CeilingOverride.HasValue) CeilingW = CeilingOverride.Value;
                 float k = 1f - Mathf.Exp(-14f * dt);
                 transform.position = Vector3.Lerp(transform.position, remotePos + velocity * 0.05f, k);
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0f, remoteYaw, 0f), k);
                 return;
             }
             if (scriptPath != null) { StepScript(dt); return; }
+            UpdateCeiling(dt);
             UpdateHeight(dt);
             bool frozen = Time.time < frozenUntil;
             float maxSpeed = frozen ? 0f : MaxSpeedFor(Gait) * desiredSpeedFactor;

@@ -125,6 +125,10 @@ After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the cam
 - **Wet footprints**: walk through a leak's puddle and you leave shoe prints for a dozen steps, drying over a minute. Elliot notices fresh ones and follows the trail.
 - **Barricades**: the vending machines can be pushed (hold E). Push one against the far side of a door and Elliot has to ram it until he smashes through - loud, but it buys time.
 - **Blackouts**: every few minutes a section of the mall loses power for about a minute - emergency lights only, for you and for him. It comes back by itself.
+- **Elliot on the ceiling**: now and then he springs up and scuttles along the ceiling upside down (you hear him overhead). He drops back down at doorways and when he starts a chase - and if you walk right under him, he drops on you.
+- **The catch**: he takes you down - a lunge, a yank by the arm, a hand over your face from behind, dragged out of a hiding place or a vent, dropped on from the ceiling - and pins you on your back. Still, the scream, the bite. (Inside a duct it's face to face.)
+- **Locked doors** take Elliot many more blows to break.
+- **Controller rumble** (Settings): a heartbeat when he's near, his footsteps, doors being hammered, thunder, and every hit when you're caught.
 - **Tutorial**: on the main menu. The empty mall, one control at a time. Nothing is saved.
 - **Difficulty** (Settings; the host's counts in co-op): Easy, Normal, Hard, **Nightmare** (harder still, and at 3 AM a second, faster Elliot comes up from the car park) and **One Life** (Nightmare, and the first time you're caught the night is over - single player).
 - **Your record**: on the main menu - nights, ways out found, fastest escape, and 19 achievements.

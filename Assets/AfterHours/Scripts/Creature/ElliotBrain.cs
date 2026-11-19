@@ -141,6 +141,23 @@ namespace AfterHours.Creature
         void OnSpotted(PlayerController p)
         {
             if (catching) return;
+            if (motor.OnCeiling)
+            {
+                // Up there it doesn't chase: it creeps along the ceiling to get above you. Too far, and it drops.
+                float d = Vector3.Distance(p.transform.position, transform.position);
+                if (d < 7f && !p.IsHidden)
+                {
+                    target = p;
+                    lastKnown = p.transform.position;
+                    lastSeenTime = Time.time;
+                    goal = p.transform.position;
+                    hasGoal = TrySetDestination(goal);
+                    if (state != ElliotState.Investigate) Enter(ElliotState.Investigate, false);
+                    animator.LookTarget = p.EyePosition;
+                    return;
+                }
+                motor.Drop();
+            }
             if (state == ElliotState.Hunt && target != null && target != p && CanSeeTarget()) return; // keeps its current prey
             target = p;
             lastKnown = p.transform.position;
@@ -225,6 +242,7 @@ namespace AfterHours.Creature
             else UpdateWander();
             if (catching) return;
             FollowPrints(dt);
+            UpdateCeiling(dt);
 
             if (state != ElliotState.CrawlVent)
             {
@@ -254,6 +272,80 @@ namespace AfterHours.Creature
         }
 
         void Pause(float seconds) => pauseUntil = Mathf.Max(pauseUntil, Time.time + seconds);
+
+        // ---------------- the ceiling ----------------
+        float ceilingCheck = 2f, ceilingUntil, nextCeilingTry = 60f;
+
+        /// <summary>
+        /// Now and then, when it isn't chasing anyone, it springs up onto the ceiling and scuttles along it upside
+        /// down (you hear it overhead). It drops back down at a doorway, where the ceiling changes height, when it
+        /// gets bored, or when it starts a chase - and if you walk right under it, it drops on you.
+        /// </summary>
+        void UpdateCeiling(float dt)
+        {
+            ceilingCheck -= dt;
+            if (ceilingCheck > 0f) return;
+            ceilingCheck = motor.OnCeiling ? 0.2f : 3f;
+            Vector3 p = transform.position;
+            if (!motor.OnCeiling)
+            {
+                if (Time.time < nextCeilingTry || Threat < 1 || motor.Speed < 0.3f || motor.Scripted) return;
+                if (state != ElliotState.Wander && state != ElliotState.Search && state != ElliotState.Investigate) return;
+                if (VentDuct.Contains(p + Vector3.up * 0.3f) || Random.value > 0.18f) return;
+                float h = CeilingAbove(p);
+                if (h < 3f || h > 5.6f || Mathf.Abs(CeilingAbove(p + transform.forward * 2f) - h) > 0.3f) return;
+                motor.Climb(h);
+                ceilingUntil = Time.time + Random.Range(12f, 30f);
+                nextCeilingTry = Time.time + Random.Range(40f, 100f);
+                AudioClip c = AfterHours.Audio.AudioLibrary.Get("elliot_clicks");
+                if (c != null && audioOut != null && audioOut.voice != null) audioOut.PlayVoice(c, 0.9f);
+                return;
+            }
+            // up there
+            bool drop = Time.time > ceilingUntil || state == ElliotState.Hunt || state == ElliotState.CheckHidingSpot
+                        || state == ElliotState.CheckVent || state == ElliotState.CrawlVent || doorInWay != null;
+            float here = CeilingAbove(p), ahead = CeilingAbove(p + transform.forward * 0.9f);
+            if (Mathf.Abs(here - motor.CeilingHeight) > 0.45f || Mathf.Abs(ahead - motor.CeilingHeight) > 0.45f) drop = true;   // a doorway, a beam, a bulkhead, the atrium
+            if (motor.CeilingW > 0.95f)
+            {
+                // right underneath it: it lets go, onto you
+                foreach (PlayerController pc in PlayerController.All)
+                {
+                    if (pc == null || pc.IsHidden || CatchSequence.IsBeingCaught(pc)) continue;
+                    Vector3 d = pc.transform.position - p;
+                    if (Mathf.Abs(d.y) > 1.2f || new Vector2(d.x, d.z).sqrMagnitude > 1.3f * 1.3f) continue;
+                    CeilingKill(pc);
+                    return;
+                }
+            }
+            if (drop)
+            {
+                motor.Drop();
+                AudioClip c = AfterHours.Audio.AudioLibrary.Get("elliot_snarl");
+                if (c != null && audioOut != null && audioOut.voice != null && !audioOut.voice.isPlaying) audioOut.PlayVoice(c, 0.8f);
+            }
+        }
+
+        /// <summary>How far above the floor the ceiling is here (99 if there's no ceiling within reach).</summary>
+        static float CeilingAbove(Vector3 floorPoint)
+        {
+            int mask = GameLayers.CharacterBlockingMask;
+            foreach (int l in new[] { GameLayers.CreatureLayer, GameLayers.PlayerLayer, GameLayers.PropLayer })
+                if (l >= 0) mask &= ~(1 << l);
+            return Physics.Raycast(floorPoint + Vector3.up * 0.5f, Vector3.up, out RaycastHit hit, 6f, mask, QueryTriggerInteraction.Ignore)
+                ? hit.point.y - floorPoint.y : 99f;
+        }
+
+        void CeilingKill(PlayerController p)
+        {
+            if (CatchSequence.IsBeingCaught(p)) return;
+            catching = true;
+            hasGoal = false;
+            motor.Drive(Vector3.zero, ElliotGait.Crawl);
+            motor.Face(null);
+            motor.Drop();
+            CatchSequence.Begin(this, p, CatchContext.CeilingDrop, Random.Range(1, 1 << 30));
+        }
 
         // ---------------- wet footprints ----------------
         float printCheck, trailNewest = -1f;
@@ -532,6 +624,7 @@ namespace AfterHours.Creature
             dir.y = 0f;
             float factor = 1f;
             if (state == ElliotState.Hunt) factor = Mathf.Clamp01(0.25f + huntRamp / 1.6f);
+            if (motor.OnCeiling) { motor.Drive(dir, ElliotGait.Crawl, 0.5f); motor.Face(null); return; }   // scuttling along the ceiling
             motor.Drive(dir, gait, factor);
             motor.Face(null);
         }
@@ -596,7 +689,7 @@ namespace AfterHours.Creature
             }
 
             // Locked: bang on it; when hunting it may force it; otherwise it soon gives up.
-            int maxBangs = state == ElliotState.Hunt ? 6 : 2;
+            int maxBangs = state == ElliotState.Hunt ? 10 : 3;
             if (doorTime > (state == ElliotState.Hunt ? 0.75f : 1.3f) * (bangs + 1))
             {
                 bangs++;
@@ -608,7 +701,7 @@ namespace AfterHours.Creature
                     AudioClip v = AfterHours.Audio.AudioLibrary.Get(Random.value < 0.5f ? "elliot_snarl" : Random.value < 0.6f ? "elliot_shriek" : "elliot_howl");
                     if (v != null) audioOut.PlayVoice(v, 1f);
                 }
-                if (state == ElliotState.Hunt && bangs >= 2 && d.forceable && Random.value < 0.4f)
+                if (state == ElliotState.Hunt && bangs >= 5 && d.forceable && Random.value < 0.3f + 0.1f * (bangs - 5))   // it takes a lot of blows to break a locked door
                 {
                     d.Force(transform.position, gameObject);
                     return;
@@ -998,6 +1091,7 @@ namespace AfterHours.Creature
         void Catch(PlayerController p)
         {
             if (CatchSequence.IsBeingCaught(p)) return;
+            if (motor.OnCeiling || motor.CeilingW > 0.05f) return;      // it has to be on the floor to grab you
             catching = true;
             hasGoal = false;
             motor.Drive(Vector3.zero, ElliotGait.Idle);
@@ -1019,6 +1113,8 @@ namespace AfterHours.Creature
         public void ResetToStart(Vector3 position, float yaw)
         {
             catching = false;
+            motor.Drop();
+            motor.CeilingOverride = null;
             target = null;
             doorInWay = null;
             checkSpot = null;

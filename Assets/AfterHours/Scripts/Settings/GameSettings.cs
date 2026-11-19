@@ -22,6 +22,7 @@ namespace AfterHours.Settings
         public float fieldOfView = 72f;
         public bool headBob = true;
         public bool cameraShake = true;
+        public bool rumble = true;               // controller vibration
 
         [Header("Content")]
         [Tooltip("Blood and gore in the death sequence.")]

@@ -160,6 +160,7 @@ namespace AfterHours.UI
             s.invertY = GUILayout.Toggle(s.invertY, " Invert look Y");
             s.headBob = GUILayout.Toggle(s.headBob, " Head bob");
             s.cameraShake = GUILayout.Toggle(s.cameraShake, " Camera shake");
+            s.rumble = GUILayout.Toggle(s.rumble, " Controller rumble");
             s.gore = GUILayout.Toggle(s.gore, " Blood and gore");
             s.vSync = GUILayout.Toggle(s.vSync, " V-Sync");
             // how hard the night is (takes effect straight away; the host's setting counts in co-op)

@@ -121,6 +121,7 @@ namespace AfterHours.World
                 maskAt = Time.time;
                 maskPeak = near ? 1f : 0.55f;
                 maskLength = near ? 4.5f : 6f;
+                AfterHours.Controls.Rumble.Pulse(near ? 0.7f : 0.25f, near ? 0.2f : 0f);
                 AudioClip c = AudioLibrary.Get(near ? "thunder_near" : "thunder_far");
                 Transform cam = Camera.main != null ? Camera.main.transform : null;
                 if (c != null && cam != null)

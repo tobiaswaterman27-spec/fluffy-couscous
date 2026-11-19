@@ -59,6 +59,7 @@ namespace AfterHours.Creature
             public float lean;             // extra forward bend (degrees)
             public Vector3 headPush;       // world offset (lunging bite)
             public float headShake;        // degrees of violent side-to-side thrash
+            public Vector3 root;           // world offset: his whole body comes onto you (his feet step after it)
         }
         public PuppetPose Puppet { get; set; }
         /// <summary>Where his head would be this frame before a kill pushes it (kill head offsets are measured from here).</summary>
@@ -223,8 +224,9 @@ namespace AfterHours.Creature
                         swinging[i] = false;
                         footPos[i] = footTo[i];
                         SurfaceType surf = SurfaceAt(footPos[i]);
-                        if (audioOut != null) audioOut.Footstep(footPos[i], surf, Mathf.Lerp(0.55f, 1f, runW) * (1f - crawlW * 0.6f));
-                        if (Application.isPlaying) ElliotFootprints.Stamp(footPos[i], fwd, surf, i == 0);
+                        bool aloft = motor.CeilingW > 0.5f;
+                        if (audioOut != null) audioOut.Footstep(aloft ? OnCeilingPoint(footPos[i]) : footPos[i], aloft ? SurfaceType.Metal : surf, Mathf.Lerp(0.55f, 1f, runW) * (1f - crawlW * 0.6f) * (aloft ? 0.45f : 1f));
+                        if (Application.isPlaying && !aloft) ElliotFootprints.Stamp(footPos[i], fwd, surf, i == 0);
                     }
                 }
             }
@@ -253,6 +255,8 @@ namespace AfterHours.Creature
             if (pp != null) bend = Mathf.Lerp(bend, pp.lean, pp.weight);
             bend += vp.arch * 30f * (1f - crawlW);
             Vector3 reachT = Vector3.zero;
+            Vector3 rootShift = pp != null ? Vector3.ProjectOnPlane(pp.root, up) * pp.weight : Vector3.zero;
+            pelvisPos += rootShift;
             if (pp != null)
             {
                 // where the head has to get to decides the rest: the hips step in when it's out of reach,
@@ -263,12 +267,12 @@ namespace AfterHours.Creature
                 reachT = h0 + pp.headPush * pp.weight;
                 if (inDuct) reachT.y = Mathf.Min(reachT.y, root.y + 0.8f);
                 float span = spineLength + neckLength;
-                pelvisPos.y -= Mathf.Clamp(pelvisPos.y - root.y - (reachT.y - root.y + 0.15f), 0f, 0.6f) * pp.weight;
+                pelvisPos.y -= Mathf.Clamp(pelvisPos.y - root.y - (reachT.y - root.y + 0.15f), 0f, 0.75f) * pp.weight;
                 Vector3 flat = reachT - pelvisPos; flat.y = 0f;
                 float dist = Vector3.Distance(pelvisPos, reachT);
                 Vector3 before = pelvisPos;
-                if (dist > span * 0.96f && flat.sqrMagnitude > 1e-4f) pelvisPos += flat.normalized * (Mathf.Min(dist - span * 0.96f, 0.8f) * pp.weight);
-                killStepGoal = pelvisPos - before; killStepGoal.y = 0f;
+                if (dist > span * 0.96f && flat.sqrMagnitude > 1e-4f) pelvisPos += flat.normalized * (Mathf.Min(dist - span * 0.96f, 1.1f) * pp.weight);
+                killStepGoal = pelvisPos - before + rootShift; killStepGoal.y = 0f;
                 if (inDuct) pelvisPos.y = Mathf.Min(pelvisPos.y, root.y + 0.42f);
             }
             else killStepGoal = Vector3.zero;
@@ -463,6 +467,42 @@ namespace AfterHours.Creature
             float grip = action == ElliotAction.Grab || action == ElliotAction.BangDoor || action == ElliotAction.PullOpen ? 0.8f * actionW : 0f;
             if (pp != null) grip = Mathf.Max(grip, 0.9f * pp.weight);
             DriveDetails(grip + 0.35f * crawlW);   // crawling: claws dug in
+            Ceiling(root);
+        }
+
+        // ---------------- on the ceiling ----------------
+        Transform[] flipBones;
+        readonly Vector3[] flipPos = new Vector3[16];
+        readonly Quaternion[] flipRot = new Quaternion[16];
+
+        /// <summary>The ceiling half-turn for a point (0 = on the floor, 1 = turned over onto the ceiling).</summary>
+        Quaternion CeilingTurn(out Vector3 pivot)
+        {
+            float w = motor != null ? motor.CeilingW : 0f;
+            pivot = transform.position + Vector3.up * ((motor != null ? motor.CeilingHeight : 3.6f) * 0.5f);
+            return Quaternion.AngleAxis(180f * (w * w * (3f - 2f * w)), transform.forward);
+        }
+
+        Vector3 OnCeilingPoint(Vector3 p)
+        {
+            if (motor == null || motor.CeilingW < 0.001f) return p;
+            Quaternion r = CeilingTurn(out Vector3 pivot);
+            return pivot + r * (p - pivot);
+        }
+
+        /// <summary>
+        /// Up on the ceiling: the whole crawling body turned over onto it (half a turn about its forward axis, round a
+        /// point halfway up the room). In between it's tumbling through the air - that's the drop.
+        /// </summary>
+        void Ceiling(Vector3 root)
+        {
+            if (motor == null || motor.CeilingW < 0.001f) return;
+            if (flipBones == null) flipBones = new[] { pelvis, spine, neck, head, thighL, shinL, footL, thighR, shinR, footR, upperArmL, foreArmL, handL, upperArmR, foreArmR, handR };
+            Quaternion r = CeilingTurn(out Vector3 pivot);
+            for (int i = 0; i < flipBones.Length; i++)
+                if (flipBones[i] != null) { flipPos[i] = flipBones[i].position; flipRot[i] = flipBones[i].rotation; }
+            for (int i = 0; i < flipBones.Length; i++)
+                if (flipBones[i] != null) flipBones[i].SetPositionAndRotation(pivot + r * (flipPos[i] - pivot), r * flipRot[i]);
         }
 
         // ------------------------------------------------------------------ voice-driven detail
