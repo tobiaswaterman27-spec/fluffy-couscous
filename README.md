@@ -122,6 +122,7 @@ After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the cam
   loudly. Elliot hears it.
 - **Weather**: a storm outside. Rain you can hear and see: falling past the smoked-glass main doors onto the wet forecourt under an orange street lamp, splashing on the atrium skylight, dripping through it in places. Lightning lights up the sky through the glass, then thunder.
 - **Thunder covers you**: while thunder rolls (a few seconds after each flash) Elliot can barely hear footsteps and small knocks - a close strike also makes every faulty tube in the mall stutter. In co-op everyone gets the same strikes.
+- **Cars left overnight**: about twenty parked cars and vans in the car park bays - cover to crouch behind. One has its hazard lights blinking on a dying battery.
 - **Wet footprints**: walk through a leak's puddle and you leave shoe prints for a dozen steps, drying over a minute.
 - **Difficulty**: Easy / Normal / Hard in Settings (the host's counts in co-op).
 - **Your record**: on the main menu - nights, ways out found, fastest escape, and achievements.

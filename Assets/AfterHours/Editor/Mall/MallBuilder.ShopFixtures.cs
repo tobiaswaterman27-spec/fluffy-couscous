@@ -37,10 +37,10 @@ namespace AfterHours.EditorTools
                 return p;
             }
 
-            public void Box(Vector3 c, Vector3 size, Material m, float yaw = 0f, bool shadows = true, float roll = 0f)
+            public void Box(Vector3 c, Vector3 size, Material m, float yaw = 0f, bool shadows = true, float roll = 0f, float pitch = 0f)
             {
                 Part p = P(m, shadows);
-                Quaternion r = frame * Quaternion.Euler(0f, yaw, roll);
+                Quaternion r = frame * Quaternion.Euler(pitch, yaw, roll);
                 Vector3 wc = origin + frame * c;
                 Vector3 h = size * 0.5f;
                 for (int f = 0; f < 6; f++)
@@ -85,6 +85,24 @@ namespace AfterHours.EditorTools
                     p.t.Add(a0); p.t.Add(a0 + 3); p.t.Add(a0 + 1);
                     p.t.Add(a0); p.t.Add(a0 + 2); p.t.Add(a0 + 3);
                 }
+            }
+
+            /// <summary>A flat round disc (local centre, facing 'normal'), seen from the normal side.</summary>
+            public void Disc(Vector3 c, Vector3 normal, float radius, Material m, int sides = 12)
+            {
+                Part p = P(m, true);
+                Vector3 wc = origin + frame * c, n = (frame * normal).normalized;
+                Vector3 u = Vector3.Cross(n, Mathf.Abs(n.y) > 0.9f ? Vector3.right : Vector3.up).normalized;
+                Vector3 w = Vector3.Cross(n, u);
+                int b0 = p.v.Count;
+                p.v.Add(wc); p.n.Add(n); p.uv.Add(new Vector2(0.5f, 0.5f));
+                for (int i = 0; i <= sides; i++)
+                {
+                    float an = i / (float)sides * Mathf.PI * 2f;
+                    Vector3 d = u * Mathf.Cos(an) + w * Mathf.Sin(an);
+                    p.v.Add(wc + d * radius); p.n.Add(n); p.uv.Add(new Vector2(0.5f + 0.5f * Mathf.Cos(an), 0.5f + 0.5f * Mathf.Sin(an)));
+                }
+                for (int i = 0; i < sides; i++) { p.t.Add(b0); p.t.Add(b0 + 1 + i); p.t.Add(b0 + 2 + i); }
             }
 
             public void Build(Transform parent, string name)
