@@ -64,22 +64,16 @@ namespace AfterHours.Player
                 block = new MaterialPropertyBlock();
             }
             Print pr;
-            if (pool.Count < PoolSize)
+            if (pool.Count < PoolSize) { pr = new Print(); pool.Add(pr); }
+            else { pr = pool[next]; next = (next + 1) % PoolSize; }
+            if (pr.r == null)       // new, or its quad went with the last scene
             {
                 GameObject q = GameObject.CreatePrimitive(PrimitiveType.Quad);
                 q.name = "Wet footprint";
                 Destroy(q.GetComponent<Collider>());
-                Renderer r = q.GetComponent<Renderer>();
-                r.sharedMaterial = printMat;
-                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                pr = new Print { r = r };
-                pool.Add(pr);
-            }
-            else
-            {
-                pr = pool[next];
-                next = (next + 1) % PoolSize;
-                if (pr.r == null) return;
+                pr.r = q.GetComponent<Renderer>();
+                pr.r.sharedMaterial = printMat;
+                pr.r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
             Transform tr = pr.r.transform;
             tr.SetPositionAndRotation(at, Quaternion.Euler(90f, yaw + Random.Range(-6f, 6f) + (foot == 0 ? -4f : 4f), 0f));
