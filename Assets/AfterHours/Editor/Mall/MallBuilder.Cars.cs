@@ -13,7 +13,7 @@ namespace AfterHours.EditorTools
         static Material[] carPaints;
         static Material carChrome, carIndicator, carTail, carPlate, carPlateRear, carTyre;
         static int carsParked;
-        const int MaxCars = 24;
+        const int MaxCars = 18;
 
         static void CarMaterials()
         {
@@ -30,7 +30,6 @@ namespace AfterHours.EditorTools
             carPlate = ArtLibrary.Plain("Car_Plate", new Color(0.9f, 0.9f, 0.88f), 0.5f);
             carPlateRear = ArtLibrary.Plain("Car_Plate_Rear", new Color(0.92f, 0.8f, 0.15f), 0.5f);
             carTyre = ArtLibrary.Plain("Car_Tyre", new Color(0.05f, 0.05f, 0.05f), 0.2f);
-            carsParked = 0;
         }
 
         /// <summary>A parked car on the floor at 'floor', nose along 'yaw'. kind: 0 hatchback, 1 saloon, 2 small van.</summary>
