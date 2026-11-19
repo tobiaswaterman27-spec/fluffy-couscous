@@ -27,6 +27,9 @@ namespace AfterHours.World
         /// Move while it rumbles. Strongest right at the crack, gone in a few seconds.
         /// </summary>
         public static float ThunderMask { get; private set; }
+
+        /// <summary>When the last lightning flash went off (Time.time).</summary>
+        public static float LastFlash { get; private set; } = -100f;
         float maskPeak, maskAt = -100f, maskLength = 1f;
 
         int strikes;          // counted on the host; co-op clients follow it so everyone gets the same strike
@@ -60,6 +63,7 @@ namespace AfterHours.World
         {
             near = isNear;
             flashT = 0f;
+            LastFlash = Time.time;
             thunderAt = Time.time + (near ? Random.Range(0.4f, 1.5f) : Random.Range(3f, 7f));
             if (near) AfterHours.Rendering.FluorescentFlicker.Surge(Random.Range(0.4f, 0.9f));   // the surge gets into the wiring
         }
@@ -125,6 +129,6 @@ namespace AfterHours.World
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { ThunderMask = 0f; Intensity = 0.6f; }
+        static void ResetStatics() { ThunderMask = 0f; Intensity = 0.6f; LastFlash = -100f; }
     }
 }

@@ -216,6 +216,14 @@ namespace AfterHours.Audio
                 AudioMix.Kick(1f, 1.5f);
             }
             if (!now && chased) Sting("music_lost", 0.5f);
+            // The flash shows you it: standing out there, closer than you thought.
+            if (!now && !MenuMode && Time.time - AfterHours.World.Weather.LastFlash < 0.3f && Time.time - lastReveal > 45f && RevealedByFlash())
+            {
+                lastReveal = Time.time;
+                Sting("music_sting", 0.75f);
+                AudioPool.Play2D(AudioLibrary.Get("sub_hit"), 0.7f);
+                AudioMix.Kick(0.7f, 1.2f);
+            }
             chased = now;
             if (Silent) musicVol = 0f;
             Fade(menu, MenuMode ? 0.5f * musicVol : 0f, dt, 0.3f);
@@ -223,6 +231,33 @@ namespace AfterHours.Audio
             // The chase music swells as it closes in; the thin, trembling layer creeps in whenever it's near.
             Fade(chase, chased ? Mathf.Lerp(0.3f, 0.75f, closeness) * musicVol : 0f, dt, chased ? 0.6f : 0.15f);
             Fade(near, MenuMode ? 0f : closeness * (chased ? 0.25f : 0.45f) * musicVol, dt, 0.2f);
+        }
+
+        float lastReveal = -100f;
+
+        /// <summary>Is a creature in view right now, within 30 m, with nothing solid in between?</summary>
+        bool RevealedByFlash()
+        {
+            Camera cam = Camera.main;
+            if (cam == null) return false;
+            int mask = Physics.DefaultRaycastLayers;
+            foreach (int l in new[] { AfterHours.Core.GameLayers.CreatureLayer, AfterHours.Core.GameLayers.PlayerLayer, AfterHours.Core.GameLayers.LocalBodyLayer, AfterHours.Core.GameLayers.TriggerZoneLayer })
+                if (l >= 0) mask &= ~(1 << l);
+            foreach (ElliotBrain b in ElliotBrain.All)
+            {
+                if (b == null || !b.gameObject.activeInHierarchy) continue;
+                Vector3 chest = b.transform.position + Vector3.up * 1.6f;
+                if (Vector3.Distance(chest, cam.transform.position) > 30f) continue;
+                // only where the flash actually reaches: under the skylight, by the glass doors, out on the roof
+                bool skyLit = AfterHours.World.Layout.MallZones.Classify(chest).kind == AfterHours.World.Layout.ZoneKind.Atrium
+                              || chest.y > AfterHours.World.Layout.MallLayout.RoofY - 0.5f
+                              || Vector3.Distance(chest, new Vector3(0f, 1.5f, -AfterHours.World.Layout.MallLayout.EntranceHallEnd)) < 18f;
+                if (!skyLit) continue;
+                Vector3 vp = cam.WorldToViewportPoint(chest);
+                if (vp.z <= 0f || vp.x < 0.1f || vp.x > 0.9f || vp.y < 0.05f || vp.y > 0.95f) continue;
+                if (!Physics.Linecast(cam.transform.position, chest, mask, QueryTriggerInteraction.Ignore)) return true;
+            }
+            return false;
         }
 
         void Sting(string key, float vol)
