@@ -15,11 +15,16 @@ namespace AfterHours.World
         public bool splashes;
         public float rate = 900f;
         public Color tint = new Color(0.6f, 0.68f, 0.8f, 0.22f);
+        [Tooltip("Rain around whoever is watching, but only while their camera is inside this area (out on the roof).")]
+        public bool followCamera;
+        public Bounds followArea;
 
         ParticleSystem ps;
         ParticleSystemRenderer psr;
         Light lightning;
         float timer;
+        bool wasInside, covered;
+        float coverTimer;
 
         void Start()
         {
@@ -90,6 +95,25 @@ namespace AfterHours.World
         void Update()
         {
             if (ps == null) return;
+            if (followCamera)
+            {
+                Camera cam = Camera.main;
+                bool inside = cam != null && followArea.Contains(cam.transform.position);
+                // under a roof (the stair core's top room, a doorway): no rain on you
+                if (inside)
+                {
+                    coverTimer -= Time.deltaTime;
+                    if (coverTimer <= 0f)
+                    {
+                        coverTimer = 0.3f;
+                        covered = Physics.Raycast(cam.transform.position, Vector3.up, 12f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                    }
+                    inside = !covered;
+                }
+                if (inside) transform.position = cam.transform.position + Vector3.up * (size.y * 0.5f - 1.6f);
+                if (inside != wasInside) { wasInside = inside; timer = 0f; }
+                if (!inside) { if (ps.emission.rateOverTime.constant > 0f) { var em0 = ps.emission; em0.rateOverTime = 0f; } return; }
+            }
             float flash = lightning != null && lightning.enabled ? Mathf.Clamp01(lightning.intensity / 2f) : 0f;
             timer -= Time.deltaTime;
             if (timer > 0f && flash <= 0f) return;

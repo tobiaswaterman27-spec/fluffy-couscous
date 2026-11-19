@@ -286,7 +286,7 @@ namespace AfterHours.EditorTools
             float e = MallLayout.EntranceHallEnd;
             w.skyFlash = new[]
             {
-                SkySheet("Sky over the skylight", new Vector3(0f, roof + 6f, 0f), Quaternion.Euler(90f, 0f, 0f), new Vector2(60f, 60f)),
+                SkySheet("Sky over the skylight", new Vector3(0f, roof + 35f, 0f), Quaternion.Euler(90f, 0f, 0f), new Vector2(240f, 240f)),
                 SkySheet("Sky beyond the road", MallLayout.WingPoint(WingId.South, e + 34f, 0f, 10f), Quaternion.LookRotation(MallLayout.WingForward(WingId.South)), new Vector2(120f, 30f)),
             };
 
@@ -309,6 +309,19 @@ namespace AfterHours.EditorTools
             // beyond the canopy (it keeps the strip by the doors dry)
             Rain("Rain outside the entrance", MallLayout.WingPoint(WingId.South, end + 8f, 0f, 3.5f), new Vector3(30f, 7f, 9f), false, 2600f);
             Rain("Rain dripping off the canopy", MallLayout.WingPoint(WingId.South, end + 3.45f, 0f, 1.9f), new Vector3(16f, 3.8f, 0.1f), false, 260f);
+            {
+                // out on the roof it rains on you (the box follows whoever is up there)
+                var go = new GameObject("Rain on the roof (around you)");
+                go.transform.SetParent(parent, false);
+                go.transform.position = new Vector3(32f, roof + 3f, 32f);
+                AfterHours.World.RainView rv = go.AddComponent<AfterHours.World.RainView>();
+                rv.material = streak;
+                rv.size = new Vector3(18f, 8f, 18f);
+                rv.rate = 2600f;
+                rv.followCamera = true;
+                float q0 = MallLayout.OuterWall, q1 = MallLayout.QuadrantOuter;
+                rv.followArea = new Bounds(new Vector3((q0 + q1) * 0.5f, roof + 4f, (q0 + q1) * 0.5f), new Vector3(q1 - q0 + 4f, 8f, q1 - q0 + 4f));
+            }
             Rain("Rain on the skylight", new Vector3(0f, roof + 0.02f, 0f), new Vector3(MallLayout.VoidHalf * 2f, 0f, MallLayout.VoidHalf * 2f), true, 500f);
         }
 
