@@ -59,7 +59,7 @@ namespace AfterHours.EditorTools
                     PlaceGrid(g, area, y, 2.4f, 1.6f, 2.2f, 4.6f, plantMat, SurfaceType.Metal, keepClear, null, r => PlantMachine(g, r, y, n++));
                     break;
                 case FurnishStyle.Storage:
-                    Rows(g, area, y, 3f, 0.8f, 2.2f, 2.5f, 1.4f, metal, SurfaceType.Metal, keepClear, cardboardMat, seed);
+                    Rows(g, area, y, 3f, 0.8f, 2.2f, 2.5f, 1.4f, metal, SurfaceType.Metal, keepClear, cardboardMat, seed, r => StorageRack(g, r, y, n++));
                     Crates(g, area, y, keepClear, seed);
                     break;
                 case FurnishStyle.Toilets:
