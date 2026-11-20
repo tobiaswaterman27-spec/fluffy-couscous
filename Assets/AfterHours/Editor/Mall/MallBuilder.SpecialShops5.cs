@@ -18,7 +18,7 @@ namespace AfterHours.EditorTools
                 case "Optika Opticians": Opticians(g, u, y, side); return true;
                 case "Snap Photo Lab": PhotoLab(g, u, y, side); return true;
             }
-            return false;
+            return SpecialShop6(g, u, y, side);
         }
 
         static void Opticians(Transform g, MallUnit u, float y, int side)
