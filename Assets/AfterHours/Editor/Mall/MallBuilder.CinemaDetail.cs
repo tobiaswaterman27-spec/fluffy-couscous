@@ -19,10 +19,15 @@ namespace AfterHours.EditorTools
             Object.DestroyImmediate(row.GetComponent<MeshFilter>());
             Vector3 fwd = MallLayout.WingForward(w);
             Quaternion face = Quaternion.LookRotation(fwd);
-            Vector3 P(float u, float v, float h) => MallLayout.WingPoint(w, u, v, h);
+            // local frame for the row: x across (v), y up, z towards the screen (u)
+            float sv = Mathf.Sign(Vector3.Dot(MallLayout.WingRight(w), face * Vector3.right));
+            var kit = new MeshKit();
+            kit.Frame(MallLayout.WingPoint(w, r0, 0f, top), face);
+            Vector3 Lc(float du, float v, float h) => new Vector3(v * sv, h, du);
             Material plush = seatMat;
             Material armMat = ArtLibrary.Plain("Cinema_Arm", new Color(0.06f, 0.06f, 0.07f), 0.4f);
             Material stepLight = ArtLibrary.Plain("Step_Light", new Color(0.4f, 0.35f, 0.25f), 0.6f, 0f, new Color(0.9f, 0.7f, 0.35f), false);
+            Material carton = ArtLibrary.Plain("Popcorn_Carton", new Color(0.8f, 0.15f, 0.12f), 0.3f);
             const float pitch = 0.6f;
             int n = Mathf.FloorToInt((vb - va) / pitch);
             float start = (va + vb) * 0.5f - n * pitch * 0.5f;
@@ -31,22 +36,22 @@ namespace AfterHours.EditorTools
                 float vc = start + (i + 0.5f) * pitch;
                 int h = Mathf.Abs(MallLayout.Hash((int)(r0 * 10f), (int)(vc * 10f), k, (int)w));
                 bool down = h % 9 == 0;
-                // back, leaning back a little
-                Detail("Seat back", g, P(r0 + 0.32f, vc, top + 0.72f), new Vector3(pitch - 0.08f, 0.62f, 0.1f), plush, face * Quaternion.Euler(-10f, 0f, 0f));
-                if (down) Detail("Seat (down)", g, P(r0 + 0.55f, vc, top + 0.42f), new Vector3(pitch - 0.1f, 0.1f, 0.44f), plush, face * Quaternion.Euler(4f, 0f, 0f));
-                else Detail("Seat (tipped up)", g, P(r0 + 0.47f, vc, top + 0.6f), new Vector3(pitch - 0.1f, 0.42f, 0.1f), plush, face * Quaternion.Euler(-12f, 0f, 0f));
-                if (h % 23 == 0) Detail("Popcorn carton (dropped)", g, P(r0 + 0.95f, vc + 0.1f, top + 0.06f), new Vector3(0.12f, 0.12f, 0.16f), ArtLibrary.Plain("Popcorn_Carton", new Color(0.8f, 0.15f, 0.12f), 0.3f), face * Quaternion.Euler(90f, h % 90, 0f));
+                kit.Box(Lc(0.32f, vc, 0.72f), new Vector3(pitch - 0.08f, 0.62f, 0.1f), plush, 0f, true, 0f, -10f);
+                if (down) kit.Box(Lc(0.55f, vc, 0.42f), new Vector3(pitch - 0.1f, 0.1f, 0.44f), plush, 0f, true, 0f, 4f);
+                else kit.Box(Lc(0.47f, vc, 0.6f), new Vector3(pitch - 0.1f, 0.42f, 0.1f), plush, 0f, true, 0f, -12f);
+                if (h % 23 == 0) kit.Box(Lc(0.95f, vc + 0.1f, 0.06f), new Vector3(0.12f, 0.16f, 0.12f), carton, h % 90, false, 90f);
             }
             for (int i = 0; i <= n; i++)
             {
                 float va2 = start + i * pitch;
-                Detail("Armrest standard", g, P(r0 + 0.5f, va2, top + 0.3f), new Vector3(0.05f, 0.6f, 0.5f), armMat, face);
-                Detail("Armrest", g, P(r0 + 0.52f, va2, top + 0.63f), new Vector3(0.07f, 0.04f, 0.5f), armMat, face);
-                Cyl("Cup holder", g, P(r0 + 0.74f, va2, top + 0.6f), P(r0 + 0.74f, va2, top + 0.66f), 0.08f, armMat);
+                kit.Box(Lc(0.5f, va2, 0.3f), new Vector3(0.05f, 0.6f, 0.5f), armMat);
+                kit.Box(Lc(0.52f, va2, 0.63f), new Vector3(0.07f, 0.04f, 0.5f), armMat, 0f, false);
+                kit.Disc(Lc(0.74f, va2, 0.66f), Vector3.up, 0.04f, armMat, 8);
             }
             // step lights on the riser face at both aisle ends
             foreach (float v in new[] { va - 0.6f, vb + 0.6f })
-                Detail("Aisle step light", g, P(r0 + 1.3f + 0.005f, v, top - 0.12f), new Vector3(0.18f, 0.04f, 0.01f), stepLight, face);
+                kit.Box(Lc(1.3f + 0.005f, v, -0.12f), new Vector3(0.18f, 0.04f, 0.01f), stepLight, 0f, false);
+            kit.Build(g, "Cinema seats");
         }
 
         static void CinemaLobbyDetail(Transform g, WingId w, float y, float lobbyEnd, (string, float, float, float, float)[] screens)
