@@ -435,6 +435,7 @@ namespace AfterHours.EditorTools
                 GameObject pd = BoxMinMax("Roof puddle", parent, new Vector3(px - pa * 0.5f, y, pz - pb * 0.5f), new Vector3(px + pa * 0.5f, y + 0.004f, pz + pb * 0.5f), waterMat, SurfaceType.Concrete, false);
                 Object.DestroyImmediate(pd.GetComponent<Collider>());
             }
+            RoofDetail(parent);
         }
 
         // =====================================================================
