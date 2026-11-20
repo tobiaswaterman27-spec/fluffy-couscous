@@ -563,6 +563,7 @@ namespace AfterHours.EditorTools
                     Cyl("Handrail", g, CoreP(sx, sz, 3.18f, y0 + half + 0.95f, 6.75f), CoreP(sx, sz, 3.18f, y0 + 2f * half + 0.95f, 2.25f), 0.045f, metal);
                     Cyl("Handrail", g, CoreP(sx, sz, CoreW - 0.3f, y0 + half + 0.95f, 6.75f), CoreP(sx, sz, CoreW - 0.3f, y0 + 2f * half + 0.95f, 2.25f), 0.045f, metal);
                     Cyl("Handrail", g, CoreP(sx, sz, 0.3f, y0 + 0.95f, 2.25f), CoreP(sx, sz, 0.3f, y0 + half + 0.95f, 6.75f), 0.045f, metal);
+                    StairFlightDetail(g, sx, sz, y0, half, i, levels.Count);
                 }
             }
         }
