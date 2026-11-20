@@ -90,7 +90,7 @@ namespace AfterHours.EditorTools
                 lg.transform.localPosition = b + Vector3.up * 7.5f;
                 Light l = lg.AddComponent<Light>();
                 l.type = LightType.Point; l.range = 6f; l.intensity = 0.8f; l.color = new Color(1f, 0.15f, 0.08f);
-                l.shadows = LightShadows.None;
+                l.shadows = LightShadows.None; l.lightmapBakeType = LightmapBakeType.Realtime;
             }
 
             // ---- lightning tape along the parapet tops and down into the roof ----
