@@ -353,6 +353,12 @@ namespace AfterHours.EditorTools
                 BowlingDetail(g, w, y, u0, end);
             }
 
+            if (a.category == UnitCategory.Supermarket)
+            {
+                clear.Add(MallLayout.WingRect(w, u0, u0 + 4.6f, -19.3f, 19.3f));     // checkouts
+                clear.Add(MallLayout.WingRect(w, end - 2.6f, end, -19.3f, 19.3f));   // freezers
+                SupermarketDetail(g, w, y, u0, end);
+            }
             if (a.name == "VoltMart Electronics")
             {
                 clear.Add(MallLayout.WingRect(w, end - 5f, end, -8.5f, 8.5f));    // tech-help counter and peg wall
