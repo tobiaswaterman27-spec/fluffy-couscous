@@ -353,6 +353,11 @@ namespace AfterHours.EditorTools
                 BowlingDetail(g, w, y, u0, end);
             }
 
+            if (a.name == "VoltMart Electronics")
+            {
+                clear.Add(MallLayout.WingRect(w, end - 5f, end, -8.5f, 8.5f));    // tech-help counter and peg wall
+                ElectronicsAnchorDetail(g, w, y, u0, end);
+            }
             if (a.name == "Pulse Gym") GymFloor(g, w, y, u0, end);
             else Furnish(g, inside, y, a.style, clear, MallLayout.Hash((int)f, (int)w, 3, 3), categoryMats[a.category]);
             AnchorLights(g, w, y, u0, end, a.Enterable ? 0.8f : 0.45f);
