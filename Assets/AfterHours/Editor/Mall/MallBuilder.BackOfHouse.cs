@@ -185,6 +185,7 @@ namespace AfterHours.EditorTools
                 clearA.Add(SecurityConsoleRect);
                 SecurityMonitors(g, y);
             }
+            StaffRoomFeature(g, f, sx, sz, y, rb.label, clearB);
             Furnish(g, Inset(rectA, 0.4f), y, ra.style, clearA, seed, propMat);
             Furnish(g, Inset(rectB, 0.4f), y, rb.style, clearB, seed + 1, propMat);
 
