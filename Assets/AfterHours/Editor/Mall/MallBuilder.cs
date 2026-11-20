@@ -54,6 +54,7 @@ namespace AfterHours.EditorTools
 
                 Progress("Atrium", 0.06f);
                 BuildAtrium(Group("Atrium", mall));
+                BuildAtriumDetail(Group("Atrium detail", mall));
 
                 Progress("Shopping wings", 0.09f);
                 Transform wings = Group("Wings", mall);
