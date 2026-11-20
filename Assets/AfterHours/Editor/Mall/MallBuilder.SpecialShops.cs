@@ -22,7 +22,7 @@ namespace AfterHours.EditorTools
                 case "Nails by Nina": NailBar(g, u, y, side); return true;
                 case "Snapshot Studio": PhotoStudio(g, u, y, side); return true;
             }
-            return false;
+            return SpecialShop2(g, u, y, side);
         }
 
         static void FortuneTeller(Transform g, MallUnit u, float y, int side)
