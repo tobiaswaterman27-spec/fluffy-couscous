@@ -314,6 +314,7 @@ namespace AfterHours.EditorTools
 
             if (cinema) { BuildCinema(g, w, y, u0, end); return; }
 
+            if (a.name == "Homestyle") ClosingDownFront(g, w, y, u0);
             if (!a.HasInterior)
             {
                 AnchorLights(g, w, y, u0, end, 0.3f);
