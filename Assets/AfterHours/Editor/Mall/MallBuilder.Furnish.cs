@@ -56,7 +56,7 @@ namespace AfterHours.EditorTools
                     });
                     break;
                 case FurnishStyle.Plant:
-                    PlaceGrid(g, area, y, 2.4f, 1.6f, 2.2f, 4.6f, plantMat, SurfaceType.Metal, keepClear, null);
+                    PlaceGrid(g, area, y, 2.4f, 1.6f, 2.2f, 4.6f, plantMat, SurfaceType.Metal, keepClear, null, r => PlantMachine(g, r, y, n++));
                     break;
                 case FurnishStyle.Storage:
                     Rows(g, area, y, 3f, 0.8f, 2.2f, 2.5f, 1.4f, metal, SurfaceType.Metal, keepClear, cardboardMat, seed);
@@ -66,7 +66,7 @@ namespace AfterHours.EditorTools
                     Toilets(g, area, y, keepClear);
                     break;
                 case FurnishStyle.Leisure:
-                    PlaceGrid(g, area, y, 0.8f, 0.9f, 1.8f, 1.9f, accent, SurfaceType.Metal, keepClear, null);
+                    PlaceGrid(g, area, y, 0.8f, 0.9f, 1.8f, 1.9f, accent, SurfaceType.Metal, keepClear, null, r => ArcadeCabinet(g, r, y, n++));
                     break;
             }
             kit.Build(g, "Shop fittings");
