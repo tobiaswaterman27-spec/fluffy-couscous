@@ -88,6 +88,31 @@ namespace AfterHours.EditorTools
             PropHum(g, P(uf - 0.6f, 9f, 0.4f), ProceduralSounds.Ambience.Buzz, 0.14f, 9f);
             Sign(g, "FROZEN", P(uf - 0.5f, -8f, 2.35f), -fwd, 3f, 0.05f, false);
             Sign(g, "ICE CREAM & DESSERTS", P(uf - 0.5f, 8f, 2.35f), -fwd, 4f, 0.04f, false);
+            // hanging aisle signs, one over each aisle (same row maths as the gondola rows), numbered
+            {
+                string[] names = { "BREAD & BAKERY", "TINS & PACKETS", "PASTA & RICE", "CEREALS", "DRINKS", "CRISPS & SNACKS", "HOUSEHOLD", "PET FOOD", "BABY", "HEALTH & BEAUTY", "WORLD FOODS", "BISCUITS" };
+                AreaRect inside = MallLayout.WingRect(w, u0 + 0.8f, end - 0.8f, -18.6f, 18.6f);
+                bool alongX = inside.Width >= inside.Depth;
+                float crossMin = alongX ? inside.minZ : inside.minX, crossMax = alongX ? inside.maxZ : inside.maxX;
+                float longMid = alongX ? (inside.minX + inside.maxX) * 0.5f : (inside.minZ + inside.maxZ) * 0.5f;
+                Vector3 aisleDir = alongX ? Vector3.right : Vector3.forward;
+                Material aisleBoard = ArtLibrary.Plain("Aisle_Board", new Color(0.1f, 0.35f, 0.18f), 0.4f);
+                int num = 1;
+                for (float c = crossMin + 1.1f + 0.55f + 1.5f; c < crossMax - 1.1f; c += 3f)
+                {
+                    Vector3 pos = alongX ? new Vector3(longMid, y + 3.6f, c) : new Vector3(c, y + 3.6f, longMid);
+                    float uu = Vector3.Dot(pos, fwd);
+                    if (uu < u0 + 5f || uu > end - 3f) continue;
+                    Quaternion q = Quaternion.LookRotation(aisleDir);
+                    Detail("Aisle sign", g, pos, new Vector3(1.6f, 0.45f, 0.04f), aisleBoard, q);
+                    string label = num + "  " + names[(num - 1) % names.Length];
+                    Sign(g, label, pos + aisleDir * 0.025f, aisleDir, 1.5f, 0.022f, false);
+                    Sign(g, label, pos - aisleDir * 0.025f, -aisleDir, 1.5f, 0.022f, false);
+                    foreach (float s2 in new[] { -0.6f, 0.6f })
+                        Cyl("Aisle sign wire", g, pos + Vector3.Cross(Vector3.up, aisleDir) * s2 + Vector3.up * 0.22f, pos + Vector3.Cross(Vector3.up, aisleDir) * s2 + Vector3.up * 0.9f, 0.006f, metal);
+                    num++;
+                }
+            }
             // the condensation they leave on the floor
             for (int k = 0; k < 4; k++)
                 Detail("Wet patch", g, P(uf - 1.0f, R(-15f, 15f), 0.004f), new Vector3(R(0.4f, 0.9f), 0.003f, R(0.3f, 0.7f)), ArtLibrary.Plain("Wet_Sheen", new Color(0.05f, 0.06f, 0.07f), 0.97f), Quaternion.Euler(0f, R(0f, 180f), 0f));
