@@ -151,6 +151,7 @@ namespace AfterHours.EditorTools
                     BoxMinMax("Dock leveller", g, new Vector3(sx * (q - 3f), y, sz * (z0 + 0.3f)), new Vector3(sx * (q - 0.3f), y + 0.05f, sz * (z1 - 0.3f)), metal, SurfaceType.Metal);
                 }
             }
+            if (loadingBay) LoadingDockDetail(g, y);
             if (staffExit)
             {
                 DoorMarker(g, "Staff exit", new Vector3(sx * 40f, y, sz * q), DoorKind.Fire, 1.2f, DoorHeight, true, "Restricted staff exit (escape route 7)", "staff_exit");
