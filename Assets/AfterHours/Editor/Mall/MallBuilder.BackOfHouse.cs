@@ -186,8 +186,11 @@ namespace AfterHours.EditorTools
                 SecurityMonitors(g, y);
             }
             StaffRoomFeature(g, f, sx, sz, y, rb.label, clearB);
+            plantRoomLabel = ra.label;
             Furnish(g, Inset(rectA, 0.4f), y, ra.style, clearA, seed, propMat);
+            plantRoomLabel = rb.label;
             Furnish(g, Inset(rectB, 0.4f), y, rb.style, clearB, seed + 1, propMat);
+            plantRoomLabel = null;
 
             Vector2 ca = rectA.Center, cb = rectB.Center;
             EditorBuild.Label(g, ra.label.ToUpperInvariant(), new Vector3(ca.x, y + 3.6f, ca.y), sz > 0 ? 0f : 180f, 0.06f);

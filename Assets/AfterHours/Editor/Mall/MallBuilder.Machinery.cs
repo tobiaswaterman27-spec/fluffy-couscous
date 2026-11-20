@@ -11,8 +11,13 @@ namespace AfterHours.EditorTools
     /// </summary>
     public static partial class MallBuilder
     {
+        /// <summary>The back-of-house room being furnished (null elsewhere): picks the kind of plant it gets.</summary>
+        static string plantRoomLabel;
+
         static void PlantMachine(Transform g, AreaRect r, float y, int n)
         {
+            if (plantRoomLabel != null && plantRoomLabel.Contains("Water")) { WaterTank(g, r, y, n); return; }
+            if (plantRoomLabel != null && (plantRoomLabel.Contains("Electrical") || plantRoomLabel.Contains("Switch"))) { Switchgear(g, r, y, n); return; }
             int h = Mathf.Abs(MallLayout.Hash((int)(r.minX * 10f), (int)(r.minZ * 10f), n, 77));
             Vector2 c2 = r.Center;
             Vector3 c = new Vector3(c2.x, y, c2.y);
@@ -96,6 +101,70 @@ namespace AfterHours.EditorTools
                     break;
                 }
             }
+        }
+
+        /// <summary>A sectional water tank on steel beams: panel grid, a ladder up the side, level gauge, pipes.</summary>
+        static void WaterTank(Transform g, AreaRect r, float y, int n)
+        {
+            Vector2 c2 = r.Center;
+            Vector3 c = new Vector3(c2.x, y, c2.y);
+            float w = r.Width, d = r.Depth, H = 2.0f;
+            Material panel = ArtLibrary.Plain("Tank_Panel", new Color(0.35f, 0.45f, 0.55f), 0.45f, 0.3f);
+            Material beam = ArtLibrary.Plain("Tank_Beam", new Color(0.12f, 0.12f, 0.12f), 0.4f, 0.5f);
+            BoxRect("Tank plinth beams", g, r, y, y + 0.25f, beam, SurfaceType.Metal);
+            BoxRect("Water tank", g, r, y + 0.25f, y + 0.25f + H, panel, SurfaceType.Metal);
+            // panel seams every metre, flanged
+            for (float a = -w * 0.5f + 1f; a < w * 0.5f; a += 1f)
+                foreach (float s in new[] { -1f, 1f })
+                    Detail("Tank flange", g, c + new Vector3(a, 0.25f + H * 0.5f, s * (d * 0.5f + 0.015f)), new Vector3(0.05f, H, 0.03f), panel);
+            foreach (float s in new[] { -1f, 1f })
+                Detail("Tank flange", g, c + new Vector3(0f, 0.25f + H * 0.5f + 0f, s * (d * 0.5f + 0.015f)) + Vector3.up * 0f, new Vector3(w, 0.05f, 0.03f), panel);
+            // level gauge tube and a ladder on one end
+            Vector3 e = c + new Vector3(w * 0.5f + 0.06f, 0f, -d * 0.25f);
+            Cyl("Level gauge", g, e + Vector3.up * 0.4f, e + Vector3.up * (H + 0.1f), 0.05f, glassMat);
+            Cyl("Gauge water", g, e + Vector3.up * 0.4f, e + Vector3.up * (0.4f + H * 0.55f), 0.035f, waterMat);
+            Vector3 l = c + new Vector3(w * 0.5f + 0.15f, 0f, d * 0.15f);
+            foreach (float s in new[] { -0.2f, 0.2f }) Cyl("Ladder stile", g, l + Vector3.forward * s, l + Vector3.forward * s + Vector3.up * (H + 0.6f), 0.04f, metal);
+            for (float hh = 0.3f; hh < H + 0.4f; hh += 0.3f) Cyl("Ladder rung", g, l + Vector3.up * hh - Vector3.forward * 0.2f, l + Vector3.up * hh + Vector3.forward * 0.2f, 0.025f, metal);
+            // inlet and outlet pipes, a hatch on top
+            Cyl("Inlet pipe", g, c + new Vector3(-w * 0.3f, 0.25f + H, 0f), c + new Vector3(-w * 0.3f, MallLayout.CeilingHeight - 0.1f, 0f), 0.12f, plantMat);
+            Cyl("Outlet pipe", g, c + new Vector3(-w * 0.5f - 0.3f, 0.5f, 0f), c + new Vector3(-w * 0.5f, 0.5f, 0f), 0.15f, plantMat);
+            Cyl("Outlet valve", g, c + new Vector3(-w * 0.5f - 0.2f, 0.4f, 0f), c + new Vector3(-w * 0.5f - 0.2f, 0.62f, 0f), 0.2f, metal);
+            Cyl("Valve wheel", g, c + new Vector3(-w * 0.5f - 0.2f, 0.64f, 0f), c + new Vector3(-w * 0.5f - 0.2f, 0.66f, 0f), 0.3f, redMat);
+            Detail("Tank hatch", g, c + new Vector3(w * 0.25f, 0.25f + H + 0.02f, 0f), new Vector3(0.6f, 0.04f, 0.6f), panel);
+            Sign(g, $"TANK {(char)('A' + n % 4)}\nPOTABLE WATER", c + new Vector3(0f, 1.6f, -d * 0.5f - 0.035f), Vector3.back, 0.9f, 0.018f, false);
+        }
+
+        /// <summary>A switchgear line-up: tall grey cubicles with meters, isolator handles, indicator lamps and danger plates.</summary>
+        static void Switchgear(Transform g, AreaRect r, float y, int n)
+        {
+            Vector2 c2 = r.Center;
+            Vector3 c = new Vector3(c2.x, y, c2.y);
+            float w = r.Width, d = r.Depth;
+            Material grey = ArtLibrary.Plain("Switchgear_Grey", new Color(0.55f, 0.57f, 0.55f), 0.45f, 0.3f);
+            Material lampG = ArtLibrary.Plain("Lamp_Green", new Color(0.1f, 0.4f, 0.1f), 0.6f, 0f, new Color(0.2f, 1.6f, 0.3f), false);
+            Material lampR = ArtLibrary.Plain("Lamp_Red", new Color(0.4f, 0.05f, 0.05f), 0.6f, 0f, new Color(1.6f, 0.15f, 0.1f), false);
+            Material meterFace = ArtLibrary.Plain("Meter_Face", new Color(0.92f, 0.92f, 0.88f), 0.8f);
+            BoxRect("Switchgear", g, r, y, y + 2.1f, grey, SurfaceType.Metal);
+            int cells = Mathf.Max(2, Mathf.RoundToInt(w / 0.6f));
+            float cw = w / cells;
+            foreach (float s in new[] { -1f, 1f })
+            {
+                Vector3 n3 = Vector3.forward * s;
+                Quaternion face = Quaternion.LookRotation(n3);
+                for (int k = 0; k < cells; k++)
+                {
+                    Vector3 p = c + new Vector3(-w * 0.5f + (k + 0.5f) * cw, 0f, s * (d * 0.5f + 0.006f));
+                    Detail("Cubicle seam", g, p + new Vector3(cw * 0.5f, 1.05f, 0f), new Vector3(0.01f, 2.0f, 0.01f), blackMat, face);
+                    Detail("Meter", g, p + Vector3.up * 1.65f + n3 * 0.01f, new Vector3(0.14f, 0.14f, 0.02f), meterFace, face);
+                    Detail("Meter needle", g, p + Vector3.up * 1.64f + n3 * 0.022f, new Vector3(0.005f, 0.06f, 0.003f), blackMat, face * Quaternion.Euler(0f, 0f, (k * 37 + n * 13) % 90 - 45f));
+                    bool on = (k + n) % 5 != 0;
+                    Detail("Indicator lamp", g, p + Vector3.up * 1.42f + Vector3.right * 0.08f + n3 * 0.015f, new Vector3(0.035f, 0.035f, 0.02f), on ? lampG : lampR, face);
+                    Detail("Isolator handle", g, p + Vector3.up * 1.05f + n3 * 0.04f, new Vector3(0.05f, 0.18f, 0.06f), blackMat, face * Quaternion.Euler(0f, 0f, on ? 0f : 90f));
+                    Detail("Danger plate", g, p + Vector3.up * 0.45f + n3 * 0.004f, new Vector3(0.16f, 0.1f, 0.003f), yellowPaint, face);
+                }
+            }
+            Sign(g, $"LV BOARD {n % 3 + 1}\nDANGER 415 VOLTS", c + new Vector3(0f, 1.95f, -d * 0.5f - 0.012f), Vector3.back, w - 0.2f, 0.016f, false);
         }
 
         static readonly Color[] ArcadeColours =
