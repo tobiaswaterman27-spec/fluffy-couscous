@@ -536,6 +536,18 @@ namespace AfterHours.EditorTools
                 BoxMinMax(name + " glass", parent, new Vector3(a.x - t, y, lo.z), new Vector3(a.x + t, y + 1.0f, hi.z), glassMat, SurfaceType.Glass);
                 BoxMinMax(name + " rail", parent, new Vector3(a.x - 0.05f, y + 1.0f, lo.z), new Vector3(a.x + 0.05f, y + 1.08f, hi.z), railMat, SurfaceType.Metal);
             }
+            // a steel shoe along the foot of the glass, and a joint (two clamps) between each 1.5 m pane
+            float len = alongX ? hi.x - lo.x : hi.z - lo.z;
+            Vector3 dir = alongX ? Vector3.right : Vector3.forward;
+            Vector3 start = alongX ? new Vector3(lo.x, y, a.z) : new Vector3(a.x, y, lo.z);
+            Detail(name + " shoe", parent, start + dir * (len * 0.5f) + Vector3.up * 0.05f, alongX ? new Vector3(len, 0.1f, 0.12f) : new Vector3(0.12f, 0.1f, len), railMat);
+            int panes = Mathf.Max(1, Mathf.RoundToInt(len / 1.5f));
+            for (int i = 1; i < panes; i++)
+            {
+                Vector3 j = start + dir * (len * i / panes);
+                foreach (float h in new[] { 0.3f, 0.75f })
+                    Detail(name + " clamp", parent, j + Vector3.up * h, alongX ? new Vector3(0.05f, 0.07f, 0.12f) : new Vector3(0.12f, 0.07f, 0.05f), railMat);
+            }
         }
 
         static void PointLight(Transform parent, Vector3 pos, float range, float intensity, Color color, bool fixture = false)
