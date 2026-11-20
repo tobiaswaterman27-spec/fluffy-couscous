@@ -172,6 +172,7 @@ namespace AfterHours.EditorTools
             Vector3 b = MallLayout.WingPoint(w, u.u1 - 0.3f, frontLineV, y);
 
             BuildClosure(parent, u.code, a, b, y, u.access, u.name);
+            if (u.category == UnitCategory.Vacant) VacantFront(parent, u, y, side);
             if (u.access == UnitAccess.LockedGlass && Mathf.Abs(MallLayout.Hash(u.code.GetHashCode(), 3, 9, 27)) % 3 == 0)
                 GlassImpact(parent, u, a, b, y, toConcourse);
 
