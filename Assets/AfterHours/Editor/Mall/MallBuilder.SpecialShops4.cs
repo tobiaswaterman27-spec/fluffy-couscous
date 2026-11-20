@@ -21,7 +21,7 @@ namespace AfterHours.EditorTools
                 case "Northgate Building Society": BuildingSociety(g, u, y, side); return true;
                 case "Key & Heel Repairs": KeyCutter(g, u, y, side); return true;
             }
-            return false;
+            return SpecialShop5(g, u, y, side);
         }
 
         static void Barbers(Transform g, MallUnit u, float y, int side)

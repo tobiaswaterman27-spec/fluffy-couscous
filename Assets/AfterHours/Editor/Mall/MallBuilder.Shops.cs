@@ -218,7 +218,9 @@ namespace AfterHours.EditorTools
             bool changing = u.style == FurnishStyle.Rails && u.u1 - u.u0 > 7f;
             if (changing) keepClear.Add(MallLayout.WingRect(w, u.u1 - 2.4f, u.u1, side * 8.6f, side * 11.6f));
             bool special = SpecialShop(parent, u, y, side);
-            if (!special) Furnish(parent, floorArea, y, u.style, keepClear, seed, categoryMats[u.category]);
+            // jewellers and watch shops sell from glass counters, not tables
+            FurnishStyle style = u.category == UnitCategory.Jewellery ? FurnishStyle.Department : u.style;
+            if (!special) Furnish(parent, floorArea, y, style, keepClear, seed, categoryMats[u.category]);
             if (changing) ChangingRooms(parent, u, y, side);
 
             // Shelving along both side walls (products facing into the shop), for shops that sell things off shelves.
