@@ -346,6 +346,7 @@ namespace AfterHours.EditorTools
                 if (Mathf.Abs(h) % 4 == 0 && u + 6f < MallLayout.WingEnd - 4f)
                     WetFloorSign(parent, MallLayout.WingPoint(w, u + 6f, (h & 1) == 0 ? 3.6f : -3.6f, y), (h % 60) - 30f);
             }
+            ConcourseCarts(parent, f, w, y);
             // Hanging floor/wing sign at the atrium end.
             Vector3 view = MallLayout.WingForward(w);
             Sign(parent, MallLayout.FloorName(f) + "  -  " + w.ToString().ToUpperInvariant() + " MALL",
