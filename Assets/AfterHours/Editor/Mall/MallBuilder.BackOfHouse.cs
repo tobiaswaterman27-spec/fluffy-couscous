@@ -483,6 +483,7 @@ namespace AfterHours.EditorTools
             }
             AnchorLights(g, w, y, u0, lobbyEnd, 0.6f);
             CinemaLobbyDetail(g, w, y, lobbyEnd, screens);
+            CinemaScreenDetail(g, w, y, lobbyEnd, end, screens);
         }
     }
 }
