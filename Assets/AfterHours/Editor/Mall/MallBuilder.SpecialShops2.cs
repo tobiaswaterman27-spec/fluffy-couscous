@@ -19,7 +19,7 @@ namespace AfterHours.EditorTools
                 case "Tan Republic": TanningSalon(g, u, y, side); return true;
                 case "Pet Palace": PetShop(g, u, y, side); return true;
             }
-            return false;
+            return SpecialShop3(g, u, y, side);
         }
 
         static void TravelAgent(Transform g, MallUnit u, float y, int side)
