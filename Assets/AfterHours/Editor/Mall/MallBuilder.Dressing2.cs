@@ -182,6 +182,7 @@ namespace AfterHours.EditorTools
             CarParkSign(g, "STAIRS", new Vector3(22f, -1.3f, 14f), Vector3.forward);
             CarParkSign(g, "STAIRS", new Vector3(-22f, -1.3f, -14f), Vector3.back);
             CarParkSign(g, "NO UNAUTHORISED ACCESS", new Vector3(-85.7f, -2f, -38f), Vector3.left);
+            CarParkFixtures(g, pillars);
         }
 
         static void CarParkSign(Transform g, string text, Vector3 centre, Vector3 viewDir)
