@@ -359,6 +359,17 @@ namespace AfterHours.EditorTools
                 clear.Add(MallLayout.WingRect(w, end - 2.6f, end, -19.3f, 19.3f));   // freezers
                 SupermarketDetail(g, w, y, u0, end);
             }
+            if (a.name == "Toy Kingdom")
+            {
+                clear.Add(MallLayout.WingRect(w, u0 + 4f, u0 + 9.8f, -4f, 4f));
+                ToyKingdomFeature(g, w, y, u0, end);
+            }
+            if (a.name == "Pro Sport")
+            {
+                clear.Add(MallLayout.WingRect(w, u0 + 4f, u0 + 9.8f, -4.5f, 4.5f));
+                clear.Add(MallLayout.WingRect(w, end - 1.5f, end, -7.5f, 7.5f));
+                ProSportFeature(g, w, y, u0, end);
+            }
             if (a.name == "VoltMart Electronics")
             {
                 clear.Add(MallLayout.WingRect(w, end - 5f, end, -8.5f, 8.5f));    // tech-help counter and peg wall
