@@ -18,6 +18,7 @@ namespace AfterHours.EditorTools
             Quaternion toSeats = Quaternion.LookRotation(-fwd), toScreen = Quaternion.LookRotation(fwd);
             Material velvet = ArtLibrary.Plain("Cinema_Curtain", new Color(0.35f, 0.04f, 0.05f), 0.2f);
             Material projected = ArtLibrary.Plain("Screen_Projecting", new Color(0.55f, 0.58f, 0.62f), 0.2f, 0f, new Color(0.55f, 0.62f, 0.72f), false);
+            HiddenPassageDetail(g, w, y);
             for (int i = 0; i < screens.Length; i++)
             {
                 var s = screens[i];
