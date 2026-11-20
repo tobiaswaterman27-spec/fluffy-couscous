@@ -132,6 +132,11 @@ After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the cam
 - **Tutorial**: on the main menu. The empty mall, one control at a time. Nothing is saved.
 - **Difficulty** (Settings; the host's counts in co-op): Easy, Normal, Hard, **Nightmare** (harder still, and at 3 AM a second, faster Elliot comes up from the car park) and **One Life** (Nightmare, and the first time you're caught the night is over - single player).
 - **Your record**: on the main menu - nights, ways out found, fastest escape, and 19 achievements.
+- **The mall, up close**: every area is fitted out now - the food court kiosks (menus, griddles, a pizza oven,
+  tray returns), the cinema (tip-up seats, popcorn machine, posters), the bowling alley (pins, scores still up),
+  Pulse Gym, VoltMart's TV walls, FreshWay's checkouts and freezers, Toy Kingdom, Pro Sport, the loading dock,
+  stairwells, toilets, plant rooms, staff rooms, the roof, the car park and the forecourt outside the glass.
+  Benches, office chairs, store-room racking and arcade machines are real models now, not blocks.
 - **CCTV**: the Security Office (ground floor, north-west back corridor) has live camera feeds of the atrium,
   the malls, the entrance and the car park. Watch them to see where Elliot is. They need power.
 
