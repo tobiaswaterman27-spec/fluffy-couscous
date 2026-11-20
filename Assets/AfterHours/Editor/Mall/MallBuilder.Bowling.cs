@@ -1,4 +1,5 @@
 using UnityEngine;
+using AfterHours.Audio;
 using AfterHours.World;
 using AfterHours.World.Layout;
 
@@ -94,6 +95,7 @@ namespace AfterHours.EditorTools
                 Sign(g, $"LANE {lane}\nDAZ   {s1}\nKEL   {s2}\nFRAME {4 + lane % 6}", sc - fwd * 0.06f, -fwd, 1.1f, 0.016f, false);
             }
 
+            PropHum(g, P(deck + 0.3f, 0f, 1.6f), ProceduralSounds.Ambience.Machinery, 0.12f, 20f, 0.2f);
             // masking panel across all the lanes above the decks
             Vector3 mc = P(deck - 0.6f, 0f, 1.75f);
             Detail("Masking panel", g, mc, new Vector3(28f, 1.3f, 0.06f), mask, back);

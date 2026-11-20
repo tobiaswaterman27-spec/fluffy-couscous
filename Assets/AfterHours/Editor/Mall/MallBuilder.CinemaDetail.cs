@@ -1,4 +1,5 @@
 using UnityEngine;
+using AfterHours.Audio;
 using AfterHours.World;
 using AfterHours.World.Layout;
 
@@ -65,6 +66,7 @@ namespace AfterHours.EditorTools
             Detail("Popcorn (heap)", g, pm + Vector3.up * 0.32f, new Vector3(0.7f, 0.22f, 0.5f), popcorn, face);
             Detail("Popcorn machine top", g, pm + Vector3.up * 0.95f, new Vector3(0.78f, 0.12f, 0.58f), red, face);
             Detail("Popcorn kettle", g, pm + Vector3.up * 0.75f, new Vector3(0.22f, 0.14f, 0.22f), metal, face);
+            PropHum(g, pm + Vector3.up * 0.5f, ProceduralSounds.Ambience.Buzz, 0.08f, 6f);
             Sign(g, "POPCORN", pm + Vector3.up * 0.95f - fwd * 0.3f, -fwd, 0.7f, 0.02f, false);
             for (int k = 0; k < 6; k++)
                 Detail("Popcorn carton", g, P(100.45f, 7.6f - k * 0.18f, 1.18f), new Vector3(0.13f, 0.16f, 0.13f), ArtLibrary.Plain("Popcorn_Carton", new Color(0.8f, 0.15f, 0.12f), 0.3f), face);

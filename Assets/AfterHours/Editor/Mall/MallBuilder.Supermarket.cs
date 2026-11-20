@@ -1,4 +1,5 @@
 using UnityEngine;
+using AfterHours.Audio;
 using AfterHours.World;
 using AfterHours.World.Layout;
 
@@ -83,6 +84,8 @@ namespace AfterHours.EditorTools
                 }
                 Detail("Freezer header", g, P(uf - 0.47f, v, 2.0f), new Vector3(1.5f, 0.14f, 0.02f), body, back);
             }
+            PropHum(g, P(uf - 0.6f, -9f, 0.4f), ProceduralSounds.Ambience.Buzz, 0.14f, 9f);
+            PropHum(g, P(uf - 0.6f, 9f, 0.4f), ProceduralSounds.Ambience.Buzz, 0.14f, 9f);
             Sign(g, "FROZEN", P(uf - 0.5f, -8f, 2.35f), -fwd, 3f, 0.05f, false);
             Sign(g, "ICE CREAM & DESSERTS", P(uf - 0.5f, 8f, 2.35f), -fwd, 4f, 0.04f, false);
             // the condensation they leave on the floor

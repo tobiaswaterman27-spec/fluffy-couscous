@@ -1,4 +1,5 @@
 using UnityEngine;
+using AfterHours.Audio;
 using AfterHours.World;
 using AfterHours.World.Layout;
 
@@ -99,6 +100,7 @@ namespace AfterHours.EditorTools
                     Detail("UV tube", g, c - inShop * 0.5f + fwd * (t * 0.12f) + Vector3.up * 1.1f, new Vector3(0.04f, 1.8f, 0.01f), on ? uvOn : uvOff, Quaternion.LookRotation(-inShop));
                 if (on)
                 {
+                    PropHum(g, c + Vector3.up * 1.2f, ProceduralSounds.Ambience.Buzz, 0.1f, 6f);
                     var lg = new GameObject("Tanning booth glow");
                     lg.transform.SetParent(g, false);
                     lg.transform.localPosition = c - inShop * 0.9f + Vector3.up * 1.2f;
@@ -139,6 +141,7 @@ namespace AfterHours.EditorTools
                 if (rng.NextDouble() < 0.6)
                     Detail("Fish", g, p + Vector3.up * R(-0.1f, 0.12f) - fwd * 0.01f + inShop * R(-0.25f, 0.25f), new Vector3(0.06f, 0.03f, 0.005f), fish, toBack);
             }
+            PropHum(g, L(du0 - 0.4f, 9.8f, 1.0f), ProceduralSounds.Ambience.Water, 0.12f, 7f);
             var lg = new GameObject("Aquarium glow");
             lg.transform.SetParent(g, false);
             lg.transform.localPosition = L(du0 - 1.2f, 9.8f, 1.2f);

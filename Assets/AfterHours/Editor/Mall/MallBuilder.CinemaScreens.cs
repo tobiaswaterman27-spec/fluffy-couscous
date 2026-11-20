@@ -1,4 +1,5 @@
 using UnityEngine;
+using AfterHours.Audio;
 using AfterHours.World;
 using AfterHours.World.Layout;
 
@@ -36,6 +37,7 @@ namespace AfterHours.EditorTools
                 Vector3 target = P(end - 0.62f, vc, 2.65f);
                 Material beam = AdditiveMaterial("Projector_Beam", "decal_light_beam.png", new Color(0.7f, 0.78f, 0.9f, 0.045f));
                 Shaft(g, port, (target - port).normalized, Vector3.Distance(port, target), 2.4f, beam);
+                PropHum(g, port + fwd * 0.3f, ProceduralSounds.Ambience.Machinery, 0.18f, 16f, 0.25f);
                 var lg = new GameObject("Screen glow");
                 lg.transform.SetParent(g, false);
                 lg.transform.localPosition = P(end - 3f, vc, 2.6f);
