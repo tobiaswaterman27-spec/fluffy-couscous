@@ -93,6 +93,7 @@ namespace AfterHours.EditorTools
             // Information desk.
             BoxMinMax("Information desk", parent, new Vector3(-2.5f, 0f, -7.8f), new Vector3(2.5f, 1.1f, -6.2f), counterMat, SurfaceType.Wood);
             Sign(parent, "INFORMATION", new Vector3(0f, 1.45f, -7.85f), Vector3.forward, 2.4f, 0.04f);
+            InfoDeskDetail(parent);
 
             // Seating and planters.
             BoxMinMax("Bench", parent, new Vector3(-13f, 0f, -5f), new Vector3(-12.5f, 0.45f, -1f), woodMat, SurfaceType.Wood);
