@@ -144,7 +144,7 @@ namespace AfterHours.EditorTools
                 Material red = ArtLibrary.Plain("Banner_Red", new Color(0.55f, 0.07f, 0.08f), 0.2f);
                 Material cream = ArtLibrary.Plain("Banner_Cream", new Color(0.86f, 0.83f, 0.74f), 0.2f);
                 string[] words = { "AUTUMN\nSALE\n\nUP TO\n50%\nOFF", "LATE\nNIGHT\nSHOPPING\n\nTHURSDAYS\nTILL 9", "KESTREL\nFIELDS\n\nSHOP\nEAT\nMEET", "AUTUMN\nSALE\n\nUP TO\n50%\nOFF" };
-                Vector3[] at = { new Vector3(-9.6f, 0f, -4f), new Vector3(9.6f, 0f, 4f), new Vector3(4f, 0f, -9.6f), new Vector3(-4f, 0f, 9.6f) };
+                Vector3[] at = { new Vector3(-9.6f, 0f, -7.6f), new Vector3(9.6f, 0f, 4f), new Vector3(4f, 0f, -9.6f), new Vector3(-4f, 0f, 9.6f) };
                 for (int i = 0; i < 4; i++)
                 {
                     Vector3 p = at[i];
