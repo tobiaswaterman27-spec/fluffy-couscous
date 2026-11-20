@@ -50,7 +50,7 @@ namespace AfterHours.EditorTools
                     {
                         OpenDesk(g, r, y);                                   // knee space: you can crawl under it
                         Vector3 centre = new Vector3((r.minX + r.maxX) * 0.5f, y, (r.minZ + r.maxZ) * 0.5f);
-                        Prop(g, "Office chair", centre + new Vector3(0f, 0f, -0.75f), new Vector3(0.5f, 0.9f, 0.5f), 8f, propMat, SurfaceType.Metal);
+                        OfficeChairProp(g, centre + new Vector3(0f, 0f, -0.75f), (centre.x * 37f + centre.z * 11f) % 50f - 25f, 8f, SurfaceType.Metal);
                         InteractiveFactory.AddDrawer(g, centre + new Vector3(0.45f, 0.6f, -0.15f), new Vector3(0.42f, 0.14f, 0.5f), Vector3.back, woodMat);
                         DeskClutter(g, centre + Vector3.up * 0.75f);
                     });

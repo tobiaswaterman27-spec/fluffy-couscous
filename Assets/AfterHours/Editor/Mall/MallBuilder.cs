@@ -130,6 +130,7 @@ namespace AfterHours.EditorTools
                 DressRats(Group("Rats", mall));
                 Progress("Detail: car park", 0.67f);
                 DressCarPark(carPark);
+                RefineFurniture(mall);
 
                 Progress("Atmosphere: light shafts", 0.715f);
                 BuildAtmosphere(mall);
