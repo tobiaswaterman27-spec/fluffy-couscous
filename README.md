@@ -137,6 +137,9 @@ After **3 - Build Mall**, pressing **Play** starts at the **main menu** (the cam
   Pulse Gym, VoltMart's TV walls, FreshWay's checkouts and freezers, Toy Kingdom, Pro Sport, the loading dock,
   stairwells, toilets, plant rooms, staff rooms, the roof, the car park and the forecourt outside the glass.
   Benches, office chairs, store-room racking and arcade machines are real models now, not blocks.
+  Shops that aren't shelf shops are fitted as what they are - the barbers, florist (wilting), nail bar, photo
+  studio and lab, opticians, building society, key cutter, travel agent, tanning salon, pet shop (fish tanks still
+  lit), fortune teller, sushi conveyor, ice cream parlour and the laser tag - and the restaurants have their decor.
 - **CCTV**: the Security Office (ground floor, north-west back corridor) has live camera feeds of the atrium,
   the malls, the entrance and the car park. Watch them to see where Elliot is. They need power.
 
