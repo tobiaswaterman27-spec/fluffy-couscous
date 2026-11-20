@@ -217,12 +217,13 @@ namespace AfterHours.EditorTools
             int seed = MallLayout.Hash((int)u.floor, (int)w, side, (int)(u.u0 * 10f));
             bool changing = u.style == FurnishStyle.Rails && u.u1 - u.u0 > 7f;
             if (changing) keepClear.Add(MallLayout.WingRect(w, u.u1 - 2.4f, u.u1, side * 8.6f, side * 11.6f));
-            Furnish(parent, floorArea, y, u.style, keepClear, seed, categoryMats[u.category]);
+            bool special = SpecialShop(parent, u, y, side);
+            if (!special) Furnish(parent, floorArea, y, u.style, keepClear, seed, categoryMats[u.category]);
             if (changing) ChangingRooms(parent, u, y, side);
 
             // Shelving along both side walls (products facing into the shop), for shops that sell things off shelves.
-            if (u.style == FurnishStyle.Shelving || u.style == FurnishStyle.Rails || u.style == FurnishStyle.Tables ||
-                u.style == FurnishStyle.Department || u.style == FurnishStyle.Supermarket)
+            if (!special && (u.style == FurnishStyle.Shelving || u.style == FurnishStyle.Rails || u.style == FurnishStyle.Tables ||
+                u.style == FurnishStyle.Department || u.style == FurnishStyle.Supermarket))
             {
                 FixtureMaterials();
                 var kit = new MeshKit();
