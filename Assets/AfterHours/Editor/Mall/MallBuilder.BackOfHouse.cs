@@ -349,6 +349,7 @@ namespace AfterHours.EditorTools
                     WingBox("Ball return", g, w, u0 + 6f, u0 + 7.5f, v + 1.2f, v + 1.8f, y, y + 0.9f, metal, SurfaceType.Metal);
                 }
                 inside = MallLayout.WingRect(w, u0 + 0.8f, u0 + 5.5f, -18.6f, 18.6f);
+                BowlingDetail(g, w, y, u0, end);
             }
 
             Furnish(g, inside, y, a.style, clear, MallLayout.Hash((int)f, (int)w, 3, 3), categoryMats[a.category]);
