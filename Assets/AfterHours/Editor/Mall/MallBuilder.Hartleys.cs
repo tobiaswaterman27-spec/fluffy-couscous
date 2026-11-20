@@ -25,7 +25,7 @@ namespace AfterHours.EditorTools
             if (f == MallFloor.Ground)
             {
                 // display plinth with three mannequins facing the doors
-                EditorBuild.Box("Display plinth", g, P(u0 + 6f, 0f, 0.15f), new Vector3(5.5f, 0.3f, 2.4f), plinth, SurfaceType.Wood, Quaternion.LookRotation(rt));
+                EditorBuild.Box("Display plinth", g, P(u0 + 6f, 0f, 0.15f), new Vector3(5.5f, 0.3f, 2.4f), plinth, SurfaceType.Wood, Quaternion.LookRotation(fwd));
                 for (int k = -1; k <= 1; k++)
                     Mannequin(g, P(u0 + 6f + (k == 0 ? -0.3f : 0.2f), k * 1.6f, 0.3f), toDoors);
                 Cyl("Banner wire", g, P(u0 + 6f, -2.8f, 2.6f), P(u0 + 6f, -2.8f, 4.4f), 0.01f, metal);
