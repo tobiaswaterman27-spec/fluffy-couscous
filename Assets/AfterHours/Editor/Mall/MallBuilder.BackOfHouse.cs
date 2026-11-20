@@ -353,7 +353,8 @@ namespace AfterHours.EditorTools
                 BowlingDetail(g, w, y, u0, end);
             }
 
-            Furnish(g, inside, y, a.style, clear, MallLayout.Hash((int)f, (int)w, 3, 3), categoryMats[a.category]);
+            if (a.name == "Pulse Gym") GymFloor(g, w, y, u0, end);
+            else Furnish(g, inside, y, a.style, clear, MallLayout.Hash((int)f, (int)w, 3, 3), categoryMats[a.category]);
             AnchorLights(g, w, y, u0, end, a.Enterable ? 0.8f : 0.45f);
         }
 
