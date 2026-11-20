@@ -478,11 +478,20 @@ namespace AfterHours.Creature
                 handTargetL = Vector3.Lerp(handTargetL, aL, actionW);
                 handTargetR = Vector3.Lerp(handTargetR, aR, actionW);
             }
+            // going down onto all fours (or getting up): the arms swing wide, clear of the knees coming out
+            float midBlend = crawlW * (1f - crawlW) * 4f;
+            if (midBlend > 0.01f)
+            {
+                handTargetL += (-right * 0.35f + up * 0.1f) * midBlend;
+                handTargetR += (right * 0.35f + up * 0.1f) * midBlend;
+            }
             if (pp != null)
             {
                 handTargetL = Vector3.Lerp(handTargetL, pp.handL, pp.weight);
                 handTargetR = Vector3.Lerp(handTargetR, pp.handR, pp.weight);
             }
+            handTargetL.y = Mathf.Max(handTargetL.y, root.y + 0.04f);   // never into the floor
+            handTargetR.y = Mathf.Max(handTargetR.y, root.y + 0.04f);
 
             Vector3 elbowPole = -fwd + Vector3.down * 0.4f;
             Vector3 poleL = Vector3.Lerp(elbowPole - right * 0.4f, -right + up * 1.1f - fwd * 0.3f, crawlW);
@@ -494,8 +503,8 @@ namespace AfterHours.Creature
                 poleR = Vector3.Lerp(poleR, right * 0.55f - up * 0.2f - fwd * 0.3f, pp.weight * (1f - crawlW));
             }
             float floorH = root.y;
-            float flatL = Mathf.Max(crawlW * (1f - Mathf.Clamp01((handTargetL.y - floorH - 0.12f) / 0.2f)), pp != null && pp.flatHands ? pp.weight : 0f);
-            float flatR = Mathf.Max(crawlW * (1f - Mathf.Clamp01((handTargetR.y - floorH - 0.12f) / 0.2f)), pp != null && pp.flatHands ? pp.weight : 0f);
+            float flatL = Mathf.Max(Mathf.Min(1f, crawlW * 3f) * (1f - Mathf.Clamp01((handTargetL.y - floorH - 0.12f) / 0.2f)), pp != null && pp.flatHands ? pp.weight : 0f);
+            float flatR = Mathf.Max(Mathf.Min(1f, crawlW * 3f) * (1f - Mathf.Clamp01((handTargetR.y - floorH - 0.12f) / 0.2f)), pp != null && pp.flatHands ? pp.weight : 0f);
             Arm(upperArmL, foreArmL, handL, shoulderL, handTargetL, poleL, yaw, flatL, fwd * 0.85f - right * 0.45f);
             Arm(upperArmR, foreArmR, handR, shoulderR, handTargetR, poleR, yaw, flatR, fwd * 0.85f + right * 0.45f);
 
