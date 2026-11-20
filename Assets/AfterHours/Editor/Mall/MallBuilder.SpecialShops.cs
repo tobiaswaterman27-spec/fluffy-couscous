@@ -47,7 +47,7 @@ namespace AfterHours.EditorTools
                 Detail("Drape fold", g, L(du + 0.25f, 13.36f, 2.0f), new Vector3(0.06f, 4.0f, 0.06f), velvet);
             }
             foreach (float du in new[] { 0.25f, len - 0.25f })
-                Detail("Side drape", g, L(du, 10f, 2.0f), new Vector3(0.04f, 4.0f, 6.8f), velvet, Quaternion.LookRotation(fwd));
+                Detail("Side drape", g, L(du, 10f, 2.0f), new Vector3(6.8f, 4.0f, 0.04f), velvet, Quaternion.LookRotation(fwd));
 
             // round table with a long cloth, the ball on its stand, the spread
             Vector3 tc = L(Mathf.Clamp(mid + 0.8f, 2.5f, len - 1.6f), 9.6f, 0f);
@@ -162,8 +162,8 @@ namespace AfterHours.EditorTools
             for (int k = 0; k < 3; k++)
             {
                 Vector3 p = L(0.27f, 7.6f + k * 1.3f, 1.6f);
-                Detail("Portrait frame", g, p, new Vector3(0.03f, 0.7f, 0.55f), blackMat, Quaternion.LookRotation(fwd));
-                Detail("Portrait", g, p + fwd * 0.018f, new Vector3(0.005f, 0.6f, 0.45f), ArtLibrary.Plain($"Portrait_{k}", new Color(0.35f + 0.1f * k, 0.3f + 0.05f * k, 0.28f), 0.4f), Quaternion.LookRotation(fwd));
+                Detail("Portrait frame", g, p, new Vector3(0.55f, 0.7f, 0.03f), blackMat, Quaternion.LookRotation(fwd));
+                Detail("Portrait", g, p + fwd * 0.018f, new Vector3(0.45f, 0.6f, 0.005f), ArtLibrary.Plain($"Portrait_{k}", new Color(0.35f + 0.1f * k, 0.3f + 0.05f * k, 0.28f), 0.4f), Quaternion.LookRotation(fwd));
             }
             Sign(g, "PASSPORT PHOTOS WHILE U WAIT\nFAMILY PORTRAITS  -  PETS", L(1.6f, 6.8f, 1.7f), -inShop, 1.2f, 0.02f);
         }

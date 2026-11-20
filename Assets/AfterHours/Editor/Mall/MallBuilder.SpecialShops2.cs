@@ -89,7 +89,7 @@ namespace AfterHours.EditorTools
                 float du = len - 1.6f - k * 2.6f;
                 if (du < 3.9f) break;
                 // cubicle partitions (clear of the till counter)
-                if (du - 1.25f > Mathf.Min(3.5f, len - 3.4f) + 0.2f) Detail("Cubicle wall", g, L(du - 1.25f, 9.9f, 1.1f), new Vector3(0.05f, 2.2f, 2.8f), cubicle, Quaternion.LookRotation(fwd));
+                if (du - 1.25f > Mathf.Min(3.5f, len - 3.4f) + 0.2f) Detail("Cubicle wall", g, L(du - 1.25f, 9.9f, 1.1f), new Vector3(2.8f, 2.2f, 0.05f), cubicle, Quaternion.LookRotation(fwd));
                 Vector3 c = L(du, 9.6f, 0f);
                 EditorBuild.Box("Tanning booth", g, c + Vector3.up * 1.1f, new Vector3(1.1f, 2.2f, 1.1f), shell, SurfaceType.Metal, Quaternion.LookRotation(-inShop));
                 bool on = k == 0;
