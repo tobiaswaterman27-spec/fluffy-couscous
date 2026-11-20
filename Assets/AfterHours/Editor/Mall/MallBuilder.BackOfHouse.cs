@@ -439,12 +439,14 @@ namespace AfterHours.EditorTools
                     float r0 = lobbyEnd + 1.5f + k * 1.3f, r1 = r0 + 1.3f;
                     float riserTop = y + (6 - k) * 0.3f;
                     WingBox("Seating riser", g, w, r0, r1, v0 + 0.1f, v1 - 0.1f, y, riserTop, carParkFloor, SurfaceType.Carpet);
-                    WingBox("Seat row", g, w, r0 + 0.25f, r0 + 0.75f, v0 + 1.4f, v1 - 1.4f, riserTop, riserTop + 0.5f, seatMat, SurfaceType.Carpet);
+                    GameObject row = WingBox("Seat row", g, w, r0 + 0.25f, r0 + 0.75f, v0 + 1.4f, v1 - 1.4f, riserTop, riserTop + 0.5f, seatMat, SurfaceType.Carpet);
+                    CinemaSeats(g, w, row, r0, v0 + 1.4f, v1 - 1.4f, riserTop, k);
                 }
                 WingBox("Screen", g, w, end - 0.6f, end - 0.45f, v0 + 0.6f, v1 - 0.6f, y + 1.0f, y + 4.3f, screenMat, SurfaceType.Wood);
                 PointLight(g, MallLayout.WingPoint(w, 116f, (v0 + v1) * 0.5f, y + 4f), 12f, 0.25f, WarmWhite);
             }
             AnchorLights(g, w, y, u0, lobbyEnd, 0.6f);
+            CinemaLobbyDetail(g, w, y, lobbyEnd, screens);
         }
     }
 }
