@@ -82,6 +82,7 @@ namespace AfterHours.EditorTools
                 "Pressure door at the end of the service tunnel (escape route 6): opened by its valve wheel", "tunnel_door");
             for (float x = -110f; x > tunnelEnd; x -= 16f) PointLight(parent, new Vector3(x, -1.3f, -18.5f), 8f, 0.35f, WarmWhite, false);
             DoorMarker(parent, "Service tunnel gate", new Vector3(-H, y, -18.5f), DoorKind.Maintenance, 3f, 3f, true, "Gate from the car park into the service tunnel");
+            TunnelDetail(Group("Service tunnel detail", parent));
 
             // ---- Exit ramp to street level (escape route 2) ----
             AreaRect ramp = MallLayout.CarParkExitRamp;
