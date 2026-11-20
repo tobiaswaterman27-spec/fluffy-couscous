@@ -18,7 +18,7 @@ namespace AfterHours.EditorTools
                 case "Sushi Go": SushiBar(g, u, y, side); return true;
                 case "Scoops Ice Cream": IceCreamParlour(g, u, y, side); return true;
             }
-            return false;
+            return SpecialShop4(g, u, y, side);
         }
 
         static void SushiBar(Transform g, MallUnit u, float y, int side)
