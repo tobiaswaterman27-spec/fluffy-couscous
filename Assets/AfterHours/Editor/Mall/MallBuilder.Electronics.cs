@@ -61,17 +61,21 @@ namespace AfterHours.EditorTools
             Quaternion toFront = Quaternion.LookRotation(-fwd);
             Detail("Peg wall", g, P(end - 0.33f, 0f, 1.5f), new Vector3(16f, 2.2f, 0.03f), pegboard, toFront);
             Material[] packs = { blister, ArtLibrary.Plain("Pack_Red", new Color(0.6f, 0.08f, 0.06f), 0.5f), ArtLibrary.Plain("Pack_Black", new Color(0.05f, 0.05f, 0.06f), 0.5f), ArtLibrary.Plain("Pack_Blue", new Color(0.1f, 0.25f, 0.6f), 0.5f) };
+            var pk = new MeshKit();
+            pk.Frame(Vector3.zero, toFront);
+            Quaternion inv = Quaternion.Inverse(toFront);
             for (float v = -7.6f; v <= 7.6f; v += 0.4f)
             {
                 for (float h = 0.7f; h <= 2.3f; h += 0.4f)
                 {
                     if (rng.NextDouble() < 0.15) continue;   // picked clean
-                    Cyl("Peg", g, P(end - 0.35f, v, h + 0.12f), P(end - 0.5f, v, h + 0.13f), 0.008f, metal);
+                    pk.Bar(inv * P(end - 0.35f, v, h + 0.12f), inv * P(end - 0.5f, v, h + 0.13f), 0.004f, metal, 5);
                     int count = 1 + rng.Next(3);
                     for (int k = 0; k < count; k++)
-                        Detail("Accessory pack", g, P(end - 0.37f - k * 0.03f, v, h), new Vector3(0.14f, 0.22f, 0.025f), packs[rng.Next(packs.Length)], toFront * Quaternion.Euler(0f, 0f, R(-3f, 3f)));
+                        pk.Box(inv * P(end - 0.37f - k * 0.03f, v, h), new Vector3(0.14f, 0.22f, 0.025f), packs[rng.Next(packs.Length)], 0f, false, R(-3f, 3f));
                 }
             }
+            pk.Build(g, "Accessory packs");
             Sign(g, "CABLES  ·  CHARGERS  ·  HEADPHONES  ·  CASES", P(end - 0.34f, 0f, 2.75f), -fwd, 8f, 0.04f, false);
             EditorBuild.Box("Tech help counter", g, P(end - 3.2f, 0f, 0.55f), new Vector3(4f, 1.1f, 0.7f), whiteFixture, SurfaceType.Wood, toFront);
             Detail("Counter top", g, P(end - 3.2f, 0f, 1.115f), new Vector3(4.1f, 0.03f, 0.8f), blackMat, toFront);

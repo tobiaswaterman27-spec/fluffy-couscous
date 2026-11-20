@@ -98,18 +98,23 @@ namespace AfterHours.EditorTools
 
             // trainer wall: angled shelves, one left shoe per slot (and the odd gap)
             Detail("Trainer wall backing", g, P(end - 0.33f, 0f, 1.6f), new Vector3(14f, 2.6f, 0.03f), darkPanel, face);
+            var sk = new MeshKit();
+            sk.Frame(Vector3.zero, face);
+            Quaternion inv = Quaternion.Inverse(face);
             for (int row = 0; row < 6; row++)
             {
                 float h = 0.5f + row * 0.4f;
                 for (float v = -6.6f; v <= 6.6f; v += 0.55f)
                 {
-                    Detail("Shoe shelf", g, P(end - 0.45f, v, h), new Vector3(0.38f, 0.015f, 0.22f), shelfWhite, face * Quaternion.Euler(-15f, 0f, 0f));
+                    sk.Box(inv * P(end - 0.45f, v, h), new Vector3(0.38f, 0.015f, 0.22f), shelfWhite, 0f, false, 0f, -15f);
                     if (rng.NextDouble() < 0.12) continue;
                     Material m = shoeCols[rng.Next(shoeCols.Length)];
-                    Detail("Trainer", g, P(end - 0.47f, v, h + 0.06f), new Vector3(0.1f, 0.09f, 0.28f), m, Quaternion.LookRotation(rt) * Quaternion.Euler(0f, 0f, 0f));
-                    Detail("Trainer sole", g, P(end - 0.47f, v, h + 0.015f), new Vector3(0.11f, 0.03f, 0.29f), shoeCols[0], Quaternion.LookRotation(rt));
+                    // side-on to the aisle, toe pointing along the wall
+                    sk.Box(inv * P(end - 0.47f, v, h + 0.06f), new Vector3(0.28f, 0.09f, 0.1f), m);
+                    sk.Box(inv * P(end - 0.47f, v, h + 0.015f), new Vector3(0.29f, 0.03f, 0.11f), shoeCols[0], 0f, false);
                 }
             }
+            sk.Build(g, "Trainer wall");
             Sign(g, "FOOTWEAR", P(end - 0.33f, 0f, 3.1f), -fwd, 4f, 0.06f, false);
 
             // ball cages near the entrance

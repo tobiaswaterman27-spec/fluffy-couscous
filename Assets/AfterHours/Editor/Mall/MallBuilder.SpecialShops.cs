@@ -114,14 +114,19 @@ namespace AfterHours.EditorTools
                 Detail("Tech stool", g, c + inShop * 0.6f + Vector3.up * 0.25f, new Vector3(0.38f, 0.5f, 0.38f), seat);
             }
             // polish wall on the back partition: rows of tiny bottles
+            var kit = new MeshKit();
+            Quaternion wallFace = Quaternion.LookRotation(-inShop);   // x runs along the back partition
+            kit.Frame(Vector3.zero, wallFace);
+            Quaternion inv = Quaternion.Inverse(wallFace);
             for (int r = 0; r < 6; r++)
             {
                 float h = 0.9f + r * 0.22f;
-                Detail("Polish shelf", g, L((0.7f + len - 3.1f) * 0.5f, 13.45f, h), new Vector3(len - 3.8f, 0.015f, 0.08f), white, faceFwd);
+                kit.Box(inv * L((0.7f + len - 3.1f) * 0.5f, 13.45f, h), new Vector3(len - 3.8f, 0.015f, 0.08f), white);
                 for (float du = 0.9f; du < len - 3.3f; du += 0.06f)
                     if (rng.NextDouble() > 0.1)
-                        Cyl("Polish", g, L(du, 13.45f, h + 0.008f), L(du, 13.45f, h + 0.075f), 0.035f, ArtLibrary.Plain($"Polish_{(int)(du * 7) % 8}", Color.HSVToRGB(((int)(du * 7) % 8) / 8f, 0.7f, 0.8f), 0.95f));
+                        kit.Box(inv * L(du, 13.45f, h + 0.042f), new Vector3(0.032f, 0.065f, 0.032f), ArtLibrary.Plain($"Polish_{(int)(du * 7) % 8}", Color.HSVToRGB(((int)(du * 7) % 8) / 8f, 0.7f, 0.8f), 0.95f), 0f, false);
             }
+            kit.Build(g, "Polish wall");
             Sign(g, "WALK-INS WELCOME\nGEL  -  ACRYLIC  -  PEDI", L(1.4f, 6.8f, 1.7f), -inShop, 1.0f, 0.02f);
         }
 
