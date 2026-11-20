@@ -221,6 +221,7 @@ namespace AfterHours.EditorTools
             // jewellers and watch shops sell from glass counters, not tables
             FurnishStyle style = u.category == UnitCategory.Jewellery ? FurnishStyle.Department : u.style;
             if (!special) Furnish(parent, floorArea, y, style, keepClear, seed, categoryMats[u.category]);
+            if (!special) RestaurantDecor(parent, u, y, side);
             if (changing) ChangingRooms(parent, u, y, side);
 
             // Shelving along both side walls (products facing into the shop), for shops that sell things off shelves.
