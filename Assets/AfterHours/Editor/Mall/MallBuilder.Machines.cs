@@ -221,6 +221,7 @@ namespace AfterHours.EditorTools
                 Vector3 p = i == 0 ? bottom - dir * 0.5f : top + new Vector3(dir.x, 0f, dir.z).normalized * 0.5f;
                 Decor(name + " comb plate", g, p + new Vector3(-width * 0.5f, 0f, -0.3f), p + new Vector3(width * 0.5f, 0.012f, 0.3f), metal);
             }
+            EscalatorTrim(g, name, bottom, top, width, dir, right, normal, length);
 
             Escalator e = g.gameObject.AddComponent<Escalator>();
             e.belt = belt;
