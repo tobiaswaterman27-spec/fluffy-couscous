@@ -259,8 +259,8 @@ namespace AfterHours.Creature
                 floorY = fl.point.y;
             headFirst = approach == Approach.Behind && ctx != CatchContext.Vent && ctx != CatchContext.Floor && ctx != CatchContext.HidingPlace && ctx != CatchContext.CeilingDrop;
             headDir = headFirst ? -fwd : fwd;
-            float headAt = headFirst ? 0.62f : ctx == CatchContext.Vent ? 0.8f : 1.85f;
-            float rootAt = headFirst ? -0.15f : ctx == CatchContext.Vent ? -0.45f : 0.55f;
+            float headAt = headFirst ? 0.78f : ctx == CatchContext.Vent ? 0.8f : 1.85f;
+            float rootAt = headFirst ? -0.32f : ctx == CatchContext.Vent ? -0.45f : 0.55f;
             if (!headFirst && ctx != CatchContext.Vent)
             {
                 // a wall in the way: you land shorter, and he comes in less far
@@ -315,6 +315,8 @@ namespace AfterHours.Creature
             }
             pose.weight = 0f;
             pose.root = Vector3.zero;
+            pose.straddle = false;
+            pose.flatHands = false;
             if (ctx == CatchContext.CeilingDrop && b.motor != null) b.motor.CeilingOverride = 1f;
             pose.handL = anim != null && anim.handL != null ? anim.handL.position : ePos;
             pose.handR = anim != null && anim.handR != null ? anim.handR.position : ePos;
@@ -407,6 +409,9 @@ namespace AfterHours.Creature
             pose.headShake = 0f;
             pose.headPush = Vector3.zero;
             pose.root = Vector3.zero;
+            pose.straddle = false;
+            pose.flatHands = false;
+            if (ctx != CatchContext.Vent && ctx != CatchContext.Floor && ctx != CatchContext.HidingPlace && time > intro * 0.5f) Straddle();
             Vector3 ahead = startEye + (startView * Vector3.forward) * 3f;
 
             switch (ctx)
@@ -421,9 +426,11 @@ namespace AfterHours.Creature
                     pose.jaw = time < 0.5f ? 6f : 40f;
                     Vector3 pulledTo = new Vector3(ePos.x, floorY + 1.2f, ePos.z) + fwd * 0.95f;
                     eye = Vector3.Lerp(startEye, pulledTo, outK) + Vector3.up * (Mathf.Sin(outK * Mathf.PI) * 0.15f);
-                    Vector3 collar = eye + Vector3.down * 0.25f - fwd * 0.08f;
-                    pose.handL = Vector3.Lerp(pose.handL, collar - right * 0.12f, Ease(0.4f, 0.6f, time));
-                    pose.handR = Vector3.Lerp(pose.handR, collar + right * 0.12f, Ease(0.4f, 0.6f, time));
+                    Vector3 collar = eye + Vector3.down * 0.2f - fwd * 0.1f;
+                    Vector3 frameL = startEye - right * 0.42f + Vector3.up * 0.2f - fwd * 0.5f, frameR = startEye + right * 0.42f + Vector3.up * 0.2f - fwd * 0.5f;   // gripping the frame
+                    float g1 = Ease(0f, 0.2f, time), g2 = Ease(0.4f, 0.6f, time);
+                    pose.handL = Vector3.Lerp(pose.handL, Vector3.Lerp(frameL, collar - right * 0.17f, g2), Mathf.Max(g1, g2));
+                    pose.handR = Vector3.Lerp(pose.handR, Vector3.Lerp(frameR, collar + right * 0.17f, g2), Mathf.Max(g1, g2));
                     sharp = 8f;
                     shake = time < 0.3f ? 0.6f : 0.3f + 0.4f * outK;
                     break;
@@ -454,7 +461,8 @@ namespace AfterHours.Creature
                     lookAt = Vector3.Lerp(ahead, Face, upK);
                     float drop = Ease(0.55f, intro, time);
                     if (brain.motor != null) brain.motor.CeilingOverride = 1f - drop;
-                    pose.root = fwd * (0.5f * drop);
+                    pose.root = fwd * (0.25f * drop);                                              // lands right in front of you
+                    eye = startEye + (Vector3.down * 0.15f + fwd * 0.12f) * Ease(0.8f, intro, time); // knocked back by the impact
                     pose.jaw = time > 0.5f ? 50f : 10f;
                     sharp = 10f;
                     shake = time > 0.55f ? 0.3f : 0.05f;
@@ -481,7 +489,7 @@ namespace AfterHours.Creature
                         float yawDelta = Mathf.DeltaAngle(startYaw, faceYaw);
                         if (Mathf.Sign(yawDelta) != turnSign && Mathf.Abs(yawDelta) > 1f) yawDelta += 360f * turnSign;
                         body = Quaternion.Euler(0f, startYaw + yawDelta * k, 0f);
-                        Vector3 pullTo = ePos + fwd * 0.8f; pullTo.y = startEye.y - 0.1f;
+                        Vector3 pullTo = ePos + fwd * 1.05f; pullTo.y = startEye.y - 0.1f;      // a forearm's length away
                         eye = Vector3.Lerp(startEye, pullTo, k * 0.6f);
                         Vector3 arm = eye + Quaternion.Euler(0f, startYaw, 0f) * new Vector3(turnSign * 0.25f, -0.45f, 0f);
                         pose.handR = Vector3.Lerp(pose.handR, Vector3.Lerp(arm, ShoulderPoint(eye, body, 1f), k), Ease(0f, 0.12f, time));
@@ -510,6 +518,15 @@ namespace AfterHours.Creature
         }
 
         // ---------------- the pin ----------------
+
+        /// <summary>His feet either side of you (about level with your hips; from behind, beyond your head), stepping high over you.</summary>
+        void Straddle()
+        {
+            Vector3 fb = lieHead + headDir * (headFirst ? 0.48f : -0.95f); fb.y = floorY;
+            pose.straddle = true;
+            pose.footL = fb - right * 0.66f + headDir * (headFirst ? -0.25f : -0.15f);
+            pose.footR = fb + right * 0.66f + headDir * (headFirst ? -0.25f : 0.1f);
+        }
 
         void Main(float u, out Vector3 eye, out Quaternion body, out Vector3 lookAt, ref float roll, ref float shake, ref float sharp)
         {
@@ -543,7 +560,7 @@ namespace AfterHours.Creature
                 else
                 {
                     pose.lean = 80f;
-                    pose.headPush = (lieEye + Vector3.up * 0.35f - headStart);
+                    pose.headPush = (lieEye + Vector3.up * 0.4f - headStart);
                 }
                 return;
             }
@@ -556,14 +573,17 @@ namespace AfterHours.Creature
             pose.look = lieEye;
             pose.lean = 85f;
             pose.headShake = 0f;
+            Straddle();
+            pose.flatHands = true;
             lookAt = Face;
             sharp = 16f;
-            Vector3 Above(float h) => lieEye + Vector3.up * h + headDir * (headFirst ? -0.04f : 0.02f) - headStart;
-            Vector3 neck = lieHead - headDir * 0.2f + right * 0.06f + Vector3.up * 0.1f;
+            // his face over yours - never closer than his skull allows
+            Vector3 Above(float h) => lieEye + Vector3.up * Mathf.Max(h, 0.3f) + headDir * (headFirst ? -0.04f : 0.02f) - headStart;
+            Vector3 neck = lieHead - headDir * 0.17f + right * 0.12f + Vector3.up * 0.24f;   // his mouth at the side of your neck
 
             if (u < LiftT)
             {
-                pose.headPush = Above(0.55f) * down;
+                pose.headPush = Above(0.55f) * Ease(0.28f, LiftT + 0.2f, u);   // his head follows you down, after you've hit the floor
                 pose.jaw = 30f;
                 shake = 0.9f * (1f - down) + 0.3f;
             }
@@ -626,8 +646,9 @@ namespace AfterHours.Creature
             Vector3 pinL = ShoulderPoint(eye, body, -1f), pinR = ShoulderPoint(eye, body, 1f);
             pinL.y = floorY + 0.14f; pinR.y = floorY + 0.14f;
             float g = Ease(0.1f, LiftT, u);
-            pose.handL = Vector3.Lerp(pose.handL, pinL, g);
-            pose.handR = Vector3.Lerp(pose.handR, pinR, g);
+            Vector3 overYou = Vector3.up * (0.45f * (1f - Ease(LiftT * 0.6f, LiftT + 0.25f, u)));   // from your ankles or collar: up and over you, not through you
+            pose.handL = Vector3.Lerp(pose.handL, pinL + overYou, g);
+            pose.handR = Vector3.Lerp(pose.handR, pinR + overYou, g);
         }
 
         // ---------------- the limp body ----------------
@@ -670,7 +691,7 @@ namespace AfterHours.Creature
             pose.lean = duct ? 65f * lower : 80f;
             pose.look = chest;
             float bite = Mathf.Abs(Mathf.Sin((u - FeedT) * 7.2f));
-            Vector3 feedAt = chest + Vector3.up * (0.28f + 0.12f * bite) - headStart;
+            Vector3 feedAt = chest + Vector3.up * (0.36f + 0.12f * bite) - headStart;
             pose.headPush = duct ? feedAt * lower : Vector3.Lerp(lieEye + Vector3.up * 0.35f - headStart, feedAt, lower);
             pose.jaw = 8f + 46f * bite;
             pose.headShake = 14f * lower;

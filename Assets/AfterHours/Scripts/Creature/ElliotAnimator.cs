@@ -60,6 +60,9 @@ namespace AfterHours.Creature
             public Vector3 headPush;       // world offset (lunging bite)
             public float headShake;        // degrees of violent side-to-side thrash
             public Vector3 root;           // world offset: his whole body comes onto you (his feet step after it)
+            public bool straddle;          // feet go to footL / footR (either side of you), stepping high over you
+            public Vector3 footL, footR;
+            public bool flatHands;         // hands pressed flat (pinning you down)
         }
         public PuppetPose Puppet { get; set; }
         /// <summary>Where his head would be this frame before a kill pushes it (kill head offsets are measured from here).</summary>
@@ -165,7 +168,7 @@ namespace AfterHours.Creature
             // ---------------- blend weights ----------------
             float k = 1f - Mathf.Exp(-5f * dt);
             runW = Mathf.Lerp(runW, Mathf.InverseLerp(motor.fastWalkSpeed, motor.runSpeed, speed), k);
-            crawlW = Mathf.Lerp(crawlW, gait == ElliotGait.Crawl ? 1f : 0f, 1f - Mathf.Exp(-3f * dt));
+            crawlW = Mathf.Lerp(crawlW, gait == ElliotGait.Crawl ? 1f : 0f, 1f - Mathf.Exp(-(Puppet != null && Puppet.weight > 0.01f ? 6f : 3f) * dt));
             moveW = Mathf.Lerp(moveW, Mathf.Clamp01(speed / 0.4f), k);
             stillW = Mathf.Lerp(stillW, gait == ElliotGait.Still ? 1f : 0f, k);
             actionTime += dt;
@@ -199,7 +202,7 @@ namespace AfterHours.Creature
             phase = Mathf.Repeat(phase + phaseSpeed * dt, 1f);
 
             // ---------------- feet ----------------
-            float swingFrac = Mathf.Lerp(0.38f, 0.55f, runW);
+            float swingFrac = Mathf.Lerp(0.38f, 0.66f, runW);   // sprinting: each foot is down only briefly
             float lift = Mathf.Lerp(Mathf.Lerp(0.1f, 0.32f, runW), 0.2f, crawlW);   // spider-like high steps when crawling
             Vector3 vel = new Vector3(motor.Velocity.x, 0f, motor.Velocity.z);
             for (int i = 0; i < 2; i++)
@@ -212,7 +215,8 @@ namespace AfterHours.Creature
                 {
                     swinging[i] = true;
                     footFrom[i] = footPos[i];
-                    Vector3 lead = speed > 0.1f ? vel.normalized * (stride * 0.5f) : Vector3.zero;
+                    // aim where the hips WILL be when it lands (they travel a swing's worth meanwhile), a little in front
+                    Vector3 lead = speed > 0.1f ? vel.normalized * (stride * swingFrac + Mathf.Lerp(0.12f, 0.28f, runW)) : Vector3.zero;
                     footTo[i] = Ground(root + right * (hipHalfWidth * side * Mathf.Lerp(1f, 2.7f, crawlW)) + lead - fwd * (crawlW * 0.3f));
                 }
                 if (swinging[i])
@@ -267,7 +271,9 @@ namespace AfterHours.Creature
                 reachT = h0 + pp.headPush * pp.weight;
                 if (inDuct) reachT.y = Mathf.Min(reachT.y, root.y + 0.8f);
                 float span = spineLength + neckLength;
-                pelvisPos.y -= Mathf.Clamp(pelvisPos.y - root.y - (reachT.y - root.y + 0.15f), 0f, 0.75f) * pp.weight;
+                float crouchBy = Mathf.Clamp(pelvisPos.y - root.y - (reachT.y - root.y + 0.15f), 0f, 0.75f) * pp.weight;
+                if (pp.straddle) crouchBy = Mathf.Min(crouchBy, Mathf.Max(0f, pelvisPos.y - root.y - 0.64f));   // over you: his hips stay clear of your body
+                pelvisPos.y -= crouchBy;
                 Vector3 flat = reachT - pelvisPos; flat.y = 0f;
                 float dist = Vector3.Distance(pelvisPos, reachT);
                 Vector3 before = pelvisPos;
@@ -283,12 +289,20 @@ namespace AfterHours.Creature
                 Vector3 dir = g > 1e-4f ? killStepGoal / g : fwd;
                 Vector3 goalR = killStepGoal + dir * (0.1f * Mathf.Clamp01(g / 0.3f)) + right * (0.16f * Mathf.Clamp01(g / 0.3f));    // lead foot steps in, out to the side (clear of your legs)
                 Vector3 goalL = killStepGoal - dir * (0.12f * Mathf.Clamp01(g / 0.3f));    // back foot a little behind
+                bool over = pp != null && pp.straddle;
+                if (over)
+                {
+                    // straddling you: the feet go either side of your body, never onto it
+                    goalL = pp.footL - footPos[0]; goalL.y = 0f;
+                    goalR = pp.footR - footPos[1]; goalR.y = 0f;
+                }
                 float rate = 2.2f * dt;
                 float remR = Vector3.Distance(killFoot[1], goalR);
                 killFoot[1] = Vector3.MoveTowards(killFoot[1], goalR, rate);
                 if (remR < 0.06f || pp == null) killFoot[0] = Vector3.MoveTowards(killFoot[0], goalL, rate);
-                killLift[1] = Mathf.Clamp01(Vector3.Distance(killFoot[1], goalR) * 4f) * 0.14f;
-                killLift[0] = Mathf.Clamp01(Vector3.Distance(killFoot[0], goalL) * 4f) * 0.14f;
+                float liftH = over ? 0.34f : 0.14f;   // stepping over you: knees high
+                killLift[1] = Mathf.Clamp01(Vector3.Distance(killFoot[1], goalR) * 4f) * liftH;
+                killLift[0] = Mathf.Clamp01(Vector3.Distance(killFoot[0], goalL) * 4f) * liftH;
                 if (pp == null && killFoot[0].sqrMagnitude + killFoot[1].sqrMagnitude > 0f)
                 {
                     // the kill is over: where the feet ended up becomes where they're planted
@@ -304,6 +318,13 @@ namespace AfterHours.Creature
             // crawling, the knees point out and up like a spider's (the body hangs low between them)
             Vector3 kneeL = Vector3.Lerp(knee, inDuct ? -right * 0.3f - up - fwd * 0.4f : -right + up * 1.3f - fwd * 0.2f, crawlW);
             Vector3 kneeR = Vector3.Lerp(knee, inDuct ? right * 0.3f - up - fwd * 0.4f : right + up * 1.3f - fwd * 0.2f, crawlW);
+            // a deep crouch (over you): knees out to the sides and up, like a frog's - not down through the floor
+            float squat = pp != null ? Mathf.Clamp01((hipHeight - 0.15f - (pelvisPos.y - root.y)) / 0.45f) * pp.weight * (1f - crawlW) : 0f;
+            if (squat > 0f)
+            {
+                kneeL = Vector3.Lerp(kneeL, -right * 0.9f + up * 0.9f + fwd * 0.35f, squat);
+                kneeR = Vector3.Lerp(kneeR, right * 0.9f + up * 0.9f + fwd * 0.35f, squat);
+            }
             Leg(thighL, shinL, footL, pelvisPos - right * hipHalfWidth, footPos[0] + killFoot[0] + up * (ankle + killLift[0]), kneeL, yaw);
             Leg(thighR, shinR, footR, pelvisPos + right * hipHalfWidth, footPos[1] + killFoot[1] + up * (ankle + killLift[1]), kneeR, yaw);
 
@@ -314,8 +335,11 @@ namespace AfterHours.Creature
             {
                 // spine + neck as a two-bone chain from the hips to where the head must be; the back hunches up as it bends
                 Vector3 mid = SolveIK(pelvisPos, reachT, spineLength, neckLength, up - fwd * 0.4f, out Vector3 end);
-                spineRot = Quaternion.Slerp(spineRot, Aim(mid - pelvisPos, fwd), pp.weight);
-                neckRot = Quaternion.Slerp(neckRot, Aim(end - mid, fwd), pp.weight);
+                // the chest faces forward when upright and DOWN when bent level over you: a fixed forward-and-down
+                // reference (plain 'forward' flips the whole body over as the spine passes horizontal)
+                Vector3 chestRef = fwd - up * 1.5f;
+                spineRot = Quaternion.Slerp(spineRot, Aim(mid - pelvisPos, chestRef), pp.weight);
+                neckRot = Quaternion.Slerp(neckRot, Aim(end - mid, chestRef), pp.weight);
             }
             spine.SetPositionAndRotation(pelvisPos, spineRot);
             Vector3 chest = pelvisPos + spineRot * up * spineLength;
@@ -376,9 +400,11 @@ namespace AfterHours.Creature
             float armReach = upperArm + foreArm;
 
             // Upright: long arms hanging and swinging against the legs (wide and loose when running).
-            float swing = Mathf.Sin(phase * Mathf.PI * 2f) * Mathf.Lerp(22f, 55f, runW) * moveW;
-            Vector3 hangL = shoulderL + (Quaternion.AngleAxis(-swing, right) * (Quaternion.AngleAxis(-8f - 10f * runW, fwd) * Vector3.down)) * armReach * 0.97f;
-            Vector3 hangR = shoulderR + (Quaternion.AngleAxis(swing, right) * (Quaternion.AngleAxis(8f + 10f * runW, fwd) * Vector3.down)) * armReach * 0.97f;
+            // running: elbows bent, the long forearms pumping forward (not flung out stiff behind him)
+            float swing = Mathf.Sin(phase * Mathf.PI * 2f) * Mathf.Lerp(22f, 38f, runW) * moveW;
+            float armLen = armReach * Mathf.Lerp(0.97f, 0.72f, runW);
+            Vector3 hangL = shoulderL + (Quaternion.AngleAxis(-swing + 18f * runW, right) * (Quaternion.AngleAxis(-8f - 10f * runW, fwd) * Vector3.down)) * armLen;
+            Vector3 hangR = shoulderR + (Quaternion.AngleAxis(swing + 18f * runW, right) * (Quaternion.AngleAxis(8f + 10f * runW, fwd) * Vector3.down)) * armLen;
             hangL += fwd * (0.12f * runW);
             hangR += fwd * (0.12f * runW);
 
@@ -461,8 +487,17 @@ namespace AfterHours.Creature
             Vector3 elbowPole = -fwd + Vector3.down * 0.4f;
             Vector3 poleL = Vector3.Lerp(elbowPole - right * 0.4f, -right + up * 1.1f - fwd * 0.3f, crawlW);
             Vector3 poleR = Vector3.Lerp(elbowPole + right * 0.4f, right + up * 1.1f - fwd * 0.3f, crawlW);
-            Arm(upperArmL, foreArmL, handL, shoulderL, handTargetL, poleL, yaw);
-            Arm(upperArmR, foreArmR, handR, shoulderR, handTargetR, poleR, yaw);
+            if (pp != null)
+            {
+                // gripping you: elbows flared out to the sides (a push-up), never back into his own body
+                poleL = Vector3.Lerp(poleL, -right * 0.55f - up * 0.2f - fwd * 0.3f, pp.weight * (1f - crawlW));
+                poleR = Vector3.Lerp(poleR, right * 0.55f - up * 0.2f - fwd * 0.3f, pp.weight * (1f - crawlW));
+            }
+            float floorH = root.y;
+            float flatL = Mathf.Max(crawlW * (1f - Mathf.Clamp01((handTargetL.y - floorH - 0.12f) / 0.2f)), pp != null && pp.flatHands ? pp.weight : 0f);
+            float flatR = Mathf.Max(crawlW * (1f - Mathf.Clamp01((handTargetR.y - floorH - 0.12f) / 0.2f)), pp != null && pp.flatHands ? pp.weight : 0f);
+            Arm(upperArmL, foreArmL, handL, shoulderL, handTargetL, poleL, yaw, flatL, fwd * 0.85f - right * 0.45f);
+            Arm(upperArmR, foreArmR, handR, shoulderR, handTargetR, poleR, yaw, flatR, fwd * 0.85f + right * 0.45f);
 
             float grip = action == ElliotAction.Grab || action == ElliotAction.BangDoor || action == ElliotAction.PullOpen ? 0.8f * actionW : 0f;
             if (pp != null) grip = Mathf.Max(grip, 0.9f * pp.weight);
@@ -658,12 +693,17 @@ namespace AfterHours.Creature
         void Leg(Transform upper, Transform lower, Transform foot, Vector3 hip, Vector3 ankleTarget, Vector3 pole, Quaternion yaw)
         {
             Vector3 kneePos = SolveIK(hip, ankleTarget, thigh, shin, pole, out Vector3 anklePos);
+            if (kneePos.y < transform.position.y + 0.09f && motor != null && motor.CeilingW < 0.01f)
+            {
+                pole = (pole.normalized + Vector3.up * 2f).normalized;          // never through the floor
+                kneePos = SolveIK(hip, ankleTarget, thigh, shin, pole, out anklePos);
+            }
             Place(upper, hip, kneePos, pole);
             Place(lower, kneePos, anklePos, pole);
             if (foot != null) foot.SetPositionAndRotation(anklePos, yaw);
         }
 
-        void Arm(Transform upper, Transform lower, Transform hand, Vector3 shoulder, Vector3 target, Vector3 pole, Quaternion yaw)
+        void Arm(Transform upper, Transform lower, Transform hand, Vector3 shoulder, Vector3 target, Vector3 pole, Quaternion yaw, float flat = 0f, Vector3 fingers = default)
         {
             Vector3 elbow = SolveIK(shoulder, target, upperArm, foreArm, pole, out Vector3 wrist);
             Place(upper, shoulder, elbow, pole);
@@ -671,7 +711,11 @@ namespace AfterHours.Creature
             if (hand != null)
             {
                 Vector3 dir = (wrist - elbow).normalized;
-                hand.SetPositionAndRotation(wrist, Quaternion.LookRotation(Vector3.ProjectOnPlane(pole, dir).sqrMagnitude > 1e-6f ? Vector3.ProjectOnPlane(pole, dir) : Vector3.forward, -dir));
+                Quaternion q = Quaternion.LookRotation(Vector3.ProjectOnPlane(pole, dir).sqrMagnitude > 1e-6f ? Vector3.ProjectOnPlane(pole, dir) : Vector3.forward, -dir);
+                // planted (crawling) or pressing down on you: the hand lies flat, fingers forward and out - not stabbed into the floor
+                if (flat > 0.01f && fingers.sqrMagnitude > 1e-6f)
+                    q = Quaternion.Slerp(q, Quaternion.LookRotation(Vector3.up, -fingers.normalized), flat);
+                hand.SetPositionAndRotation(wrist, q);
             }
         }
 
