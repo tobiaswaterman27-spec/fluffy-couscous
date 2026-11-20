@@ -288,6 +288,7 @@ namespace AfterHours.EditorTools
                 WingBox("Bench", g, w, u0 + 3f, u0 + 5f, -14f, -13.5f, y, y + 0.45f, woodMat, SurfaceType.Wood);
                 WingBox("Bench", g, w, u0 + 3f, u0 + 5f, 13.5f, 14f, y, y + 0.45f, woodMat, SurfaceType.Wood);
                 Sign(g, "MAIN ENTRANCE", MallLayout.WingPoint(w, end - 0.35f, 0f, y + 3.5f), view, 8f, 0.08f);
+                EntranceHallDetail(g, w, y, u0, end);
                 AnchorLights(g, w, y, u0, end);
                 return;
             }
