@@ -395,7 +395,9 @@ namespace AfterHours.EditorTools
                 WingBox("Kiosk counter", g, w, end - 6.6f, end - 6f, v0 + 0.6f, v1 - 0.8f, y, y + 1.1f, counterMat, SurfaceType.Wood);
                 WingBox("Kiosk back counter", g, w, end - 1.2f, end - 0.3f, v0 + 0.4f, v1 - 0.4f, y, y + 0.95f, metal, SurfaceType.Metal);
                 Sign(g, names[i].ToUpperInvariant(), MallLayout.WingPoint(w, end - 6.1f, (v0 + v1) * 0.5f, y + 2.8f), MallLayout.WingForward(w), width - 1f, 0.04f);
+                FoodCourtKioskDetail(g, w, y, end, i, v0, v1);
             }
+            FoodCourtTrayStation(g, w, y, end);
         }
 
         static void BuildCinema(Transform g, WingId w, float y, float u0, float end)
