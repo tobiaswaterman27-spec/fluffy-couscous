@@ -363,6 +363,13 @@ namespace AfterHours.EditorTools
                 clear.Add(MallLayout.WingRect(w, end - 2.6f, end, -19.3f, 19.3f));   // freezers
                 SupermarketDetail(g, w, y, u0, end);
             }
+            if (a.category == UnitCategory.Department)
+            {
+                if (f == MallFloor.Ground) clear.Add(MallLayout.WingRect(w, u0 + 4.2f, u0 + 8f, -3.5f, 3.5f));
+                clear.Add(MallLayout.WingRect(w, u0 + 4f, u0 + 5.2f, 8.8f, 10.2f));
+                clear.Add(MallLayout.WingRect(w, u0 + 8.4f, u0 + 9.6f, 17.6f, 19.3f));
+                HartleysFeature(g, f, w, y, u0, end);
+            }
             if (a.name == "Toy Kingdom")
             {
                 clear.Add(MallLayout.WingRect(w, u0 + 4f, u0 + 9.8f, -4f, 4f));
