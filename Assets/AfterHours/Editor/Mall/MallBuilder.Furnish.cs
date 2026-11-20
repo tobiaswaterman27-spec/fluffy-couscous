@@ -307,6 +307,7 @@ namespace AfterHours.EditorTools
                     : new AreaRect(area.maxX - 0.2f, p + 0.3f, area.maxX - 0.02f, p + 0.8f);
                 BoxRect("Cistern", g, cistern, y + 0.42f, y + 0.85f, porcelain, SurfaceType.Tile);
                 CubicleDoor(g, area, alongX, p, y, i);
+                CubicleDetail(g, area, alongX, p, y, i);
             }
             float s0 = (alongX ? area.minX : area.minZ) + 1.5f;
             float s1 = Mathf.Min(s0 + 4f, (alongX ? area.maxX : area.maxZ) - 1.5f);
@@ -344,6 +345,7 @@ namespace AfterHours.EditorTools
                         ? new AreaRect(s1 + 0.4f, area.minZ, s1 + 0.7f, area.minZ + 0.22f)
                         : new AreaRect(area.minX, s1 + 0.4f, area.minX + 0.22f, s1 + 0.7f);
                     BoxRect("Hand dryer", g, dryer, y + 1.1f, y + 1.4f, whiteFixture, SurfaceType.Metal);
+                    WashroomDetail(g, area, alongX, s0, s1, y);
                 }
             }
         }
