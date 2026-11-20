@@ -54,6 +54,18 @@ namespace AfterHours.EditorTools
                 Sign(g, "HARTLEY'S  EST. 1931", c + Vector3.up * 0.4f - rt * 0.18f, -rt, 0.45f, 0.012f, false);
             }
 
+            // hanging department signs
+            string[] depts = f == MallFloor.Ground ? new[] { "BEAUTY", "WOMENSWEAR", "ACCESSORIES", "GIFTS" } : new[] { "MENSWEAR", "HOME", "BEDDING", "RESTAURANT" };
+            Material hang = ArtLibrary.Plain("Dept_Sign", new Color(0.15f, 0.12f, 0.1f), 0.5f);
+            for (int k = 0; k < depts.Length; k++)
+            {
+                Vector3 c = P(u0 + 11f + (k / 2) * 9f, k % 2 == 0 ? -9f : 9f, 3.7f);
+                Detail("Department sign", g, c, new Vector3(2.2f, 0.45f, 0.05f), hang, toDoors);
+                Sign(g, depts[k], c - fwd * 0.03f, -fwd, 2f, 0.04f, false);
+                Sign(g, depts[k], c + fwd * 0.03f, fwd, 2f, 0.04f, false);
+                foreach (float s2 in new[] { -0.9f, 0.9f })
+                    Cyl("Sign wire", g, c + rt * s2 + Vector3.up * 0.22f, c + rt * s2 + Vector3.up * 0.8f, 0.006f, metal);
+            }
             // store guide, free-standing, near the stair
             Vector3 sg = P(u0 + 4.6f, 9.5f, 0f);
             Detail("Store guide post", g, sg + Vector3.up * 0.9f, new Vector3(0.1f, 1.8f, 0.1f), metal, toDoors);
